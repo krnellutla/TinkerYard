@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tinkeryard</title>
+<meta name="description" content="A yard for half-finished AI things. Small models, odd experiments, and notes on what broke.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2316231F'/%3E%3Cpath d='M11 6v21' stroke='%23F2F3EC' stroke-width='2.5'/%3E%3Cpath d='M11 7h12l-4 5 4 5H11z' fill='%23EE3F6C'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,600..800&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --concrete:#D9DDD4;
+  --paper:#F2F3EC;
+  --ink:#16231F;
+  --lawn:#2D6A3E;
+  --flag:#EE3F6C;
+  --gravel:#5C6A62;
+  --display:"Bricolage Grotesque","Arial Narrow",sans-serif;
+  --text:"Source Serif 4",Georgia,serif;
+  --gutter:clamp(16px,5vw,64px);
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--concrete);color:var(--ink);font-family:var(--text);font-size:1.125rem;line-height:1.6}
+a{color:inherit}
+:focus-visible{outline:3px solid var(--flag);outline-offset:3px}
+.wrap{padding-inline:var(--gutter);max-width:1240px;margin-inline:auto}
+
+/* top bar */
+.bar{display:flex;justify-content:space-between;align-items:center;padding-block:20px;font-family:var(--display);font-weight:700;font-stretch:80%}
+.mark{display:flex;align-items:center;gap:10px;font-size:1.35rem;text-decoration:none;letter-spacing:-.01em}
+.mark svg{width:22px;height:26px}
+.bar nav{display:flex;gap:24px;font-size:1.05rem;font-weight:600}
+.bar nav a{text-decoration:none;padding-block:6px;border-bottom:2px solid transparent}
+.bar nav a:hover{border-color:var(--flag)}
+
+/* hero */
+.hero{padding-block:clamp(32px,7vw,88px) clamp(40px,7vw,96px)}
+h1{font-family:var(--display);font-stretch:75%;font-weight:800;font-size:clamp(3.4rem,13.5vw,10.5rem);line-height:.86;letter-spacing:-.025em;margin:0 0 clamp(28px,4vw,48px);max-width:11ch}
+.lede{max-width:34em;font-size:clamp(1.15rem,2vw,1.4rem);margin:0 0 40px}
+
+.bench{background:var(--ink);color:var(--paper);padding:clamp(20px,3vw,36px);max-width:860px;position:relative}
+.bench::before{content:"";position:absolute;left:clamp(20px,3vw,36px);top:-18px;width:3px;height:52px;background:var(--paper)}
+.bench::after{content:"";position:absolute;left:calc(clamp(20px,3vw,36px) + 3px);top:-18px;width:30px;height:24px;background:var(--flag);clip-path:polygon(0 0,100% 0,72% 50%,100% 100%,0 100%)}
+.bench h2{font-family:var(--display);font-stretch:85%;font-size:1.5rem;margin:14px 0 6px;font-weight:700;letter-spacing:-.01em}
+.bench .hint{margin:0 0 20px;color:#B9C3BB;font-size:1rem}
+.bench form{display:flex;gap:10px;flex-wrap:wrap}
+.bench label{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.bench input{flex:1 1 260px;min-width:0;font:inherit;font-size:1.15rem;background:var(--paper);color:var(--ink);border:0;padding:14px 16px;border-radius:2px}
+.bench input::placeholder{color:#6d786f}
+button{font-family:var(--display);font-stretch:85%;font-weight:700;font-size:1.05rem;cursor:pointer;border:0;border-radius:2px;padding:14px 22px;background:var(--flag);color:#fff}
+button:hover{background:#d62f5b}
+button.quiet{background:transparent;color:var(--paper);box-shadow:inset 0 0 0 2px #52625a}
+button.quiet:hover{background:#22332d}
+.out{min-height:5.2em;margin:22px 0 4px;font-size:clamp(1.2rem,2.4vw,1.55rem);line-height:1.45}
+.out .seed{color:#B9C3BB}
+.out .gen{color:var(--paper)}
+.out .cursor{display:inline-block;width:.5ch;height:1.1em;background:var(--flag);vertical-align:-.15em;margin-left:2px}
+.fine{margin:12px 0 0;font-size:.9rem;color:#9AA89F}
+
+/* sections */
+section{padding-block:clamp(48px,7vw,96px)}
+.paper{background:var(--paper)}
+h2.sec{font-family:var(--display);font-stretch:75%;font-weight:800;font-size:clamp(2.4rem,6vw,4.4rem);line-height:.95;letter-spacing:-.02em;margin:0 0 12px}
+.sub{max-width:36em;margin:0 0 32px;color:var(--gravel)}
+
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:24px}
+.filters button{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 2px var(--ink);padding:9px 16px;font-size:1rem}
+.filters button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+.filters button:hover{background:#e3e6dd}
+.filters button[aria-pressed="true"]:hover{background:var(--ink)}
+
+.projects{list-style:none;margin:0;padding:0;border-top:3px solid var(--ink)}
+.projects li{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr) auto;gap:8px 32px;align-items:baseline;padding:22px 0;border-bottom:1px solid #b9bfb3}
+.projects li[hidden]{display:none}
+.projects h3{font-family:var(--display);font-stretch:80%;font-weight:700;font-size:clamp(1.6rem,3vw,2.2rem);line-height:1.05;margin:0;letter-spacing:-.01em}
+.projects p{margin:0}
+.projects .stack{color:var(--gravel);font-size:.95rem;font-style:italic;grid-column:2}
+.status{display:inline-flex;align-items:center;gap:8px;font-family:var(--display);font-stretch:85%;font-weight:700;font-size:1rem;grid-row:1;grid-column:3;justify-self:end;white-space:nowrap}
+.status svg{width:22px;height:22px;flex:none}
+
+/* notes */
+.notes{list-style:none;margin:0;padding:0;max-width:760px}
+.notes li{padding:22px 0;border-bottom:1px solid #b9bfb3}
+.notes a{text-decoration:none;display:block}
+.notes h3{font-family:var(--display);font-stretch:85%;font-weight:700;font-size:1.6rem;line-height:1.15;margin:0 0 6px}
+.notes a:hover h3{text-decoration:underline;text-decoration-color:var(--flag);text-decoration-thickness:3px;text-underline-offset:4px}
+.notes p{margin:0;color:var(--gravel)}
+.notes time{font-style:italic}
+
+/* gate */
+.gate{background:var(--lawn);color:var(--paper)}
+.gate h2.sec{max-width:12ch}
+.gate p{max-width:32em;margin:0 0 28px;font-size:1.25rem}
+.gate .row{display:flex;gap:12px;flex-wrap:wrap}
+.gate a.btn{font-family:var(--display);font-stretch:85%;font-weight:700;font-size:1.1rem;text-decoration:none;padding:14px 24px;border-radius:2px;background:var(--paper);color:var(--ink)}
+.gate a.btn:hover{background:#fff}
+.gate a.btn.alt{background:transparent;color:var(--paper);box-shadow:inset 0 0 0 2px var(--paper)}
+.gate a.btn.alt:hover{background:#245631}
+
+footer{padding-block:28px;font-size:.95rem;color:var(--gravel)}
+footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+
+@media (max-width:720px){
+  .bar nav{gap:16px}
+  .projects li{grid-template-columns:1fr auto}
+  .projects .stack{grid-column:1 / -1}
+  .projects p.what{grid-column:1 / -1}
+  .status{grid-column:2}
+}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+.cursor{animation:blink 1s steps(2) infinite}
+@keyframes blink{50%{opacity:0}}
+@media (prefers-reduced-motion:reduce){.cursor{animation:none}}
+</style>
+</head>
+<body>
+
+<header class="wrap bar">
+  <a class="mark" href="#top" aria-label="Tinkeryard home">
+    <svg viewBox="0 0 22 26" aria-hidden="true"><path d="M3 1v25" stroke="#16231F" stroke-width="2.6"/><path d="M4 2h16l-5 6 5 6H4z" fill="#EE3F6C"/></svg>
+    tinkeryard
+  </a>
+  <nav aria-label="Main">
+    <a href="#projects">Projects</a>
+    <a href="#notes">Notes</a>
+    <a href="#gate">Follow</a>
+  </nav>
+</header>
+
+<main id="top">
+  <div class="wrap hero">
+    <h1>A yard for half-finished AI things.</h1>
+    <p class="lede">I build small models, odd experiments, and tools nobody asked for. Everything here runs on a laptop, and I write down what broke.</p>
+
+    <div class="bench">
+      <h2>Try the smallest model on the yard</h2>
+      <p class="hint">Type a few words. A word-pair model trained on this page's own copy will finish your sentence.</p>
+      <form id="babble" autocomplete="off">
+        <label for="seed">Start a sentence</label>
+        <input id="seed" name="seed" type="text" maxlength="80" placeholder="The model I trained last night…">
+        <button type="submit">Finish it</button>
+        <button type="button" class="quiet" id="again">Try again</button>
+      </form>
+      <p class="out" id="out" aria-live="polite"></p>
+      <p class="fine">About 40 lines of JavaScript, no server, no API key. It guesses the next word from the last two.</p>
+    </div>
+  </div>
+
+  <section class="paper" id="projects">
+    <div class="wrap">
+      <h2 class="sec">On the bench</h2>
+      <p class="sub">Flags show where each thing stands. Sprouting means just started. Running means I use it. Shelved means it taught me something and I moved on.</p>
+
+      <div class="filters" role="group" aria-label="Filter projects by status">
+        <button type="button" data-f="all" aria-pressed="true">All</button>
+        <button type="button" data-f="running" aria-pressed="false">Running</button>
+        <button type="button" data-f="sprouting" aria-pressed="false">Sprouting</button>
+        <button type="button" data-f="shelved" aria-pressed="false">Shelved</button>
+      </div>
+
+      <ul class="projects" id="list">
+        <li data-s="running">
+          <h3>Pocket Librarian</h3>
+          <p class="what">Ask questions of my PDF pile. Answers cite the page they came from.</p>
+          <span class="status"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 2v19" stroke="#16231F" stroke-width="2.4"/><path d="M5 3h14l-4 5 4 5H5z" fill="#2D6A3E"/></svg>Running</span>
+          <p class="stack">llama.cpp, SQLite, 8 GB of RAM</p>
+        </li>
+        <li data-s="running">
+          <h3>Fifty Questions</h3>
+          <p class="what">A tiny test I run against every new model, so I can compare them on my own tasks.</p>
+          <span class="status"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 2v19" stroke="#16231F" stroke-width="2.4"/><path d="M5 3h14l-4 5 4 5H5z" fill="#2D6A3E"/></svg>Running</span>
+          <p class="stack">Python, a spreadsheet</p>
+        </li>
+        <li data-s="sprouting">
+          <h3>Door Cat</h3>
+          <p class="what">A camera and a small vision model that tells me which cat is waiting to come in.</p>
+          <span class="status"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 2v19" stroke="#16231F" stroke-width="2.4"/><path d="M5 3h14l-4 5 4 5H5z" fill="#EE3F6C"/></svg>Sprouting</span>
+          <p class="stack">Raspberry Pi, ONNX, 212 blurry photos</p>
+        </li>
+        <li data-s="sprouting">
+          <h3>Prompt Compost</h3>
+          <p class="what">A log of prompts that failed, what went wrong, and the fix that finally worked.</p>
+          <span class="status"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 2v19" stroke="#16231F" stroke-width="2.4"/><path d="M5 3h14l-4 5 4 5H5z" fill="#EE3F6C"/></svg>Sprouting</span>
+          <p class="stack">Markdown, git</p>
+        </li>
+        <li data-s="shelved">
+          <h3>Memo Sorter</h3>
+          <p class="what">Transcribed my voice memos and tagged them. Worked well, but I never reread the tags.</p>
+          <span class="status"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 2v19" stroke="#16231F" stroke-width="2.4"/><path d="M5 3h14l-4 5 4 5H5z" fill="#9AA39A"/></svg>Shelved</span>
+          <p class="stack">Whisper, a lot of optimism</p>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="notes">
+    <div class="wrap">
+      <h2 class="sec">Notes from the yard</h2>
+      <p class="sub">Short write-ups, usually about something that did not work the first time.</p>
+      <ul class="notes">
+        <li><a href="#"><h3>Why my retrieval bot kept quoting the wrong page</h3><p>It was my chunk size, not the model. <time>September 2026</time></p></a></li>
+        <li><a href="#"><h3>What 212 blurry cat photos taught me about data</h3><p>More pictures helped less than better ones. <time>August 2026</time></p></a></li>
+        <li><a href="#"><h3>Running a language model on 8 GB of RAM</h3><p>What fits, what crawls, and what I gave up on. <time>June 2026</time></p></a></li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="gate" id="gate">
+    <div class="wrap">
+      <h2 class="sec">The gate is open</h2>
+      <p>Follow along as things get built, break, and get fixed. If you are tinkering on something similar, say hello.</p>
+      <div class="row">
+        <a class="btn" href="https://github.com/krnellutla">See the code on GitHub</a>
+        <a class="btn alt" href="mailto:hello@tinkeryard.dev">Email me</a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>tinkeryard.dev</span>
+    <span>Built by hand, tested on a laptop.</span>
+  </div>
+</footer>
+
+<script>
+(function(){
+  /* project filter */
+  var btns=document.querySelectorAll('.filters button');
+  var items=document.querySelectorAll('#list li');
+  btns.forEach(function(b){
+    b.addEventListener('click',function(){
+      btns.forEach(function(x){x.setAttribute('aria-pressed',x===b)});
+      var f=b.dataset.f;
+      items.forEach(function(li){li.hidden=!(f==='all'||li.dataset.s===f)});
+    });
+  });
+
+  /* word-pair babbler */
+  var corpus=[
+    "I build small models that run on a laptop and I write down what broke.",
+    "The model I trained last night learned to say hello and nothing else.",
+    "Most of tinkering is waiting for a download to finish and wondering if the idea was any good.",
+    "A small model with clean data beats a big model with messy data more often than you would think.",
+    "My retrieval bot kept quoting the wrong page because the chunks were too small.",
+    "Every experiment on the yard starts as a weekend idea and ends as a note about what I learned.",
+    "The best prompt I ever wrote was the third one, after the first two failed in interesting ways.",
+    "Running a language model on a laptop teaches you what every megabyte is worth.",
+    "I keep a pile of half finished projects because each one taught me something the finished ones did not.",
+    "The cat at the door was a different cat than the model expected, so I took more photos.",
+    "Good evaluation is just fifty honest questions and the patience to read every answer.",
+    "Nobody asked for this tool, which is the best reason to build it.",
+    "When the loss goes down and the output gets worse, check the data before you check the code.",
+    "The yard is open to anyone who likes to take things apart and see how they think.",
+    "Small experiments are cheap, and cheap experiments are the ones you actually run."
+  ];
+  var tokens=[],chain={},starts=[];
+  corpus.forEach(function(s){
+    var w=s.split(/\s+/);
+    starts.push(w.slice(0,2).join(' '));
+    for(var i=0;i<w.length;i++){
+      var k1=w[i].toLowerCase().replace(/[.,]/g,'');
+      var k2=i>0?(w[i-1]+' '+w[i]).toLowerCase().replace(/[.,]/g,''):null;
+      var nxt=w[i+1]||'.END';
+      (chain[k1]=chain[k1]||[]).push(nxt);
+      if(k2)(chain[k2]=chain[k2]||[]).push(nxt);
+    }
+  });
+  function pick(a){return a[Math.floor(Math.random()*a.length)]}
+  function clean(w){return w.toLowerCase().replace(/[.,]/g,'')}
+  function finish(seed){
+    var words=seed.trim().split(/\s+/).filter(Boolean);
+    if(!words.length){words=pick(starts).split(' ')}
+    var out=[],hist=words.slice();
+    for(var n=0;n<26;n++){
+      var a=hist[hist.length-2],b=hist[hist.length-1];
+      var opts=(a&&chain[clean(a)+' '+clean(b)])||chain[clean(b)];
+      if(!opts)opts=chain[clean(pick(Object.keys(chain)))];
+      var w=pick(opts);
+      if(w==='.END'){if(n>5)break;w=pick(starts).split(' ')[0]}
+      out.push(w);hist.push(w);
+      if(/[.]$/.test(w)&&n>8)break;
+    }
+    return {seed:words.join(' '),gen:out.join(' ')};
+  }
+
+  var form=document.getElementById('babble'),input=document.getElementById('seed'),out=document.getElementById('out'),again=document.getElementById('again');
+  var reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var timer;
+  function run(){
+    clearInterval(timer);
+    var r=finish(input.value);
+    out.innerHTML='';
+    var s=document.createElement('span');s.className='seed';s.textContent=r.seed+' ';
+    var g=document.createElement('span');g.className='gen';
+    var c=document.createElement('span');c.className='cursor';c.setAttribute('aria-hidden','true');
+    out.append(s,g,c);
+    if(reduce){g.textContent=r.gen;c.remove();return}
+    var i=0;
+    timer=setInterval(function(){
+      g.textContent=r.gen.slice(0,++i);
+      if(i>=r.gen.length){clearInterval(timer);c.remove()}
+    },28);
+  }
+  form.addEventListener('submit',function(e){e.preventDefault();run()});
+  again.addEventListener('click',run);
+  /* show one example on load so the toy is never an empty box */
+  input.value='The model I trained last night';
+  run();
+})();
+</script>
+</body>
+</html>
