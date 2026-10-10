@@ -66,11 +66,6 @@ section{padding-block:clamp(48px,7vw,96px)}
 h2.sec{font-family:var(--display);font-stretch:75%;font-weight:800;font-size:clamp(2.4rem,6vw,4.4rem);line-height:.95;letter-spacing:-.02em;margin:0 0 12px}
 .sub{max-width:36em;margin:0 0 32px;color:var(--gravel)}
 
-.filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:24px}
-.filters button{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 2px var(--ink);padding:9px 16px;font-size:1rem}
-.filters button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
-.filters button:hover{background:#e3e6dd}
-.filters button[aria-pressed="true"]:hover{background:var(--ink)}
 
 .projects{list-style:none;margin:0;padding:0;border-top:3px solid var(--ink)}
 .projects li{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr) auto;gap:8px 32px;align-items:baseline;padding:22px 0;border-bottom:1px solid #b9bfb3}
@@ -90,14 +85,6 @@ h2.sec{font-family:var(--display);font-stretch:75%;font-weight:800;font-size:cla
 .embed-note{max-width:860px;margin:16px 0 0;color:var(--gravel);font-size:1rem}
 .embed-note a{color:var(--ink)}
 
-/* notes */
-.notes{list-style:none;margin:0;padding:0;max-width:760px}
-.notes li{padding:22px 0;border-bottom:1px solid #b9bfb3}
-.notes a{text-decoration:none;display:block}
-.notes h3{font-family:var(--display);font-stretch:85%;font-weight:700;font-size:1.6rem;line-height:1.15;margin:0 0 6px}
-.notes a:hover h3{text-decoration:underline;text-decoration-color:var(--flag);text-decoration-thickness:3px;text-underline-offset:4px}
-.notes p{margin:0;color:var(--gravel)}
-.notes time{font-style:italic}
 
 /* gate */
 .gate{background:var(--lawn);color:var(--paper)}
@@ -134,7 +121,6 @@ footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
   </a>
   <nav aria-label="Main">
     <a href="#projects">Projects</a>
-    <a href="#notes">Notes</a>
     <a href="#gate">Follow</a>
   </nav>
 </header>
@@ -161,14 +147,7 @@ footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
   <section class="paper" id="projects">
     <div class="wrap">
       <h2 class="sec">On the bench</h2>
-      <p class="sub">Flags show where each thing stands. Sprouting means just started. Running means I use it. Shelved means it taught me something and I moved on.</p>
-
-      <div class="filters" role="group" aria-label="Filter projects by status">
-        <button type="button" data-f="all" aria-pressed="true">All</button>
-        <button type="button" data-f="running" aria-pressed="false">Running</button>
-        <button type="button" data-f="sprouting" aria-pressed="false">Sprouting</button>
-        <button type="button" data-f="shelved" aria-pressed="false">Shelved</button>
-      </div>
+      <p class="sub">Everything here runs today. Open one to try it.</p>
 
       <ul class="projects" id="list">
         <li data-s="running">
@@ -184,28 +163,10 @@ footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
           <p class="stack">portfolix.tinkeryard.dev &middot; React, Postgres</p>
         </li>
         <li data-s="running">
-          <h3>Pocket Librarian</h3>
-          <p class="what">Ask questions of my PDF pile. Answers cite the page they came from.</p>
-          <span class="status"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 2v19" stroke="#16231F" stroke-width="2.4"/><path d="M5 3h14l-4 5 4 5H5z" fill="#2D6A3E"/></svg>Running</span>
-          <p class="stack">llama.cpp, SQLite, 8 GB of RAM</p>
-        </li>
-        <li data-s="running">
           <h3><a href="#fifty-questions">Fifty Questions</a></h3>
           <p class="what">Fifty questions with automatic checkers. Four small models ran it on my laptop and scored from 29 to 47. Every one of them struggled most with following instructions.</p>
           <span class="status"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 2v19" stroke="#16231F" stroke-width="2.4"/><path d="M5 3h14l-4 5 4 5H5z" fill="#2D6A3E"/></svg>Running</span>
           <p class="stack">Python, Transformers, no GPU</p>
-        </li>
-        <li data-s="sprouting">
-          <h3>Door Cat</h3>
-          <p class="what">A camera and a small vision model that tells me which cat is waiting to come in.</p>
-          <span class="status"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 2v19" stroke="#16231F" stroke-width="2.4"/><path d="M5 3h14l-4 5 4 5H5z" fill="#EE3F6C"/></svg>Sprouting</span>
-          <p class="stack">Raspberry Pi, ONNX, 212 blurry photos</p>
-        </li>
-        <li data-s="sprouting">
-          <h3>Prompt Compost</h3>
-          <p class="what">A log of prompts that failed, what went wrong, and the fix that finally worked.</p>
-          <span class="status"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 2v19" stroke="#16231F" stroke-width="2.4"/><path d="M5 3h14l-4 5 4 5H5z" fill="#EE3F6C"/></svg>Sprouting</span>
-          <p class="stack">Markdown, git</p>
         </li>
         <li data-s="running">
           <h3><a href="#memo-sorter">Memo Sorter</a></h3>
@@ -239,18 +200,6 @@ footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
     </div>
   </section>
 
-  <section id="notes">
-    <div class="wrap">
-      <h2 class="sec">Notes from the yard</h2>
-      <p class="sub">Short write-ups, usually about something that did not work the first time.</p>
-      <ul class="notes">
-        <li><a href="#"><h3>Why my retrieval bot kept quoting the wrong page</h3><p>It was my chunk size, not the model. <time>September 2026</time></p></a></li>
-        <li><a href="#"><h3>What 212 blurry cat photos taught me about data</h3><p>More pictures helped less than better ones. <time>August 2026</time></p></a></li>
-        <li><a href="#"><h3>Running a language model on 8 GB of RAM</h3><p>What fits, what crawls, and what I gave up on. <time>June 2026</time></p></a></li>
-      </ul>
-    </div>
-  </section>
-
   <section class="gate" id="gate">
     <div class="wrap">
       <h2 class="sec">The gate is open</h2>
@@ -272,17 +221,6 @@ footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
 
 <script>
 (function(){
-  /* project filter */
-  var btns=document.querySelectorAll('.filters button');
-  var items=document.querySelectorAll('#list li');
-  btns.forEach(function(b){
-    b.addEventListener('click',function(){
-      btns.forEach(function(x){x.setAttribute('aria-pressed',x===b)});
-      var f=b.dataset.f;
-      items.forEach(function(li){li.hidden=!(f==='all'||li.dataset.s===f)});
-    });
-  });
-
   /* word-pair babbler */
   var corpus=[
     "I build small models that run on a laptop and I write down what broke.",
