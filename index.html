@@ -83,6 +83,12 @@ h2.sec{font-family:var(--display);font-stretch:75%;font-weight:800;font-size:cla
 .status{display:inline-flex;align-items:center;gap:8px;font-family:var(--display);font-stretch:85%;font-weight:700;font-size:1rem;grid-row:1;grid-column:3;justify-self:end;white-space:nowrap}
 .status svg{width:22px;height:22px;flex:none}
 
+/* embedded demo */
+.embed{max-width:860px;border:3px solid var(--ink);background:#fff}
+.embed iframe{display:block;width:100%;height:640px;border:0}
+.embed-note{max-width:860px;margin:16px 0 0;color:var(--gravel);font-size:1rem}
+.embed-note a{color:var(--ink)}
+
 /* notes */
 .notes{list-style:none;margin:0;padding:0;max-width:760px}
 .notes li{padding:22px 0;border-bottom:1px solid #b9bfb3}
@@ -200,13 +206,24 @@ footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
           <span class="status"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 2v19" stroke="#16231F" stroke-width="2.4"/><path d="M5 3h14l-4 5 4 5H5z" fill="#EE3F6C"/></svg>Sprouting</span>
           <p class="stack">Markdown, git</p>
         </li>
-        <li data-s="shelved">
-          <h3>Memo Sorter</h3>
-          <p class="what">Transcribed my voice memos and tagged them. Worked well, but I never reread the tags.</p>
-          <span class="status"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 2v19" stroke="#16231F" stroke-width="2.4"/><path d="M5 3h14l-4 5 4 5H5z" fill="#9AA39A"/></svg>Shelved</span>
-          <p class="stack">Whisper, a lot of optimism</p>
+        <li data-s="running">
+          <h3><a href="#memo-sorter">Memo Sorter</a></h3>
+          <p class="what">Tags a short note as idea, todo, reminder or journal. It gets 40 of 48 unseen notes right and still mixes up ideas and todos.</p>
+          <span class="status"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 2v19" stroke="#16231F" stroke-width="2.4"/><path d="M5 3h14l-4 5 4 5H5z" fill="#2D6A3E"/></svg>Running</span>
+          <p class="stack">22M-parameter MiniLM, trained on a laptop CPU in 36 seconds</p>
         </li>
       </ul>
+    </div>
+  </section>
+
+  <section id="memo-sorter">
+    <div class="wrap">
+      <h2 class="sec">Try Memo Sorter</h2>
+      <p class="sub">Type any short note and the model picks a tag. Try something that could be an idea or a todo, and watch it hesitate.</p>
+      <div class="embed">
+        <iframe src="https://knellutla-memo-sorter.hf.space/?__theme=light" title="Memo Sorter demo" loading="lazy" allow="clipboard-write"></iframe>
+      </div>
+      <p class="embed-note">The demo wakes up slowly if nobody has used it for a while. <a href="https://huggingface.co/spaces/knellutla/memo-sorter">Open it on Hugging Face</a> or read the <a href="https://huggingface.co/knellutla/memo-sorter-minilm">model card</a>.</p>
     </div>
   </section>
 
