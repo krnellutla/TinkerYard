@@ -77,6 +77,8 @@ h2.sec{font-family:var(--display);font-stretch:75%;font-weight:800;font-size:cla
 .projects li[hidden]{display:none}
 .projects h3{font-family:var(--display);font-stretch:80%;font-weight:700;font-size:clamp(1.6rem,3vw,2.2rem);line-height:1.05;margin:0;letter-spacing:-.01em}
 .projects p{margin:0}
+.projects h3 a{text-decoration:none}
+.projects h3 a:hover{text-decoration:underline;text-decoration-color:var(--flag);text-decoration-thickness:3px;text-underline-offset:5px}
 .projects .stack{color:var(--gravel);font-size:.95rem;font-style:italic;grid-column:2}
 .status{display:inline-flex;align-items:center;gap:8px;font-family:var(--display);font-stretch:85%;font-weight:700;font-size:1rem;grid-row:1;grid-column:3;justify-self:end;white-space:nowrap}
 .status svg{width:22px;height:22px;flex:none}
@@ -162,6 +164,18 @@ footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
       </div>
 
       <ul class="projects" id="list">
+        <li data-s="running">
+          <h3><a href="https://omni.tinkeryard.dev">OmniShelf</a></h3>
+          <p class="what">Inventory for small shops that keeps working offline. Scan a barcode, and it syncs when the connection comes back.</p>
+          <span class="status"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 2v19" stroke="#16231F" stroke-width="2.4"/><path d="M5 3h14l-4 5 4 5H5z" fill="#2D6A3E"/></svg>Running</span>
+          <p class="stack">omni.tinkeryard.dev &middot; React, Firebase</p>
+        </li>
+        <li data-s="running">
+          <h3><a href="https://portfolix.tinkeryard.dev">Portfolix</a></h3>
+          <p class="what">A portfolio site builder for photographers, where each photographer gets their own domain.</p>
+          <span class="status"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 2v19" stroke="#16231F" stroke-width="2.4"/><path d="M5 3h14l-4 5 4 5H5z" fill="#2D6A3E"/></svg>Running</span>
+          <p class="stack">portfolix.tinkeryard.dev &middot; React, Postgres</p>
+        </li>
         <li data-s="running">
           <h3>Pocket Librarian</h3>
           <p class="what">Ask questions of my PDF pile. Answers cite the page they came from.</p>
