@@ -1,0 +1,3 @@
+# The static site serves only the landing page. The 100x-hackathon app deploys
+# from its own Vercel project (tallyback, root directory 100x-hackathon/tallyback).
+100x-hackathon

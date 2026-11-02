@@ -21,7 +21,7 @@
 BILLSHIELD SUBMISSION
 Name / track:   Krishna Nellutla ⟨confirm⟩ / BillShield (Problem 1 of 3)
 Live link:      ⟨TODO: https://tallyback.tinkeryard.dev once the domain is added and protection is off⟩
-Public repo:    https://github.com/krnellutla/Tallyback
+Public repo:    https://github.com/krnellutla/TinkerYard/tree/main/100x-hackathon
 ```
 
 ## MOVE 1, BY HAND

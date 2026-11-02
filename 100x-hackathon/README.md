@@ -53,12 +53,12 @@ Next.js 15 · TypeScript · Tailwind CSS · Google Gemini (`gemini-3.8-flash`, w
 ## Run it yourself
 
 ```bash
-git clone https://github.com/krnellutla/Tallyback.git
-cd Tallyback/tallyback
+git clone https://github.com/krnellutla/TinkerYard.git
+cd TinkerYard/100x-hackathon/tallyback
 cp .env.example .env.local   # add a free Gemini key (aistudio.google.com/apikey); Groq, Neon and Blob are optional
 npm install
 npm run dev                  # http://localhost:3000
-npm test                     # 21 tests, including real receipt scans
+npm test                     # 25 tests, including real receipt scans
 ```
 
 Without a database, data is saved to a local file. With `DATABASE_URL` (Neon Postgres), tables are created automatically on first use. Developer details are in [`tallyback/README.md`](tallyback/README.md).
