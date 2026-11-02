@@ -1,4 +1,0 @@
-# The static site (tinkeryard.dev) serves only the landing page.
-# Each app deploys from its own Vercel project with its folder as the root directory.
-Tallyback
-Reviewscout

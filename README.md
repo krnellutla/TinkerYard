@@ -8,4 +8,4 @@ A yard for half-finished AI things. The landing page at [tinkeryard.dev](https:/
 | [`Tallyback/`](Tallyback) | Snap any bill, find the line that doesn't add up, send one message. Next.js | tallyback.tinkeryard.dev |
 | [`Reviewscout/`](Reviewscout) | A cited summary of what YouTube reviewers said about a product, with follow-ups. Next.js | reviewscout.tinkeryard.dev |
 
-Each app has its own `package.json`, `.env.local` and README; run commands from inside its folder. `.vercelignore` keeps the app folders out of the static landing-page deploy.
+Each app has its own `package.json`, `.env.local` and README; run commands from inside its folder. The root `vercel.json` only applies to the landing-page project (its root directory is the repo root): it returns 404 for the app folders so their source isn't served. Don't use a root `.vercelignore` here: Vercel applies it to every project in the repo, which strips the apps out of their own builds.

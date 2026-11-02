@@ -1,0 +1,4 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "routes": [{ "src": "/(Tallyback|Reviewscout|\\.claude)(/.*)?", "status": 404 }]
+}
