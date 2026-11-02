@@ -1,7 +1,7 @@
 import "server-only";
 import type { Extraction } from "./types";
-import { draftMessage, extractBill } from "./gemini";
-import { draftMessageGroq, extractBillGroq, groqEnabled } from "./groq";
+import { converse, draftMessage, extractBill } from "./gemini";
+import { converseGroq, draftMessageGroq, extractBillGroq, groqEnabled } from "./groq";
 
 // Gemini first (it can place highlight boxes), Groq if every Gemini model fails.
 export const llmEnabled = () => !!process.env.GEMINI_API_KEY || groqEnabled();
@@ -22,3 +22,8 @@ export const readBill = (data: string, mime: string): Promise<{ extraction: Extr
 
 export const writeMessage = (prompt: string): Promise<{ text: string; model: string }> =>
   withFallback(() => draftMessage(prompt), () => draftMessageGroq(prompt), "writeMessage");
+
+// Review Scout: answer from the collected reviews, keeping the whole conversation.
+type Turn = { role: "user" | "assistant"; content: string };
+export const chatAbout = (system: string, turns: Turn[]): Promise<{ text: string; model: string }> =>
+  withFallback(() => converse(system, turns), () => converseGroq(system, turns), "chatAbout");

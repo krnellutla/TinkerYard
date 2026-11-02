@@ -85,7 +85,23 @@ export const SCHEMA = [
     created_at timestamptz not null default now()
   )`,
   `create index if not exists messages_line_idx on messages (line_item_id)`,
+  // Review Scout: one row per product search. The collected transcripts (corpus) are kept so
+  // follow-up questions are answered from the same videos without asking YouTube again.
+  `create table if not exists scout_searches (
+    id uuid primary key,
+    device_id text not null,
+    topic text not null,
+    n_videos int not null,
+    with_comments boolean not null,
+    corpus text not null,
+    found jsonb not null,
+    messages jsonb not null,
+    model text,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now()
+  )`,
+  `create index if not exists scout_searches_device_idx on scout_searches (device_id, created_at desc)`,
 ];
 
-export const TABLES = ["bills", "line_items", "promises", "findings", "messages"] as const;
+export const TABLES = ["bills", "line_items", "promises", "findings", "messages", "scout_searches"] as const;
 export type Table = (typeof TABLES)[number];

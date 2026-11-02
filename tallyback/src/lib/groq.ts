@@ -19,9 +19,15 @@ kind: item,fee,late_fee,subscription,service_charge,discount,tax,rounding,previo
 One row per printed line that has an amount, top to bottom. Discounts/payments as positive numbers. null when not printed.
 Never include the customer's name, phone, address, account or card numbers.`;
 
+export interface ChatTurn {
+  role: "system" | "user" | "assistant";
+  content: string;
+}
+
 interface ChatOpts {
   model: string;
-  content: unknown;
+  content?: unknown;
+  messages?: ChatTurn[]; // a whole conversation instead of one user message
   json: boolean;
   maxTokens: number;
   reasoning: "none" | "low";
@@ -33,7 +39,7 @@ async function chat(o: ChatOpts, retried = false): Promise<string> {
     headers: { Authorization: `Bearer ${process.env.GROQ_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       model: o.model,
-      messages: [{ role: "user", content: o.content }],
+      messages: o.messages ?? [{ role: "user", content: o.content }],
       max_tokens: o.maxTokens,
       reasoning_effort: o.reasoning,
       ...(o.json ? { response_format: { type: "json_object" } } : {}),
@@ -96,6 +102,13 @@ export async function extractBillGroq(data: string, mimeType: string): Promise<{
 export async function draftMessageGroq(prompt: string): Promise<{ text: string; model: string }> {
   // Some reasoning models wrap their thinking in <think> tags; drop it.
   const raw = await chat({ model: TEXT_MODEL, content: prompt, json: false, maxTokens: 700, reasoning: "low" });
+  const text = raw.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
+  return { text, model: `groq/${TEXT_MODEL}` };
+}
+
+// Review Scout: a system prompt (with the sources) plus the conversation so far.
+export async function converseGroq(system: string, turns: ChatTurn[]): Promise<{ text: string; model: string }> {
+  const raw = await chat({ model: TEXT_MODEL, messages: [{ role: "system", content: system }, ...turns], json: false, maxTokens: 1500, reasoning: "low" });
   const text = raw.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
   return { text, model: `groq/${TEXT_MODEL}` };
 }

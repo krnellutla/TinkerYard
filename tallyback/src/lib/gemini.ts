@@ -114,3 +114,13 @@ export async function draftMessage(prompt: string): Promise<{ text: string; mode
   const res = await generate({ contents: [{ role: "user", parts: [{ text: prompt }] }] });
   return { text: res.text.trim(), model: res.model };
 }
+
+// Review Scout: Gemini calls the assistant "model" and wraps text in "parts".
+export async function converse(system: string, turns: { role: "user" | "assistant"; content: string }[]): Promise<{ text: string; model: string }> {
+  const res = await generate({
+    contents: turns.map((t) => ({ role: t.role === "assistant" ? "model" : "user", parts: [{ text: t.content }] })),
+    config: { systemInstruction: system },
+  });
+  if (!res.text.trim()) throw new Error("Empty response from model");
+  return { text: res.text.trim(), model: res.model };
+}

@@ -2,6 +2,8 @@
 
 User-facing overview: [../README.md](../README.md). Handover: [../docs/HANDOVER.md](../docs/HANDOVER.md).
 
+This app also hosts **Review Scout** at `/review-scout` (see [Review Scout](#review-scout) below). A switcher at the top links the two.
+
 ## Run
 ```bash
 cp .env.example .env.local   # GEMINI_API_KEY required; GROQ_API_KEY, DATABASE_URL, BLOB_READ_WRITE_TOKEN optional
@@ -45,3 +47,15 @@ Without any AI key, only "Try a sample receipt" works. Without `DATABASE_URL`, r
 
 ## Adding a golden pair
 Save a real extraction to `tests/fixtures/<name>.json` (copy `extraction` from an `/api/scan` response) and assert the verdict you reached by hand in `tests/real-scans.test.ts`.
+
+## Review Scout
+Type a product, get a summary of what YouTube reviewers said where every claim links to a channel and timestamp, then ask follow-ups about the same videos. Rewritten from the course's Gradio app; uses the same keys as TallyBack (Gemini first, Groq as backup) and the same anonymous device id.
+
+| Piece | File |
+|---|---|
+| UI: question, videos read, cited chat, past searches | `src/app/review-scout/page.tsx`, `Markdown.tsx` |
+| Step 1, find and read videos (search, captions, top comments; no API key) | `src/app/api/scout/searches/route.ts`, `src/lib/scout/youtube.ts`, `captions.ts` |
+| Step 2, summary or follow-up from the saved transcripts | `src/app/api/scout/searches/[id]/ask/route.ts`, `src/lib/scout/prompts.ts`, `turns.ts` |
+| Storage: one `scout_searches` row per search, transcripts included, so follow-ups never ask YouTube again | `src/lib/store.ts`, `db/schema.ts` |
+
+Transcripts come from the caption tracks YouTube lists for its phone apps (the web client hides them). YouTube sometimes blocks these requests from cloud servers; a blocked video shows as skipped.

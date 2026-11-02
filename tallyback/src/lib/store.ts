@@ -7,6 +7,7 @@ import path from "path";
 import type { CheckResult, Extraction, ExtractedLine, Promise as BillPromise } from "./types";
 import { maskDigits } from "./mask";
 import { SCHEMA, TABLES, type Table } from "./db/schema";
+import type { Found } from "./scout/youtube";
 
 // Postgres (Neon) when DATABASE_URL is set; otherwise a local JSON file so the app runs with zero setup.
 // Photos go to private Vercel Blob when BLOB_READ_WRITE_TOKEN is set.
@@ -353,4 +354,77 @@ export async function pastLines(deviceId: string, merchant: string | null, exclu
   return all
     .filter((b) => b.bill.id !== excludeBillId && String(b.bill.merchant_name ?? "").trim().toLowerCase() === key)
     .flatMap((b) => toExtraction(b.bill, b.lines).lines.map((l) => ({ ...l, bill_date: (b.bill.bill_date as string) ?? String(b.bill.created_at).slice(0, 10) })));
+}
+
+// ---------- Review Scout ----------
+
+export interface ScoutTurn {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export interface ScoutSearch {
+  id: string;
+  topic: string;
+  nVideos: number;
+  withComments: boolean;
+  corpus: string;
+  found: Found[];
+  messages: ScoutTurn[]; // as shown in the chat: the product question first
+  createdAt: string;
+}
+
+const toSearch = (r: Row): ScoutSearch => ({
+  id: String(r.id),
+  topic: String(r.topic),
+  nVideos: Number(r.n_videos),
+  withComments: !!r.with_comments,
+  corpus: String(r.corpus ?? ""),
+  found: (r.found as Found[]) ?? [],
+  messages: (r.messages as ScoutTurn[]) ?? [],
+  createdAt: String(r.created_at),
+});
+
+export async function saveSearch(deviceId: string, s: Omit<ScoutSearch, "id" | "createdAt">): Promise<string> {
+  const id = uuid();
+  await insert("scout_searches", [
+    {
+      id,
+      device_id: deviceId,
+      topic: s.topic,
+      n_videos: s.nVideos,
+      with_comments: s.withComments,
+      corpus: s.corpus,
+      found: s.found,
+      messages: s.messages,
+      model: null,
+      created_at: now(),
+      updated_at: now(),
+    },
+  ]);
+  return id;
+}
+
+export async function saveTurns(id: string, messages: ScoutTurn[], model: string) {
+  await update("scout_searches", id, { messages, model, updated_at: now() });
+}
+
+export async function getSearch(id: string, deviceId: string): Promise<ScoutSearch | null> {
+  const sql = await db();
+  if (!sql) {
+    const row = ((await localAll()).scout_searches ?? []).find((r) => r.id === id && r.device_id === deviceId);
+    return row ? toSearch(row) : null;
+  }
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return null;
+  const rows = await selectJson(sql, `select * from scout_searches where id = $1 and device_id = $2`, [id, deviceId]);
+  return rows[0] ? toSearch(rows[0]) : null;
+}
+
+// Newest first. The corpus is left out (empty): a list doesn't need 100 KB of transcripts per row.
+export async function listSearches(deviceId: string, limit = 50): Promise<ScoutSearch[]> {
+  const sql = await db();
+  const rows = sql
+    ? await selectJson(sql, `select id, topic, n_videos, with_comments, found, messages, created_at from scout_searches where device_id = $1 order by created_at desc limit $2`, [deviceId, limit])
+    : newest(((await localAll()).scout_searches ?? []).filter((r) => r.device_id === deviceId)).slice(0, limit);
+  return rows.map((r) => ({ ...toSearch(r), corpus: "" }));
 }
