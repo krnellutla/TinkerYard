@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 640" font-family="Helvetica, Arial, sans-serif">
+  <rect width="960" height="640" fill="#ffffff"/>
+  <text x="32" y="44" font-size="24" font-weight="700" fill="#1c1b19">TallyBack — Move 4: the tables</text>
+  <text x="32" y="68" font-size="14" fill="#6b675f">Every bill is a row, every line is a row, history is a row. The photo is a file; its row keeps the link.</text>
+  <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#1c1b19"/></marker>
+  <marker id="r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10z" fill="#c2410c"/></marker></defs>
+
+  <g font-size="12">
+    <!-- bills -->
+    <rect x="32" y="96" width="250" height="236" rx="10" fill="#f6f4ef" stroke="#1c1b19" stroke-width="2"/>
+    <text x="48" y="120" font-size="15" font-weight="700">bills</text>
+    <text x="48" y="144">id (pk)</text><text x="48" y="162">device_id  (anonymous, no login)</text>
+    <text x="48" y="180">merchant_name, country, contact</text><text x="48" y="198">bill_ref_masked  (FP••••0987)</text>
+    <text x="48" y="216">bill_date, due_date, currency</text><text x="48" y="234">tax_mode, printed subtotal/tax/total</text>
+    <text x="48" y="252">image_path → file</text><text x="48" y="270">model, created_at</text>
+
+    <!-- storage -->
+    <rect x="32" y="372" width="250" height="70" rx="10" fill="#ffffff" stroke="#1c1b19" stroke-width="2" stroke-dasharray="5 4"/>
+    <text x="48" y="398" font-size="15" font-weight="700">bucket "bills" (private)</text>
+    <text x="48" y="420">the photo bytes — not a row</text>
+    <line x1="120" y1="332" x2="120" y2="366" stroke="#1c1b19" stroke-width="2" marker-end="url(#a)"/>
+
+    <!-- line_items -->
+    <rect x="356" y="96" width="250" height="200" rx="10" fill="#f6f4ef" stroke="#1c1b19" stroke-width="2"/>
+    <text x="372" y="120" font-size="15" font-weight="700">line_items</text>
+    <text x="372" y="144">id (pk)</text><text x="372" y="162">bill_id → bills</text>
+    <text x="372" y="180">position, description (masked)</text><text x="372" y="198">plain_words, qty, unit_price</text>
+    <text x="372" y="216">amount, kind, tax_rate_pct</text><text x="372" y="234">box_2d (where it sits on the photo)</text>
+    <line x1="282" y1="150" x2="350" y2="150" stroke="#1c1b19" stroke-width="2" marker-end="url(#a)"/>
+    <text x="316" y="142" font-size="11" text-anchor="middle" fill="#6b675f">1 — n</text>
+
+    <!-- promises -->
+    <rect x="356" y="340" width="250" height="150" rx="10" fill="#f6f4ef" stroke="#1c1b19" stroke-width="2"/>
+    <text x="372" y="364" font-size="15" font-weight="700">promises  (history is a row)</text>
+    <text x="372" y="388">bill_id → bills, created_at</text><text x="372" y="406">expected_total, prices_include_tax</text>
+    <text x="372" y="424">paid_on, line_expected</text><text x="372" y="442">unrecognised lines</text>
+    <path d="M282 300 C 320 300, 320 400, 350 400" fill="none" stroke="#1c1b19" stroke-width="2" marker-end="url(#a)"/>
+
+    <!-- findings -->
+    <rect x="680" y="96" width="250" height="150" rx="10" fill="#f6f4ef" stroke="#1c1b19" stroke-width="2"/>
+    <text x="696" y="120" font-size="15" font-weight="700">findings</text>
+    <text x="696" y="144">line_item_id → line_items</text><text x="696" y="162">verdict: wrong / unexplained / info</text>
+    <text x="696" y="180">title, maths (built by code)</text><text x="696" y="198">charged, expected, diff</text>
+    <line x1="674" y1="150" x2="606" y2="150" stroke="#1c1b19" stroke-width="2" marker-end="url(#a)"/>
+
+    <!-- messages -->
+    <rect x="680" y="290" width="250" height="212" rx="10" fill="#fff1e8" stroke="#c2410c" stroke-width="3"/>
+    <text x="696" y="314" font-size="15" font-weight="700" fill="#c2410c">messages</text>
+    <text x="696" y="338" font-weight="700" fill="#c2410c">line_item_id → line_items  ★</text><text x="696" y="356">finding_id → findings</text>
+    <text x="696" y="374">drafted_text, drafted_by (model/template)</text><text x="696" y="392">sent_text, channel</text>
+    <text x="696" y="410" font-weight="700">sent_at, words_changed</text>
+    <path d="M680 334 L 612 262" fill="none" stroke="#c2410c" stroke-width="3" marker-end="url(#r)"/>
+    <text x="696" y="452" font-size="13" font-weight="700" fill="#c2410c">★ THE PROOF LINK</text>
+    <text x="696" y="472" font-size="12" fill="#c2410c">which line this message disputes,</text>
+    <text x="696" y="486" font-size="12" fill="#c2410c">when it was sent, words changed</text>
+  </g>
+
+  <text x="32" y="536" font-size="13" fill="#1c1b19"><tspan font-weight="700">Not stored:</tspan> customer name, phone, address, account/card numbers (masked to last 4), email/login, raw model replies.</text>
+  <text x="32" y="562" font-size="13" fill="#1c1b19"><tspan font-weight="700">Answers:</tspan> Has this charge shown up before? → line_items by device + shop.  Which messages did I send, about which line? → messages → line_items.</text>
+  <text x="32" y="584" font-size="13" fill="#1c1b19">What was I promised, and when did it change? → promises ordered by created_at.</text>
+</svg>

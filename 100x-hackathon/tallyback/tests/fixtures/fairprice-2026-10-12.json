@@ -1,0 +1,245 @@
+{
+ "is_bill": true,
+ "tax_mode": "added",
+ "lines": [
+  {
+   "description": "1    Bananas (kg)           0.85      1.95        1.66",
+   "plain_words": "Bananas 0.85 kg",
+   "qty": 0.85,
+   "unit_price": 1.95,
+   "amount": 1.66,
+   "kind": "item",
+   "tax_rate_pct": null,
+   "box_2d": [
+    359,
+    57,
+    377,
+    929
+   ]
+  },
+  {
+   "description": "2    Fuji Apples (kg)       0.72      3.50        2.52",
+   "plain_words": "Fuji apples 0.72 kg",
+   "qty": 0.72,
+   "unit_price": 3.5,
+   "amount": 2.52,
+   "kind": "item",
+   "tax_rate_pct": null,
+   "box_2d": [
+    383,
+    56,
+    403,
+    929
+   ]
+  },
+  {
+   "description": "3    Milk Fresh 2L             1      4.95        4.95",
+   "plain_words": "Fresh milk 2L",
+   "qty": 1,
+   "unit_price": 4.95,
+   "amount": 4.95,
+   "kind": "item",
+   "tax_rate_pct": null,
+   "box_2d": [
+    409,
+    56,
+    427,
+    929
+   ]
+  },
+  {
+   "description": "4    Eggs Large 10s            1      3.20        3.20",
+   "plain_words": "Large eggs 10 pack",
+   "qty": 1,
+   "unit_price": 3.2,
+   "amount": 3.2,
+   "kind": "item",
+   "tax_rate_pct": null,
+   "box_2d": [
+    433,
+    56,
+    452,
+    929
+   ]
+  },
+  {
+   "description": "5    Bread Wholemeal           1      2.65        2.65",
+   "plain_words": "Wholemeal bread",
+   "qty": 1,
+   "unit_price": 2.65,
+   "amount": 2.65,
+   "kind": "item",
+   "tax_rate_pct": null,
+   "box_2d": [
+    459,
+    56,
+    477,
+    929
+   ]
+  },
+  {
+   "description": "6    Chicken Breast (kg)    0.68      7.90        5.37",
+   "plain_words": "Chicken breast 0.68 kg",
+   "qty": 0.68,
+   "unit_price": 7.9,
+   "amount": 5.37,
+   "kind": "item",
+   "tax_rate_pct": null,
+   "box_2d": [
+    483,
+    55,
+    502,
+    930
+   ]
+  },
+  {
+   "description": "7    Lettuce (pcs)             1      1.50        1.50",
+   "plain_words": "Lettuce pieces",
+   "qty": 1,
+   "unit_price": 1.5,
+   "amount": 1.5,
+   "kind": "item",
+   "tax_rate_pct": null,
+   "box_2d": [
+    508,
+    55,
+    526,
+    930
+   ]
+  },
+  {
+   "description": "8    Tomato (kg)            0.48      3.80        1.82",
+   "plain_words": "Tomato 0.48 kg",
+   "qty": 0.48,
+   "unit_price": 3.8,
+   "amount": 1.82,
+   "kind": "item",
+   "tax_rate_pct": null,
+   "box_2d": [
+    533,
+    55,
+    552,
+    930
+   ]
+  },
+  {
+   "description": "9    Orange Juice 1L           1      3.90        3.90",
+   "plain_words": "Orange juice 1L",
+   "qty": 1,
+   "unit_price": 3.9,
+   "amount": 3.9,
+   "kind": "item",
+   "tax_rate_pct": null,
+   "box_2d": [
+    558,
+    54,
+    576,
+    930
+   ]
+  },
+  {
+   "description": "10. Toilet Tissue 10s          1      6.50        6.50",
+   "plain_words": "Toilet tissue 10 pack",
+   "qty": 1,
+   "unit_price": 6.5,
+   "amount": 6.5,
+   "kind": "item",
+   "tax_rate_pct": null,
+   "box_2d": [
+    583,
+    54,
+    601,
+    930
+   ]
+  },
+  {
+   "description": "Sub Total               34.07",
+   "plain_words": "Subtotal",
+   "qty": null,
+   "unit_price": null,
+   "amount": 34.07,
+   "kind": "subtotal",
+   "tax_rate_pct": null,
+   "box_2d": [
+    634,
+    396,
+    652,
+    930
+   ]
+  },
+  {
+   "description": "GST 8%                   2.73",
+   "plain_words": "GST 8 percent",
+   "qty": null,
+   "unit_price": null,
+   "amount": 2.73,
+   "kind": "tax",
+   "tax_rate_pct": 8,
+   "box_2d": [
+    657,
+    396,
+    672,
+    930
+   ]
+  },
+  {
+   "description": "Total                   36.80",
+   "plain_words": "Total amount",
+   "qty": null,
+   "unit_price": null,
+   "amount": 36.8,
+   "kind": "total",
+   "tax_rate_pct": null,
+   "box_2d": [
+    694,
+    396,
+    712,
+    932
+   ]
+  },
+  {
+   "description": "Mastercard              36.80",
+   "plain_words": "Mastercard payment",
+   "qty": null,
+   "unit_price": null,
+   "amount": 36.8,
+   "kind": "payment",
+   "tax_rate_pct": null,
+   "box_2d": [
+    734,
+    396,
+    752,
+    930
+   ]
+  },
+  {
+   "description": "8%                   2.73",
+   "plain_words": "GST summary 8 percent",
+   "qty": null,
+   "unit_price": null,
+   "amount": 2.73,
+   "kind": "tax",
+   "tax_rate_pct": 8,
+   "box_2d": [
+    827,
+    60,
+    847,
+    517
+   ]
+  }
+ ],
+ "bill_date": "2026-10-12",
+ "bill_number": "FP202610120987",
+ "bill_type": "grocery receipt",
+ "currency": "SGD",
+ "due_date": null,
+ "merchant_country": "SG",
+ "merchant_name": "FairPrice Finest",
+ "merchant_whatsapp": null,
+ "period_end": null,
+ "period_start": null,
+ "printed_subtotal": 34.07,
+ "printed_tax_rate_pct": 8,
+ "printed_tax_total": 2.73,
+ "printed_total": 36.8
+}

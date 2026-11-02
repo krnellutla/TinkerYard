@@ -1,0 +1,380 @@
+{
+ "is_bill": true,
+ "tax_mode": "included",
+ "lines": [
+  {
+   "description": "1. Avarakkai (BroadBeans",
+   "plain_words": "Broad beans",
+   "qty": 0.59,
+   "unit_price": null,
+   "amount": 4.66,
+   "kind": "item",
+   "tax_rate_pct": null,
+   "box_2d": [
+    283,
+    50,
+    303,
+    865
+   ]
+  },
+  {
+   "description": "2. Methi Leaves",
+   "plain_words": "Methi leaves",
+   "qty": 0.17,
+   "unit_price": null,
+   "amount": 1.85,
+   "kind": "item",
+   "tax_rate_pct": null,
+   "box_2d": [
+    305,
+    50,
+    323,
+    865
+   ]
+  },
+  {
+   "description": "3. Bottlegourd",
+   "plain_words": "Bottlegourd",
+   "qty": 1.15,
+   "unit_price": null,
+   "amount": 3.8,
+   "kind": "item",
+   "tax_rate_pct": null,
+   "box_2d": [
+    327,
+    51,
+    346,
+    864
+   ]
+  },
+  {
+   "description": "4. Lady Finger Ind",
+   "plain_words": "Lady finger",
+   "qty": 0.59,
+   "unit_price": null,
+   "amount": 3.72,
+   "kind": "item",
+   "tax_rate_pct": null,
+   "box_2d": [
+    347,
+    51,
+    368,
+    862
+   ]
+  },
+  {
+   "description": "5. Kovakkai (Ivy Gourd)",
+   "plain_words": "Ivy gourd",
+   "qty": 0.61,
+   "unit_price": null,
+   "amount": 4.7,
+   "kind": "item",
+   "tax_rate_pct": null,
+   "box_2d": [
+    369,
+    50,
+    391,
+    862
+   ]
+  },
+  {
+   "description": "6. French beans Ind",
+   "plain_words": "French beans",
+   "qty": 0.65,
+   "unit_price": null,
+   "amount": 5.53,
+   "kind": "item",
+   "tax_rate_pct": null,
+   "box_2d": [
+    391,
+    52,
+    410,
+    861
+   ]
+  },
+  {
+   "description": "7. Drumstick",
+   "plain_words": "Drumstick",
+   "qty": 0.35,
+   "unit_price": null,
+   "amount": 2.98,
+   "kind": "item",
+   "tax_rate_pct": null,
+   "box_2d": [
+    414,
+    53,
+    431,
+    861
+   ]
+  },
+  {
+   "description": "8. Palak leaves",
+   "plain_words": "Palak leaves",
+   "qty": 0.43,
+   "unit_price": null,
+   "amount": 4.09,
+   "kind": "item",
+   "tax_rate_pct": null,
+   "box_2d": [
+    433,
+    52,
+    453,
+    861
+   ]
+  },
+  {
+   "description": "9. Coriander leaf Ind",
+   "plain_words": "Coriander leaf",
+   "qty": 0.18,
+   "unit_price": null,
+   "amount": 2.32,
+   "kind": "item",
+   "tax_rate_pct": null,
+   "box_2d": [
+    454,
+    52,
+    473,
+    858
+   ]
+  },
+  {
+   "description": "10. KX Mooong split 500 g",
+   "plain_words": "Moong split 500g",
+   "qty": 1,
+   "unit_price": null,
+   "amount": 2.5,
+   "kind": "item",
+   "tax_rate_pct": null,
+   "box_2d": [
+    476,
+    49,
+    495,
+    858
+   ]
+  },
+  {
+   "description": "11. HB urid split 500gh",
+   "plain_words": "Urid split 500g",
+   "qty": 1,
+   "unit_price": null,
+   "amount": 2.5,
+   "kind": "item",
+   "tax_rate_pct": null,
+   "box_2d": [
+    497,
+    49,
+    516,
+    858
+   ]
+  },
+  {
+   "description": "12. SPM Moong dal 1kg",
+   "plain_words": "Moong dal 1kg",
+   "qty": 1,
+   "unit_price": null,
+   "amount": 5.2,
+   "kind": "item",
+   "tax_rate_pct": null,
+   "box_2d": [
+    517,
+    50,
+    537,
+    858
+   ]
+  },
+  {
+   "description": "13. Yam",
+   "plain_words": "Yam",
+   "qty": 0.61,
+   "unit_price": null,
+   "amount": 3.84,
+   "kind": "item",
+   "tax_rate_pct": null,
+   "box_2d": [
+    539,
+    49,
+    557,
+    855
+   ]
+  },
+  {
+   "description": "14. Priyam crystal salt",
+   "plain_words": "Crystal salt",
+   "qty": 1,
+   "unit_price": null,
+   "amount": 1.5,
+   "kind": "item",
+   "tax_rate_pct": null,
+   "box_2d": [
+    560,
+    48,
+    579,
+    857
+   ]
+  },
+  {
+   "description": "15. Carrot",
+   "plain_words": "Carrot",
+   "qty": 0.65,
+   "unit_price": null,
+   "amount": 1.82,
+   "kind": "item",
+   "tax_rate_pct": null,
+   "box_2d": [
+    580,
+    48,
+    598,
+    857
+   ]
+  },
+  {
+   "description": "16. sweet potatoe",
+   "plain_words": "Sweet potato",
+   "qty": 0.44,
+   "unit_price": null,
+   "amount": 2.11,
+   "kind": "item",
+   "tax_rate_pct": null,
+   "box_2d": [
+    601,
+    48,
+    620,
+    852
+   ]
+  },
+  {
+   "description": "17. Brinjal Ind",
+   "plain_words": "Brinjal",
+   "qty": 0.37,
+   "unit_price": null,
+   "amount": 2.33,
+   "kind": "item",
+   "tax_rate_pct": null,
+   "box_2d": [
+    622,
+    48,
+    641,
+    856
+   ]
+  },
+  {
+   "description": "18. Coconut",
+   "plain_words": "Coconut",
+   "qty": 1,
+   "unit_price": null,
+   "amount": 1.5,
+   "kind": "item",
+   "tax_rate_pct": null,
+   "box_2d": [
+    643,
+    47,
+    663,
+    853
+   ]
+  },
+  {
+   "description": "Sub Total",
+   "plain_words": "Subtotal",
+   "qty": null,
+   "unit_price": null,
+   "amount": 56.94,
+   "kind": "subtotal",
+   "tax_rate_pct": null,
+   "box_2d": [
+    686,
+    515,
+    701,
+    894
+   ]
+  },
+  {
+   "description": "Rounding",
+   "plain_words": "Rounding",
+   "qty": null,
+   "unit_price": null,
+   "amount": 0.01,
+   "kind": "rounding",
+   "tax_rate_pct": null,
+   "box_2d": [
+    707,
+    532,
+    723,
+    894
+   ]
+  },
+  {
+   "description": "Disc. : 0.00",
+   "plain_words": "Discount",
+   "qty": null,
+   "unit_price": null,
+   "amount": 0,
+   "kind": "discount",
+   "tax_rate_pct": null,
+   "box_2d": [
+    745,
+    298,
+    764,
+    574
+   ]
+  },
+  {
+   "description": "Qty: 11.79 Disc.: 0.00 S$ 56.95",
+   "plain_words": "Total amount",
+   "qty": 11.79,
+   "unit_price": null,
+   "amount": 56.95,
+   "kind": "total",
+   "tax_rate_pct": null,
+   "box_2d": [
+    746,
+    43,
+    767,
+    842
+   ]
+  },
+  {
+   "description": "[GST Included - S$ 4.70 ]",
+   "plain_words": "GST included",
+   "qty": null,
+   "unit_price": null,
+   "amount": 4.7,
+   "kind": "tax",
+   "tax_rate_pct": null,
+   "box_2d": [
+    789,
+    173,
+    806,
+    693
+   ]
+  },
+  {
+   "description": "VISA : 56.95",
+   "plain_words": "Visa payment",
+   "qty": null,
+   "unit_price": null,
+   "amount": 56.95,
+   "kind": "payment",
+   "tax_rate_pct": null,
+   "box_2d": [
+    809,
+    39,
+    824,
+    424
+   ]
+  }
+ ],
+ "bill_date": "2026-10-12",
+ "bill_number": "HQ0234729",
+ "bill_type": "grocery receipt",
+ "currency": "SGD",
+ "due_date": null,
+ "merchant_country": "SG",
+ "merchant_name": "VELAN MINI SUPER MART",
+ "merchant_whatsapp": "+6598444327",
+ "period_end": null,
+ "period_start": null,
+ "printed_subtotal": 56.94,
+ "printed_tax_rate_pct": null,
+ "printed_tax_total": 4.7,
+ "printed_total": 56.95
+}

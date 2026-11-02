@@ -1,0 +1,215 @@
+{
+ "is_bill": true,
+ "merchant_name": "FairPrice Finest",
+ "merchant_country": "SG",
+ "merchant_whatsapp": null,
+ "bill_type": "supermarket receipt",
+ "bill_number": "FP202610120987",
+ "bill_date": "2026-10-12",
+ "due_date": null,
+ "period_start": null,
+ "period_end": null,
+ "currency": "SGD",
+ "tax_mode": "added",
+ "printed_subtotal": 34.07,
+ "printed_tax_total": 2.73,
+ "printed_tax_rate_pct": 8,
+ "printed_total": 36.8,
+ "lines": [
+  {
+   "description": "Bananas (kg)",
+   "plain_words": "Bananas, sold by weight",
+   "qty": 0.85,
+   "unit_price": 1.95,
+   "amount": 1.66,
+   "kind": "item",
+   "tax_rate_pct": null,
+   "box_2d": [
+    356,
+    62,
+    381,
+    933
+   ]
+  },
+  {
+   "description": "Fuji Apples (kg)",
+   "plain_words": "Fuji apples, sold by weight",
+   "qty": 0.72,
+   "unit_price": 3.5,
+   "amount": 2.52,
+   "kind": "item",
+   "tax_rate_pct": null,
+   "box_2d": [
+    382,
+    62,
+    406,
+    933
+   ]
+  },
+  {
+   "description": "Milk Fresh 2L",
+   "plain_words": "2 litres of fresh milk",
+   "qty": 1,
+   "unit_price": 4.95,
+   "amount": 4.95,
+   "kind": "item",
+   "tax_rate_pct": null,
+   "box_2d": [
+    406,
+    62,
+    431,
+    933
+   ]
+  },
+  {
+   "description": "Eggs Large 10s",
+   "plain_words": "Pack of 10 large eggs",
+   "qty": 1,
+   "unit_price": 3.2,
+   "amount": 3.2,
+   "kind": "item",
+   "tax_rate_pct": null,
+   "box_2d": [
+    431,
+    62,
+    455,
+    933
+   ]
+  },
+  {
+   "description": "Bread Wholemeal",
+   "plain_words": "Loaf of wholemeal bread",
+   "qty": 1,
+   "unit_price": 2.65,
+   "amount": 2.65,
+   "kind": "item",
+   "tax_rate_pct": null,
+   "box_2d": [
+    456,
+    62,
+    480,
+    933
+   ]
+  },
+  {
+   "description": "Chicken Breast (kg)",
+   "plain_words": "Chicken breast, sold by weight",
+   "qty": 0.68,
+   "unit_price": 7.9,
+   "amount": 5.37,
+   "kind": "item",
+   "tax_rate_pct": null,
+   "box_2d": [
+    480,
+    62,
+    505,
+    933
+   ]
+  },
+  {
+   "description": "Lettuce (pcs)",
+   "plain_words": "One lettuce",
+   "qty": 1,
+   "unit_price": 1.5,
+   "amount": 1.5,
+   "kind": "item",
+   "tax_rate_pct": null,
+   "box_2d": [
+    505,
+    62,
+    529,
+    933
+   ]
+  },
+  {
+   "description": "Tomato (kg)",
+   "plain_words": "Tomatoes, sold by weight",
+   "qty": 0.48,
+   "unit_price": 3.8,
+   "amount": 1.82,
+   "kind": "item",
+   "tax_rate_pct": null,
+   "box_2d": [
+    530,
+    62,
+    555,
+    933
+   ]
+  },
+  {
+   "description": "Orange Juice 1L",
+   "plain_words": "1 litre orange juice",
+   "qty": 1,
+   "unit_price": 3.9,
+   "amount": 3.9,
+   "kind": "item",
+   "tax_rate_pct": null,
+   "box_2d": [
+    555,
+    62,
+    580,
+    933
+   ]
+  },
+  {
+   "description": "Toilet Tissue 10s",
+   "plain_words": "10 rolls of toilet paper",
+   "qty": 1,
+   "unit_price": 6.5,
+   "amount": 6.5,
+   "kind": "item",
+   "tax_rate_pct": null,
+   "box_2d": [
+    580,
+    62,
+    604,
+    933
+   ]
+  },
+  {
+   "description": "Sub Total",
+   "plain_words": "Sum of all items",
+   "qty": null,
+   "unit_price": null,
+   "amount": 34.07,
+   "kind": "subtotal",
+   "tax_rate_pct": null,
+   "box_2d": [
+    631,
+    62,
+    655,
+    933
+   ]
+  },
+  {
+   "description": "GST 8%",
+   "plain_words": "Goods and services tax added on top",
+   "qty": null,
+   "unit_price": null,
+   "amount": 2.73,
+   "kind": "tax",
+   "tax_rate_pct": 8,
+   "box_2d": [
+    652,
+    62,
+    677,
+    933
+   ]
+  },
+  {
+   "description": "Total",
+   "plain_words": "Amount charged",
+   "qty": null,
+   "unit_price": null,
+   "amount": 36.8,
+   "kind": "total",
+   "tax_rate_pct": null,
+   "box_2d": [
+    691,
+    62,
+    715,
+    933
+   ]
+  }
+ ]
+}

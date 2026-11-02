@@ -1,0 +1,260 @@
+{
+ "is_bill": true,
+ "tax_mode": "included",
+ "lines": [
+  {
+   "description": "1. HB idly rice 1kg 1 3.00",
+   "plain_words": "HB idly rice 1kg",
+   "qty": 1,
+   "unit_price": null,
+   "amount": 3,
+   "kind": "item",
+   "tax_rate_pct": null,
+   "box_2d": [
+    343,
+    85,
+    363,
+    896
+   ]
+  },
+  {
+   "description": "2. SPM BASMATI 1KG 1 4.50",
+   "plain_words": "SPM BASMATI 1KG",
+   "qty": 1,
+   "unit_price": null,
+   "amount": 4.5,
+   "kind": "item",
+   "tax_rate_pct": null,
+   "box_2d": [
+    367,
+    85,
+    386,
+    897
+   ]
+  },
+  {
+   "description": "3. SPM GOLD10 KG. 1 24.50",
+   "plain_words": "SPM GOLD 10KG",
+   "qty": 1,
+   "unit_price": null,
+   "amount": 24.5,
+   "kind": "item",
+   "tax_rate_pct": null,
+   "box_2d": [
+    389,
+    87,
+    407,
+    896
+   ]
+  },
+  {
+   "description": "4. Carrot 0.88 2.46",
+   "plain_words": "Carrot",
+   "qty": 0.88,
+   "unit_price": null,
+   "amount": 2.46,
+   "kind": "item",
+   "tax_rate_pct": null,
+   "box_2d": [
+    412,
+    85,
+    431,
+    896
+   ]
+  },
+  {
+   "description": "5. Yam Small 0.62 4.03",
+   "plain_words": "Yam Small",
+   "qty": 0.62,
+   "unit_price": null,
+   "amount": 4.03,
+   "kind": "item",
+   "tax_rate_pct": null,
+   "box_2d": [
+    433,
+    85,
+    452,
+    897
+   ]
+  },
+  {
+   "description": "6. Radish Ind 0.35 2.38",
+   "plain_words": "Radish Ind",
+   "qty": 0.35,
+   "unit_price": null,
+   "amount": 2.38,
+   "kind": "item",
+   "tax_rate_pct": null,
+   "box_2d": [
+    457,
+    86,
+    474,
+    896
+   ]
+  },
+  {
+   "description": "7. Bottlegourd 0.86 2.85",
+   "plain_words": "Bottlegourd",
+   "qty": 0.86,
+   "unit_price": null,
+   "amount": 2.85,
+   "kind": "item",
+   "tax_rate_pct": null,
+   "box_2d": [
+    479,
+    85,
+    497,
+    896
+   ]
+  },
+  {
+   "description": "8. French beans Ind 0.29 2.51",
+   "plain_words": "French beans Ind",
+   "qty": 0.29,
+   "unit_price": null,
+   "amount": 2.51,
+   "kind": "item",
+   "tax_rate_pct": null,
+   "box_2d": [
+    502,
+    86,
+    521,
+    896
+   ]
+  },
+  {
+   "description": "9. Brinjal Ind 0.44 2.80",
+   "plain_words": "Brinjal Ind",
+   "qty": 0.44,
+   "unit_price": null,
+   "amount": 2.8,
+   "kind": "item",
+   "tax_rate_pct": null,
+   "box_2d": [
+    524,
+    87,
+    542,
+    896
+   ]
+  },
+  {
+   "description": "10. Cluster Beans 0.53 4.40",
+   "plain_words": "Cluster Beans",
+   "qty": 0.53,
+   "unit_price": null,
+   "amount": 4.4,
+   "kind": "item",
+   "tax_rate_pct": null,
+   "box_2d": [
+    547,
+    86,
+    565,
+    895
+   ]
+  },
+  {
+   "description": "11. Green Chilli Big 0.35 2.56",
+   "plain_words": "Green Chilli Big",
+   "qty": 0.35,
+   "unit_price": null,
+   "amount": 2.56,
+   "kind": "item",
+   "tax_rate_pct": null,
+   "box_2d": [
+    569,
+    86,
+    587,
+    896
+   ]
+  },
+  {
+   "description": "12. Drumstick 0.31 2.68",
+   "plain_words": "Drumstick",
+   "qty": 0.31,
+   "unit_price": null,
+   "amount": 2.68,
+   "kind": "item",
+   "tax_rate_pct": null,
+   "box_2d": [
+    592,
+    86,
+    609,
+    895
+   ]
+  },
+  {
+   "description": "13. Coriander leaf Ind 0.14 1.93",
+   "plain_words": "Coriander leaf Ind",
+   "qty": 0.14,
+   "unit_price": null,
+   "amount": 1.93,
+   "kind": "item",
+   "tax_rate_pct": null,
+   "box_2d": [
+    614,
+    85,
+    632,
+    895
+   ]
+  },
+  {
+   "description": "Qty: 7.80 Disc.: 0.00 S$ 60.60",
+   "plain_words": "Total",
+   "qty": 7.8,
+   "unit_price": null,
+   "amount": 60.6,
+   "kind": "total",
+   "tax_rate_pct": null,
+   "box_2d": [
+    660,
+    83,
+    678,
+    888
+   ]
+  },
+  {
+   "description": "[GST Included - S$ 5.00 ]",
+   "plain_words": "GST included",
+   "qty": null,
+   "unit_price": null,
+   "amount": 5,
+   "kind": "tax",
+   "tax_rate_pct": null,
+   "box_2d": [
+    703,
+    214,
+    722,
+    739
+   ]
+  },
+  {
+   "description": "VISA : 60.60",
+   "plain_words": "Visa payment",
+   "qty": null,
+   "unit_price": null,
+   "amount": 60.6,
+   "kind": "payment",
+   "tax_rate_pct": null,
+   "box_2d": [
+    727,
+    80,
+    744,
+    469
+   ]
+  }
+ ],
+ "bill_date": "2026-10-08",
+ "bill_number": "HQ0225799",
+ "bill_type": "grocery receipt",
+ "currency": "SGD",
+ "due_date": null,
+ "merchant_country": "SG",
+ "merchant_name": "VELAN MINI SUPER MART",
+ "merchant_whatsapp": "6598444327",
+ "period_end": null,
+ "period_start": null,
+ "printed_subtotal": null,
+ "printed_tax_rate_pct": null,
+ "printed_tax_total": 5,
+ "printed_total": 60.6
+}

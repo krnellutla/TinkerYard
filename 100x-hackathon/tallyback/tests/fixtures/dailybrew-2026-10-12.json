@@ -1,0 +1,155 @@
+{
+ "is_bill": true,
+ "tax_mode": "added",
+ "lines": [
+  {
+   "description": "1  Iced Latte (M)\t1\t5.50\t5.50",
+   "plain_words": "Iced Latte M",
+   "qty": 1,
+   "unit_price": 5.5,
+   "amount": 5.5,
+   "kind": "item",
+   "tax_rate_pct": null,
+   "box_2d": [
+    462,
+    54,
+    484,
+    946
+   ]
+  },
+  {
+   "description": "2  Cappuccino (M)\t1\t5.00\t5.00",
+   "plain_words": "Cappuccino M",
+   "qty": 1,
+   "unit_price": 5,
+   "amount": 5,
+   "kind": "item",
+   "tax_rate_pct": null,
+   "box_2d": [
+    490,
+    53,
+    512,
+    945
+   ]
+  },
+  {
+   "description": "3  Matcha Latte (M)\t1\t5.50\t5.50",
+   "plain_words": "Matcha Latte M",
+   "qty": 1,
+   "unit_price": 5.5,
+   "amount": 5.5,
+   "kind": "item",
+   "tax_rate_pct": null,
+   "box_2d": [
+    518,
+    54,
+    539,
+    944
+   ]
+  },
+  {
+   "description": "4  Blueberry Muffin\t2\t3.80\t7.60",
+   "plain_words": "Blueberry Muffin",
+   "qty": 2,
+   "unit_price": 3.8,
+   "amount": 7.6,
+   "kind": "item",
+   "tax_rate_pct": null,
+   "box_2d": [
+    546,
+    55,
+    567,
+    946
+   ]
+  },
+  {
+   "description": "5  Croissant\t1\t4.20\t4.20",
+   "plain_words": "Croissant",
+   "qty": 1,
+   "unit_price": 4.2,
+   "amount": 4.2,
+   "kind": "item",
+   "tax_rate_pct": null,
+   "box_2d": [
+    574,
+    56,
+    595,
+    946
+   ]
+  },
+  {
+   "description": "Sub Total\t27.80",
+   "plain_words": "Subtotal",
+   "qty": null,
+   "unit_price": null,
+   "amount": 27.8,
+   "kind": "subtotal",
+   "tax_rate_pct": null,
+   "box_2d": [
+    630,
+    429,
+    652,
+    932
+   ]
+  },
+  {
+   "description": "GST 8%\t2.22",
+   "plain_words": "GST 8%",
+   "qty": null,
+   "unit_price": null,
+   "amount": 2.22,
+   "kind": "tax",
+   "tax_rate_pct": 8,
+   "box_2d": [
+    658,
+    429,
+    679,
+    933
+   ]
+  },
+  {
+   "description": "Total\t30.02",
+   "plain_words": "Total",
+   "qty": null,
+   "unit_price": null,
+   "amount": 30.02,
+   "kind": "total",
+   "tax_rate_pct": null,
+   "box_2d": [
+    704,
+    430,
+    725,
+    937
+   ]
+  },
+  {
+   "description": "Visa\t30.02",
+   "plain_words": "Visa payment",
+   "qty": null,
+   "unit_price": null,
+   "amount": 30.02,
+   "kind": "payment",
+   "tax_rate_pct": null,
+   "box_2d": [
+    759,
+    431,
+    781,
+    944
+   ]
+  }
+ ],
+ "bill_date": "2026-10-12",
+ "bill_number": "DB202610120456",
+ "bill_type": "restaurant bill",
+ "currency": "SGD",
+ "due_date": null,
+ "merchant_country": "SG",
+ "merchant_name": "THE DAILY BREW CAF\u00c9 & BISTRO",
+ "merchant_whatsapp": "+6566912345",
+ "period_end": null,
+ "period_start": null,
+ "printed_subtotal": 27.8,
+ "printed_tax_rate_pct": 8,
+ "printed_tax_total": 2.22,
+ "printed_total": 30.02
+}

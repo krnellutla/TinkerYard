@@ -1,0 +1,200 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 1180" width="1400" height="1180"><rect width="1400" height="1180" fill="#fbf8ef"/>
+<line x1="0" y1="120" x2="1400" y2="120" stroke="#a9c3df" stroke-width="1" opacity="0.55"/>
+<line x1="0" y1="158" x2="1400" y2="158" stroke="#a9c3df" stroke-width="1" opacity="0.55"/>
+<line x1="0" y1="196" x2="1400" y2="196" stroke="#a9c3df" stroke-width="1" opacity="0.55"/>
+<line x1="0" y1="234" x2="1400" y2="234" stroke="#a9c3df" stroke-width="1" opacity="0.55"/>
+<line x1="0" y1="272" x2="1400" y2="272" stroke="#a9c3df" stroke-width="1" opacity="0.55"/>
+<line x1="0" y1="310" x2="1400" y2="310" stroke="#a9c3df" stroke-width="1" opacity="0.55"/>
+<line x1="0" y1="348" x2="1400" y2="348" stroke="#a9c3df" stroke-width="1" opacity="0.55"/>
+<line x1="0" y1="386" x2="1400" y2="386" stroke="#a9c3df" stroke-width="1" opacity="0.55"/>
+<line x1="0" y1="424" x2="1400" y2="424" stroke="#a9c3df" stroke-width="1" opacity="0.55"/>
+<line x1="0" y1="462" x2="1400" y2="462" stroke="#a9c3df" stroke-width="1" opacity="0.55"/>
+<line x1="0" y1="500" x2="1400" y2="500" stroke="#a9c3df" stroke-width="1" opacity="0.55"/>
+<line x1="0" y1="538" x2="1400" y2="538" stroke="#a9c3df" stroke-width="1" opacity="0.55"/>
+<line x1="0" y1="576" x2="1400" y2="576" stroke="#a9c3df" stroke-width="1" opacity="0.55"/>
+<line x1="0" y1="614" x2="1400" y2="614" stroke="#a9c3df" stroke-width="1" opacity="0.55"/>
+<line x1="0" y1="652" x2="1400" y2="652" stroke="#a9c3df" stroke-width="1" opacity="0.55"/>
+<line x1="0" y1="690" x2="1400" y2="690" stroke="#a9c3df" stroke-width="1" opacity="0.55"/>
+<line x1="0" y1="728" x2="1400" y2="728" stroke="#a9c3df" stroke-width="1" opacity="0.55"/>
+<line x1="0" y1="766" x2="1400" y2="766" stroke="#a9c3df" stroke-width="1" opacity="0.55"/>
+<line x1="0" y1="804" x2="1400" y2="804" stroke="#a9c3df" stroke-width="1" opacity="0.55"/>
+<line x1="0" y1="842" x2="1400" y2="842" stroke="#a9c3df" stroke-width="1" opacity="0.55"/>
+<line x1="0" y1="880" x2="1400" y2="880" stroke="#a9c3df" stroke-width="1" opacity="0.55"/>
+<line x1="0" y1="918" x2="1400" y2="918" stroke="#a9c3df" stroke-width="1" opacity="0.55"/>
+<line x1="0" y1="956" x2="1400" y2="956" stroke="#a9c3df" stroke-width="1" opacity="0.55"/>
+<line x1="0" y1="994" x2="1400" y2="994" stroke="#a9c3df" stroke-width="1" opacity="0.55"/>
+<line x1="0" y1="1032" x2="1400" y2="1032" stroke="#a9c3df" stroke-width="1" opacity="0.55"/>
+<line x1="0" y1="1070" x2="1400" y2="1070" stroke="#a9c3df" stroke-width="1" opacity="0.55"/>
+<line x1="0" y1="1108" x2="1400" y2="1108" stroke="#a9c3df" stroke-width="1" opacity="0.55"/>
+<line x1="0" y1="1146" x2="1400" y2="1146" stroke="#a9c3df" stroke-width="1" opacity="0.55"/>
+<line x1="96" y1="0" x2="96" y2="1180" stroke="#e39a9a" stroke-width="1.6" opacity="0.8"/>
+<circle cx="44" cy="180" r="13" fill="#e9e4d6"/>
+<circle cx="44" cy="590" r="13" fill="#e9e4d6"/>
+<circle cx="44" cy="1000" r="13" fill="#e9e4d6"/>
+<text x="130.0" y="78.0" font-family="Bradley Hand, Noteworthy, cursive" font-size="46" font-weight="bold" fill="#1f2a5c" text-anchor="start" transform="rotate(-0.39 130.0 78.0)">TallyBack — how it fits together</text>
+<path d="M128.1 91.7 Q414.6 89.7 698.9 90.6" fill="none" stroke="#1f2a5c" stroke-width="2.40" stroke-linecap="round" opacity="0.92"/>
+<text x="1010.0" y="70.0" font-family="Bradley Hand, Noteworthy, cursive" font-size="26" font-weight="bold" fill="#5a5f73" text-anchor="start" transform="rotate(-1.02 1010.0 70.0)">BillShield · Move 3</text>
+<text x="1010.0" y="100.0" font-family="Bradley Hand, Noteworthy, cursive" font-size="22" font-weight="bold" fill="#5a5f73" text-anchor="start" transform="rotate(-0.15 1010.0 100.0)">Sun 18 Oct</text>
+<path d="M133.7 171.2 Q270.7 167.6 411.0 169.0" fill="none" stroke="#1f2a5c" stroke-width="2.20" stroke-linecap="round" opacity="0.92"/>
+<path d="M134.3 169.6 Q273.9 172.6 414.1 168.4" fill="none" stroke="#1f2a5c" stroke-width="1.60" stroke-linecap="round" opacity="0.67"/>
+<path d="M408.7 165.6 Q412.1 265.3 409.3 367.1" fill="none" stroke="#1f2a5c" stroke-width="2.20" stroke-linecap="round" opacity="0.92"/>
+<path d="M410.5 166.5 Q408.2 267.0 410.2 364.4" fill="none" stroke="#1f2a5c" stroke-width="1.60" stroke-linecap="round" opacity="0.67"/>
+<path d="M412.4 359.7 Q271.6 358.3 135.7 360.3" fill="none" stroke="#1f2a5c" stroke-width="2.20" stroke-linecap="round" opacity="0.92"/>
+<path d="M412.9 360.7 Q273.8 358.8 135.5 360.3" fill="none" stroke="#1f2a5c" stroke-width="1.60" stroke-linecap="round" opacity="0.67"/>
+<path d="M140.8 361.6 Q140.1 265.4 141.7 162.6" fill="none" stroke="#1f2a5c" stroke-width="2.20" stroke-linecap="round" opacity="0.92"/>
+<path d="M138.7 362.4 Q139.5 264.7 138.3 164.6" fill="none" stroke="#1f2a5c" stroke-width="1.60" stroke-linecap="round" opacity="0.67"/>
+<text x="275.0" y="212.0" font-family="Bradley Hand, Noteworthy, cursive" font-size="30" font-weight="bold" fill="#1f2a5c" text-anchor="middle" transform="rotate(0.58 275.0 212.0)">PHONE</text>
+<path d="M169.3 186.7 Q185.6 188.2 200.7 186.3" fill="none" stroke="#1f2a5c" stroke-width="2.20" stroke-linecap="round" opacity="0.92"/>
+<path d="M171.6 185.9 Q184.9 188.0 201.0 184.4" fill="none" stroke="#1f2a5c" stroke-width="1.60" stroke-linecap="round" opacity="0.67"/>
+<path d="M199.8 184.2 Q199.2 206.3 197.2 227.6" fill="none" stroke="#1f2a5c" stroke-width="2.20" stroke-linecap="round" opacity="0.92"/>
+<path d="M197.9 181.8 Q199.0 202.7 196.6 226.4" fill="none" stroke="#1f2a5c" stroke-width="1.60" stroke-linecap="round" opacity="0.67"/>
+<path d="M198.9 221.6 Q187.6 219.9 173.7 220.5" fill="none" stroke="#1f2a5c" stroke-width="2.20" stroke-linecap="round" opacity="0.92"/>
+<path d="M201.2 223.1 Q185.8 222.3 173.7 221.2" fill="none" stroke="#1f2a5c" stroke-width="1.60" stroke-linecap="round" opacity="0.67"/>
+<path d="M177.4 226.0 Q175.5 201.4 174.7 178.8" fill="none" stroke="#1f2a5c" stroke-width="2.20" stroke-linecap="round" opacity="0.92"/>
+<path d="M175.9 224.7 Q174.5 200.7 175.1 178.2" fill="none" stroke="#1f2a5c" stroke-width="1.60" stroke-linecap="round" opacity="0.67"/>
+<path d="M183.1 216.5 Q186.9 215.8 191.2 216.0" fill="none" stroke="#1f2a5c" stroke-width="1.60" stroke-linecap="round" opacity="0.92"/>
+<text x="275.0" y="250.0" font-family="Bradley Hand, Noteworthy, cursive" font-size="24" font-weight="bold" fill="#1f2a5c" text-anchor="middle" transform="rotate(0.26 275.0 250.0)">camera / upload</text>
+<text x="275.0" y="282.0" font-family="Bradley Hand, Noteworthy, cursive" font-size="24" font-weight="bold" fill="#1f2a5c" text-anchor="middle" transform="rotate(0.39 275.0 282.0)">highlight · promise</text>
+<text x="275.0" y="314.0" font-family="Bradley Hand, Noteworthy, cursive" font-size="24" font-weight="bold" fill="#1f2a5c" text-anchor="middle" transform="rotate(-0.98 275.0 314.0)">message · WhatsApp</text>
+<text x="275.0" y="395.0" font-family="Bradley Hand, Noteworthy, cursive" font-size="21" font-weight="bold" fill="#5a5f73" text-anchor="middle" transform="rotate(0.88 275.0 395.0)">user's phone (browser)</text>
+<path d="M535.1 159.6 Q704.8 162.2 872.0 158.6" fill="none" stroke="#1f2a5c" stroke-width="2.20" stroke-linecap="round" opacity="0.92"/>
+<path d="M532.4 159.0 Q704.0 157.5 871.2 159.4" fill="none" stroke="#1f2a5c" stroke-width="1.60" stroke-linecap="round" opacity="0.67"/>
+<path d="M868.7 155.6 Q867.4 263.6 869.5 374.3" fill="none" stroke="#1f2a5c" stroke-width="2.20" stroke-linecap="round" opacity="0.92"/>
+<path d="M868.7 156.1 Q872.2 267.2 869.5 375.5" fill="none" stroke="#1f2a5c" stroke-width="1.60" stroke-linecap="round" opacity="0.67"/>
+<path d="M873.6 369.9 Q701.9 372.0 536.3 368.5" fill="none" stroke="#1f2a5c" stroke-width="2.20" stroke-linecap="round" opacity="0.92"/>
+<path d="M871.0 371.2 Q701.8 369.1 535.2 368.3" fill="none" stroke="#1f2a5c" stroke-width="1.60" stroke-linecap="round" opacity="0.67"/>
+<path d="M538.7 372.6 Q542.6 263.4 538.3 154.1" fill="none" stroke="#1f2a5c" stroke-width="2.20" stroke-linecap="round" opacity="0.92"/>
+<path d="M540.7 371.5 Q542.8 265.3 539.5 152.8" fill="none" stroke="#1f2a5c" stroke-width="1.60" stroke-linecap="round" opacity="0.67"/>
+<path d="M542.0 166.4 Q704.8 167.2 864.4 168.1" fill="none" stroke="#1f2a5c" stroke-width="2.20" stroke-linecap="round" opacity="0.92"/>
+<path d="M542.1 168.1 Q706.0 169.0 866.3 166.0" fill="none" stroke="#1f2a5c" stroke-width="1.60" stroke-linecap="round" opacity="0.67"/>
+<path d="M861.3 162.3 Q863.1 265.7 862.2 368.1" fill="none" stroke="#1f2a5c" stroke-width="2.20" stroke-linecap="round" opacity="0.92"/>
+<path d="M862.8 165.6 Q864.1 269.1 864.8 370.6" fill="none" stroke="#1f2a5c" stroke-width="1.60" stroke-linecap="round" opacity="0.67"/>
+<path d="M863.8 361.9 Q703.3 361.4 542.3 363.4" fill="none" stroke="#1f2a5c" stroke-width="2.20" stroke-linecap="round" opacity="0.92"/>
+<path d="M864.7 363.6 Q706.4 365.0 544.5 361.5" fill="none" stroke="#1f2a5c" stroke-width="1.60" stroke-linecap="round" opacity="0.67"/>
+<path d="M548.0 366.3 Q547.9 265.6 546.9 159.8" fill="none" stroke="#1f2a5c" stroke-width="2.20" stroke-linecap="round" opacity="0.92"/>
+<path d="M548.1 367.1 Q548.7 262.2 546.6 160.6" fill="none" stroke="#1f2a5c" stroke-width="1.60" stroke-linecap="round" opacity="0.67"/>
+<text x="705.0" y="205.0" font-family="Bradley Hand, Noteworthy, cursive" font-size="32" font-weight="bold" fill="#1f2a5c" text-anchor="middle" transform="rotate(0.98 705.0 205.0)">OUR SERVER</text>
+<text x="705.0" y="245.0" font-family="Bradley Hand, Noteworthy, cursive" font-size="24" font-weight="bold" fill="#1f2a5c" text-anchor="middle" transform="rotate(0.49 705.0 245.0)">API routes</text>
+<text x="705.0" y="277.0" font-family="Bradley Hand, Noteworthy, cursive" font-size="24" font-weight="bold" fill="#1f2a5c" text-anchor="middle" transform="rotate(-0.73 705.0 277.0)">runChecks()  ← all the maths</text>
+<text x="705.0" y="309.0" font-family="Bradley Hand, Noteworthy, cursive" font-size="24" font-weight="bold" fill="#1f2a5c" text-anchor="middle" transform="rotate(-0.82 705.0 309.0)">verifier</text>
+<text x="730.0" y="341.0" font-family="Bradley Hand, Noteworthy, cursive" font-size="24" font-weight="bold" fill="#b3261e" text-anchor="middle" transform="rotate(-0.77 730.0 341.0)">keys live here</text>
+<path d="M605.5 327.9 L606.1 328.7 L606.8 329.4 L607.2 330.4 L607.3 331.4 L607.2 332.3 L607.2 333.3 L607.1 334.2 L607.1 335.1 L607.3 336.1 L607.1 337.0 L606.8 337.9 L606.4 338.7 L605.6 339.3 L604.9 339.8 L604.1 340.3 L603.4 340.6 L602.7 341.1 L601.9 341.6 L601.1 342.0 L600.3 342.3 L599.4 342.2 L598.5 342.0 L597.7 341.5 L596.9 341.3 L596.2 340.8 L595.4 340.5 L594.6 340.1 L593.8 339.7 L593.2 339.0 L592.7 338.3 L592.5 337.3 L592.3 336.4 L592.3 335.4 L592.3 334.5 L592.0 333.7 L591.9 332.7 L591.9 331.8 L591.9 330.8 L592.5 329.9 L593.0 329.1 L593.7 328.3 L594.5 327.7 L595.2 327.0 L595.8 326.3 L596.5 325.5 L597.3 324.8 L598.3 324.5 L599.2 324.1 L600.3 324.1 L601.3 324.2 L602.3 324.2 L603.3 324.4" fill="none" stroke="#b3261e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>
+<path d="M607.5 332.9 Q617.6 333.5 628.1 333.0" fill="none" stroke="#b3261e" stroke-width="2.00" stroke-linecap="round" opacity="0.92"/>
+<path d="M622.0 333.0 Q622.0 337.2 622.0 341.4" fill="none" stroke="#b3261e" stroke-width="2.00" stroke-linecap="round" opacity="0.92"/>
+<text x="790.0" y="405.0" font-family="Bradley Hand, Noteworthy, cursive" font-size="21" font-weight="bold" fill="#5a5f73" text-anchor="middle" transform="rotate(0.44 790.0 405.0)">Vercel (our account)</text>
+<path d="M1003.1 170.2 Q1160.4 172.5 1314.0 171.2" fill="none" stroke="#1f2a5c" stroke-width="2.20" stroke-linecap="round" opacity="0.92"/>
+<path d="M1003.8 168.5 Q1156.1 167.8 1311.5 168.5" fill="none" stroke="#1f2a5c" stroke-width="1.60" stroke-linecap="round" opacity="0.67"/>
+<path d="M1311.4 165.8 Q1311.0 268.1 1310.8 366.6" fill="none" stroke="#1f2a5c" stroke-width="2.20" stroke-linecap="round" opacity="0.92"/>
+<path d="M1311.7 166.0 Q1307.9 268.7 1311.6 365.6" fill="none" stroke="#1f2a5c" stroke-width="1.60" stroke-linecap="round" opacity="0.67"/>
+<path d="M1313.0 358.8 Q1159.0 362.8 1006.2 360.1" fill="none" stroke="#1f2a5c" stroke-width="2.20" stroke-linecap="round" opacity="0.92"/>
+<path d="M1311.1 360.8 Q1158.2 358.2 1004.7 360.2" fill="none" stroke="#1f2a5c" stroke-width="1.60" stroke-linecap="round" opacity="0.67"/>
+<path d="M1009.4 362.8 Q1009.7 260.4 1010.0 162.4" fill="none" stroke="#1f2a5c" stroke-width="2.20" stroke-linecap="round" opacity="0.92"/>
+<path d="M1011.7 361.0 Q1012.8 264.9 1009.2 162.3" fill="none" stroke="#1f2a5c" stroke-width="1.60" stroke-linecap="round" opacity="0.67"/>
+<text x="1160.0" y="212.0" font-family="Bradley Hand, Noteworthy, cursive" font-size="32" font-weight="bold" fill="#1f2a5c" text-anchor="middle" transform="rotate(0.61 1160.0 212.0)">LLM</text>
+<text x="1160.0" y="250.0" font-family="Bradley Hand, Noteworthy, cursive" font-size="23" font-weight="bold" fill="#1f2a5c" text-anchor="middle" transform="rotate(-0.51 1160.0 250.0)">Gemini 3.8 → 3.5 → latest</text>
+<text x="1160.0" y="284.0" font-family="Bradley Hand, Noteworthy, cursive" font-size="23" font-weight="bold" fill="#1f2a5c" text-anchor="middle" transform="rotate(-0.81 1160.0 284.0)">if busy → Groq</text>
+<text x="1160.0" y="318.0" font-family="Bradley Hand, Noteworthy, cursive" font-size="21" font-weight="bold" fill="#1f2a5c" text-anchor="middle" transform="rotate(-0.17 1160.0 318.0)">(reads + writes words)</text>
+<text x="1160.0" y="395.0" font-family="Bradley Hand, Noteworthy, cursive" font-size="21" font-weight="bold" fill="#5a5f73" text-anchor="middle" transform="rotate(0.91 1160.0 395.0)">Google / Groq servers</text>
+<path d="M552.7 471.5 Q705.0 468.6 852.7 470.7" fill="none" stroke="#1f2a5c" stroke-width="2.20" stroke-linecap="round" opacity="0.92"/>
+<path d="M554.7 469.7 Q700.8 467.5 850.9 471.6" fill="none" stroke="#1f2a5c" stroke-width="1.60" stroke-linecap="round" opacity="0.67"/>
+<path d="M848.5 468.3 Q850.8 543.2 848.4 617.3" fill="none" stroke="#1f2a5c" stroke-width="2.20" stroke-linecap="round" opacity="0.92"/>
+<path d="M850.2 468.5 Q849.7 540.6 849.2 614.7" fill="none" stroke="#1f2a5c" stroke-width="1.60" stroke-linecap="round" opacity="0.67"/>
+<path d="M850.4 608.8 Q704.3 608.5 554.8 608.9" fill="none" stroke="#1f2a5c" stroke-width="2.20" stroke-linecap="round" opacity="0.92"/>
+<path d="M852.7 609.2 Q703.0 608.9 556.4 608.8" fill="none" stroke="#1f2a5c" stroke-width="1.60" stroke-linecap="round" opacity="0.67"/>
+<path d="M559.1 610.7 Q559.1 535.4 560.8 464.2" fill="none" stroke="#1f2a5c" stroke-width="2.20" stroke-linecap="round" opacity="0.92"/>
+<path d="M561.6 611.0 Q558.2 538.1 561.1 463.8" fill="none" stroke="#1f2a5c" stroke-width="1.60" stroke-linecap="round" opacity="0.67"/>
+<text x="705.0" y="512.0" font-family="Bradley Hand, Noteworthy, cursive" font-size="30" font-weight="bold" fill="#1f2a5c" text-anchor="middle" transform="rotate(-0.01 705.0 512.0)">SUPABASE</text>
+<text x="705.0" y="550.0" font-family="Bradley Hand, Noteworthy, cursive" font-size="23" font-weight="bold" fill="#1f2a5c" text-anchor="middle" transform="rotate(0.74 705.0 550.0)">rows: bills, lines, msgs</text>
+<text x="705.0" y="582.0" font-family="Bradley Hand, Noteworthy, cursive" font-size="23" font-weight="bold" fill="#1f2a5c" text-anchor="middle" transform="rotate(-0.24 705.0 582.0)">+ private photo bucket</text>
+<line x1="800.0" y1="560.0" x2="800.0" y2="560.0" stroke="#1f2a5c" stroke-width="1" opacity="0.18"/>
+<line x1="800.0" y1="574.0" x2="814.0" y2="560.0" stroke="#1f2a5c" stroke-width="1" opacity="0.18"/>
+<line x1="800.0" y1="588.0" x2="828.0" y2="560.0" stroke="#1f2a5c" stroke-width="1" opacity="0.18"/>
+<line x1="800.0" y1="602.0" x2="842.0" y2="560.0" stroke="#1f2a5c" stroke-width="1" opacity="0.18"/>
+<line x1="810.0" y1="606.0" x2="846.0" y2="570.0" stroke="#1f2a5c" stroke-width="1" opacity="0.18"/>
+<line x1="824.0" y1="606.0" x2="846.0" y2="584.0" stroke="#1f2a5c" stroke-width="1" opacity="0.18"/>
+<line x1="838.0" y1="606.0" x2="846.0" y2="598.0" stroke="#1f2a5c" stroke-width="1" opacity="0.18"/>
+<path d="M415.0 245.6 Q477.4 244.1 534.0 245.0" fill="none" stroke="#1f2a5c" stroke-width="2.20" stroke-linecap="round" opacity="0.92"/>
+<path d="M416.1 245.7 Q475.3 244.4 534.0 245.0" fill="none" stroke="#1f2a5c" stroke-width="1.60" stroke-linecap="round" opacity="0.67"/>
+<path d="M533.4 244.3 Q525.5 239.9 518.2 236.8" fill="none" stroke="#1f2a5c" stroke-width="2.20" stroke-linecap="round" opacity="0.92"/>
+<path d="M534.5 245.6 Q525.0 247.9 518.1 252.5" fill="none" stroke="#1f2a5c" stroke-width="2.20" stroke-linecap="round" opacity="0.92"/>
+<text x="474.5" y="231.0" font-family="Bradley Hand, Noteworthy, cursive" font-size="22" font-weight="bold" fill="#1f2a5c" text-anchor="middle" transform="rotate(-0.57 474.5 231.0)">photo</text>
+<path d="M533.3 299.9 Q472.4 299.7 415.0 300.0" fill="none" stroke="#1f2a5c" stroke-width="2.20" stroke-linecap="round" opacity="0.92"/>
+<path d="M533.2 301.5 Q477.3 300.3 415.0 300.0" fill="none" stroke="#1f2a5c" stroke-width="1.60" stroke-linecap="round" opacity="0.67"/>
+<path d="M414.7 299.8 Q422.4 305.1 430.4 307.6" fill="none" stroke="#1f2a5c" stroke-width="2.20" stroke-linecap="round" opacity="0.92"/>
+<path d="M414.5 300.0 Q423.0 296.1 430.4 291.8" fill="none" stroke="#1f2a5c" stroke-width="2.20" stroke-linecap="round" opacity="0.92"/>
+<text x="474.5" y="330.0" font-family="Bradley Hand, Noteworthy, cursive" font-size="19" font-weight="bold" fill="#1f2a5c" text-anchor="middle" transform="rotate(-0.90 474.5 330.0)">lines + verdict</text>
+<path d="M875.7 228.5 Q937.1 228.8 1004.0 230.0" fill="none" stroke="#1f2a5c" stroke-width="2.20" stroke-linecap="round" opacity="0.92"/>
+<path d="M875.1 230.3 Q940.2 231.5 1004.0 230.0" fill="none" stroke="#1f2a5c" stroke-width="1.60" stroke-linecap="round" opacity="0.67"/>
+<path d="M1004.6 229.8 Q996.3 226.6 987.5 222.9" fill="none" stroke="#1f2a5c" stroke-width="2.20" stroke-linecap="round" opacity="0.92"/>
+<path d="M1004.2 229.3 Q995.0 234.5 988.3 238.5" fill="none" stroke="#1f2a5c" stroke-width="2.20" stroke-linecap="round" opacity="0.92"/>
+<text x="940.0" y="216.0" font-family="Bradley Hand, Noteworthy, cursive" font-size="19" font-weight="bold" fill="#1f2a5c" text-anchor="middle" transform="rotate(0.28 940.0 216.0)">photo + prompt</text>
+<text x="940.0" y="262.0" font-family="Bradley Hand, Noteworthy, cursive" font-size="18" font-weight="bold" fill="#5a5f73" text-anchor="middle" transform="rotate(0.51 940.0 262.0)">(one package)</text>
+<path d="M1005.0 298.8 Q940.1 300.0 876.0 300.0" fill="none" stroke="#1f2a5c" stroke-width="2.20" stroke-linecap="round" opacity="0.92"/>
+<path d="M1005.1 301.0 Q942.0 300.5 876.0 300.0" fill="none" stroke="#1f2a5c" stroke-width="1.60" stroke-linecap="round" opacity="0.67"/>
+<path d="M876.3 299.6 Q885.1 304.4 891.5 307.2" fill="none" stroke="#1f2a5c" stroke-width="2.20" stroke-linecap="round" opacity="0.92"/>
+<path d="M876.5 300.1 Q883.7 295.1 892.4 292.4" fill="none" stroke="#1f2a5c" stroke-width="2.20" stroke-linecap="round" opacity="0.92"/>
+<text x="940.0" y="330.0" font-family="Bradley Hand, Noteworthy, cursive" font-size="20" font-weight="bold" fill="#1f2a5c" text-anchor="middle" transform="rotate(0.40 940.0 330.0)">JSON lines</text>
+<path d="M610.0 376.4 Q605.8 422.5 610.0 464.0" fill="none" stroke="#1f2a5c" stroke-width="2.20" stroke-linecap="round" opacity="0.92"/>
+<path d="M610.0 378.1 Q605.0 418.4 610.0 464.0" fill="none" stroke="#1f2a5c" stroke-width="1.60" stroke-linecap="round" opacity="0.67"/>
+<path d="M609.3 463.6 Q613.4 454.8 615.9 446.4" fill="none" stroke="#1f2a5c" stroke-width="2.20" stroke-linecap="round" opacity="0.92"/>
+<path d="M610.0 463.8 Q605.6 457.7 600.0 449.3" fill="none" stroke="#1f2a5c" stroke-width="2.20" stroke-linecap="round" opacity="0.92"/>
+<text x="628.0" y="448.0" font-family="Bradley Hand, Noteworthy, cursive" font-size="19" font-weight="bold" fill="#5a5f73" text-anchor="start" transform="rotate(0.59 628.0 448.0)">save (best effort)</text>
+<text x="150.0" y="470.0" font-family="Bradley Hand, Noteworthy, cursive" font-size="22" font-weight="bold" fill="#b3261e" text-anchor="start" transform="rotate(0.26 150.0 470.0)">key never</text>
+<text x="150.0" y="496.0" font-family="Bradley Hand, Noteworthy, cursive" font-size="22" font-weight="bold" fill="#b3261e" text-anchor="start" transform="rotate(0.31 150.0 496.0)">leaves the server!</text>
+<path d="M328.6 468.9 Q417.6 374.3 548.0 345.0" fill="none" stroke="#b3261e" stroke-width="1.80" stroke-linecap="round" opacity="0.92"/>
+<path d="M329.4 470.2 Q416.2 370.2 548.0 345.0" fill="none" stroke="#b3261e" stroke-width="1.20" stroke-linecap="round" opacity="0.67"/>
+<path d="M548.3 345.3 Q538.7 343.3 530.2 340.8" fill="none" stroke="#b3261e" stroke-width="1.80" stroke-linecap="round" opacity="0.92"/>
+<path d="M547.4 345.6 Q540.8 350.4 533.3 356.8" fill="none" stroke="#b3261e" stroke-width="1.80" stroke-linecap="round" opacity="0.92"/>
+<text x="130.0" y="672.0" font-family="Bradley Hand, Noteworthy, cursive" font-size="36" font-weight="bold" fill="#1f2a5c" text-anchor="start" transform="rotate(0.96 130.0 672.0)">The line</text>
+<path d="M129.1 683.9 Q208.8 684.3 289.4 681.4" fill="none" stroke="#1f2a5c" stroke-width="2.20" stroke-linecap="round" opacity="0.92"/>
+<path d="M700.4 648.2 Q704.6 897.7 702.1 1152.3" fill="none" stroke="#1f2a5c" stroke-width="1.60" stroke-linecap="round" opacity="0.92"/>
+<line x1="699.3" y1="660" x2="701.6" y2="672" stroke="#1f2a5c" stroke-width="2.4" stroke-linecap="round"/>
+<line x1="700.0" y1="686" x2="701.8" y2="698" stroke="#1f2a5c" stroke-width="2.4" stroke-linecap="round"/>
+<line x1="700.4" y1="712" x2="700.5" y2="724" stroke="#1f2a5c" stroke-width="2.4" stroke-linecap="round"/>
+<line x1="700.8" y1="738" x2="701.0" y2="750" stroke="#1f2a5c" stroke-width="2.4" stroke-linecap="round"/>
+<line x1="699.0" y1="764" x2="700.0" y2="776" stroke="#1f2a5c" stroke-width="2.4" stroke-linecap="round"/>
+<line x1="700.0" y1="790" x2="700.9" y2="802" stroke="#1f2a5c" stroke-width="2.4" stroke-linecap="round"/>
+<line x1="699.6" y1="816" x2="700.3" y2="828" stroke="#1f2a5c" stroke-width="2.4" stroke-linecap="round"/>
+<line x1="699.7" y1="842" x2="700.6" y2="854" stroke="#1f2a5c" stroke-width="2.4" stroke-linecap="round"/>
+<line x1="700.7" y1="868" x2="700.0" y2="880" stroke="#1f2a5c" stroke-width="2.4" stroke-linecap="round"/>
+<line x1="700.5" y1="894" x2="701.7" y2="906" stroke="#1f2a5c" stroke-width="2.4" stroke-linecap="round"/>
+<line x1="699.2" y1="920" x2="701.9" y2="932" stroke="#1f2a5c" stroke-width="2.4" stroke-linecap="round"/>
+<line x1="700.4" y1="946" x2="701.8" y2="958" stroke="#1f2a5c" stroke-width="2.4" stroke-linecap="round"/>
+<line x1="699.6" y1="972" x2="700.7" y2="984" stroke="#1f2a5c" stroke-width="2.4" stroke-linecap="round"/>
+<line x1="699.8" y1="998" x2="702.0" y2="1010" stroke="#1f2a5c" stroke-width="2.4" stroke-linecap="round"/>
+<line x1="700.2" y1="1024" x2="700.7" y2="1036" stroke="#1f2a5c" stroke-width="2.4" stroke-linecap="round"/>
+<line x1="699.9" y1="1050" x2="700.6" y2="1062" stroke="#1f2a5c" stroke-width="2.4" stroke-linecap="round"/>
+<line x1="699.1" y1="1076" x2="700.2" y2="1088" stroke="#1f2a5c" stroke-width="2.4" stroke-linecap="round"/>
+<line x1="700.7" y1="1102" x2="700.6" y2="1114" stroke="#1f2a5c" stroke-width="2.4" stroke-linecap="round"/>
+<line x1="700.9" y1="1128" x2="700.5" y2="1140" stroke="#1f2a5c" stroke-width="2.4" stroke-linecap="round"/>
+<text x="140.0" y="722.0" font-family="Bradley Hand, Noteworthy, cursive" font-size="30" font-weight="bold" fill="#7a4a00" text-anchor="start" transform="rotate(-0.52 140.0 722.0)">CODE decides</text>
+<text x="380.0" y="722.0" font-family="Bradley Hand, Noteworthy, cursive" font-size="20" font-weight="bold" fill="#7a4a00" text-anchor="start" transform="rotate(0.02 380.0 722.0)">(same input → same answer)</text>
+<text x="150.0" y="764.0" font-family="Bradley Hand, Noteworthy, cursive" font-size="22" font-weight="bold" fill="#1f2a5c" text-anchor="start" transform="rotate(-0.68 150.0 764.0)">– qty × price = amount</text>
+<text x="150.0" y="796.0" font-family="Bradley Hand, Noteworthy, cursive" font-size="22" font-weight="bold" fill="#1f2a5c" text-anchor="start" transform="rotate(-0.28 150.0 796.0)">– lines add up to subtotal</text>
+<text x="150.0" y="828.0" font-family="Bradley Hand, Noteworthy, cursive" font-size="22" font-weight="bold" fill="#1f2a5c" text-anchor="start" transform="rotate(1.00 150.0 828.0)">– tax maths + legal rate (country, date)</text>
+<text x="150.0" y="860.0" font-family="Bradley Hand, Noteworthy, cursive" font-size="22" font-weight="bold" fill="#1f2a5c" text-anchor="start" transform="rotate(0.85 150.0 860.0)">– tax added or included? → from the numbers</text>
+<text x="150.0" y="892.0" font-family="Bradley Hand, Noteworthy, cursive" font-size="22" font-weight="bold" fill="#1f2a5c" text-anchor="start" transform="rotate(0.69 150.0 892.0)">– subtotal + extras = total</text>
+<text x="150.0" y="924.0" font-family="Bradley Hand, Noteworthy, cursive" font-size="22" font-weight="bold" fill="#1f2a5c" text-anchor="start" transform="rotate(0.29 150.0 924.0)">– bill vs promise · late fee vs dates</text>
+<text x="150.0" y="956.0" font-family="Bradley Hand, Noteworthy, cursive" font-size="22" font-weight="bold" fill="#1f2a5c" text-anchor="start" transform="rotate(0.91 150.0 956.0)">– seen before? price up/down</text>
+<text x="150.0" y="988.0" font-family="Bradley Hand, Noteworthy, cursive" font-size="22" font-weight="bold" fill="#1f2a5c" text-anchor="start" transform="rotate(0.97 150.0 988.0)">– EVERY ₹/$ in the message ✓</text>
+<text x="735.0" y="722.0" font-family="Bradley Hand, Noteworthy, cursive" font-size="30" font-weight="bold" fill="#4b2a99" text-anchor="start" transform="rotate(0.11 735.0 722.0)">AI decides</text>
+<text x="905.0" y="722.0" font-family="Bradley Hand, Noteworthy, cursive" font-size="20" font-weight="bold" fill="#4b2a99" text-anchor="start" transform="rotate(0.48 905.0 722.0)">(judgement, can differ)</text>
+<text x="745.0" y="764.0" font-family="Bradley Hand, Noteworthy, cursive" font-size="22" font-weight="bold" fill="#1f2a5c" text-anchor="start" transform="rotate(-0.99 745.0 764.0)">– read the photo into lines</text>
+<text x="745.0" y="796.0" font-family="Bradley Hand, Noteworthy, cursive" font-size="22" font-weight="bold" fill="#1f2a5c" text-anchor="start" transform="rotate(0.51 745.0 796.0)">– what kind each line is</text>
+<text x="745.0" y="828.0" font-family="Bradley Hand, Noteworthy, cursive" font-size="22" font-weight="bold" fill="#1f2a5c" text-anchor="start" transform="rotate(-0.11 745.0 828.0)">– each line in plain words</text>
+<text x="745.0" y="860.0" font-family="Bradley Hand, Noteworthy, cursive" font-size="22" font-weight="bold" fill="#1f2a5c" text-anchor="start" transform="rotate(0.56 745.0 860.0)">– message wording, in their tone</text>
+<text x="745.0" y="892.0" font-family="Bradley Hand, Noteworthy, cursive" font-size="22" font-weight="bold" fill="#1f2a5c" text-anchor="start" transform="rotate(0.32 745.0 892.0)">–    …using {{placeholders}} only</text>
+<text x="1040.0" y="985.0" font-family="Bradley Hand, Noteworthy, cursive" font-size="28" font-weight="bold" fill="#b3261e" text-anchor="middle" transform="rotate(-0.47 1040.0 985.0)">NO-GO:</text>
+<text x="1040.0" y="1018.0" font-family="Bradley Hand, Noteworthy, cursive" font-size="23" font-weight="bold" fill="#b3261e" text-anchor="middle" transform="rotate(-0.99 1040.0 1018.0)">AI states an amount</text>
+<text x="1040.0" y="1046.0" font-family="Bradley Hand, Noteworthy, cursive" font-size="23" font-weight="bold" fill="#b3261e" text-anchor="middle" transform="rotate(0.94 1040.0 1046.0)">code didn't compute</text>
+<path d="M1182.7 1063.6 L1169.1 1069.7 L1152.5 1074.8 L1133.9 1078.9 L1112.6 1081.2 L1089.7 1080.6 L1068.8 1081.4 L1048.0 1081.1 L1027.2 1082.4 L1005.8 1082.8 L984.0 1082.3 L962.6 1080.6 L943.1 1077.1 L924.5 1073.1 L911.5 1066.6 L899.7 1060.3 L884.1 1055.4 L869.5 1050.0 L857.5 1043.8 L846.2 1037.2 L837.4 1030.1 L834.7 1022.4 L835.5 1014.7 L842.0 1007.3 L847.5 1000.2 L852.7 993.1 L855.5 985.7 L858.9 978.0 L866.9 970.7 L879.8 964.4 L895.7 958.9 L914.5 954.8 L935.3 952.1 L955.4 949.7 L975.2 947.4 L993.9 944.0 L1013.4 939.8 L1035.1 938.9 L1057.2 937.7 L1079.2 938.8 L1100.1 941.5 L1117.9 946.6 L1135.5 950.7 L1153.0 954.6 L1171.9 958.0 L1190.9 961.8 L1210.6 965.9 L1224.8 972.0 L1234.7 979.1 L1235.9 987.2 L1237.6 994.8 L1241.6 1002.0 L1244.1 1009.3 L1244.6 1016.7 L1247.4 1024.4 L1244.2 1031.9 L1240.9 1039.6 L1232.8 1046.9 L1217.7 1052.7 L1201.0 1057.8 L1184.7 1062.6 L1166.5 1066.4 L1151.0 1071.2 L1135.1 1076.3 L1117.6 1081.3 L1097.3 1084.6 L1075.5 1086.0 L1053.2 1084.9 L1031.9 1082.9 L1011.4 1081.1 L991.6 1078.9 L970.8 1077.7 L950.7 1075.3 L928.0 1073.8 L910.9 1068.9 L893.4 1064.1 L883.2 1057.0 L876.3 1049.5 L869.9 1042.4 L861.4 1035.9 L850.6 1029.4 L841.5 1022.3 L838.2 1014.8 L837.0 1007.1 L839.1 999.4 L847.9 992.2 L860.3 985.8 L872.8 979.7 L882.0 973.1 L894.3 967.2 L904.2 960.3 L917.3 953.9 L933.2 948.2 L954.3 945.4 L975.8 943.4 L998.3 943.5 L1019.7 943.5 L1040.3 942.8 L1061.5 940.6 L1083.3 940.3 L1105.2 941.2 L1126.1 943.6 L1146.4 946.6 L1163.5 951.6 L1177.0 957.8 L1189.7 963.8 L1205.0 968.8 L1221.0 973.9 L1232.7 980.2 L1244.3 986.8 L1253.7 993.8 L1256.7 1001.5 L1255.7 1009.3" fill="none" stroke="#b3261e" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>
+<path d="M144.9 1052.0 Q396.5 1053.7 651.3 1053.7" fill="none" stroke="#1f2a5c" stroke-width="2.20" stroke-linecap="round" opacity="0.92"/>
+<path d="M143.0 1051.0 Q397.1 1053.8 653.3 1051.3" fill="none" stroke="#1f2a5c" stroke-width="1.60" stroke-linecap="round" opacity="0.67"/>
+<path d="M648.9 1048.0 Q652.6 1099.5 649.7 1150.6" fill="none" stroke="#1f2a5c" stroke-width="2.20" stroke-linecap="round" opacity="0.92"/>
+<path d="M649.6 1048.0 Q652.6 1097.5 651.7 1148.7" fill="none" stroke="#1f2a5c" stroke-width="1.60" stroke-linecap="round" opacity="0.67"/>
+<path d="M651.4 1145.4 Q396.5 1141.5 147.8 1144.8" fill="none" stroke="#1f2a5c" stroke-width="2.20" stroke-linecap="round" opacity="0.92"/>
+<path d="M651.2 1142.9 Q402.0 1146.5 148.0 1144.9" fill="none" stroke="#1f2a5c" stroke-width="1.60" stroke-linecap="round" opacity="0.67"/>
+<path d="M149.6 1145.9 Q147.3 1097.1 149.4 1044.8" fill="none" stroke="#1f2a5c" stroke-width="2.20" stroke-linecap="round" opacity="0.92"/>
+<path d="M149.5 1148.0 Q147.1 1094.9 148.6 1047.7" fill="none" stroke="#1f2a5c" stroke-width="1.60" stroke-linecap="round" opacity="0.67"/>
+<text x="400.0" y="1088.0" font-family="Bradley Hand, Noteworthy, cursive" font-size="22" font-weight="bold" fill="#1f2a5c" text-anchor="middle" transform="rotate(-0.64 400.0 1088.0)">MY CALL:  "wrong" only if code can PROVE it</text>
+<text x="400.0" y="1122.0" font-family="Bradley Hand, Noteworthy, cursive" font-size="21" font-weight="bold" fill="#1f2a5c" text-anchor="middle" transform="rotate(-0.32 400.0 1122.0)">otherwise → "unexplained" (ask them to explain)</text></svg>

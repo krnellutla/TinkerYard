@@ -1,0 +1,170 @@
+{
+ "is_bill": true,
+ "merchant_name": "FairPrice Finest",
+ "merchant_country": "SG",
+ "merchant_whatsapp": "6567881234",
+ "bill_type": "receipt",
+ "bill_number": "FP202610120987",
+ "bill_date": "2026-10-12",
+ "due_date": null,
+ "period_start": null,
+ "period_end": null,
+ "currency": "SGD",
+ "tax_mode": "added",
+ "printed_subtotal": 34.07,
+ "printed_tax_total": 2.73,
+ "printed_tax_rate_pct": 8,
+ "printed_total": 36.8,
+ "lines": [
+  {
+   "description": "Bananas (kg)",
+   "plain_words": "",
+   "qty": 0.85,
+   "unit_price": 1.95,
+   "amount": 1.66,
+   "kind": "item",
+   "tax_rate_pct": null,
+   "box_2d": null
+  },
+  {
+   "description": "Fuji Apples (kg)",
+   "plain_words": "",
+   "qty": 0.72,
+   "unit_price": 3.5,
+   "amount": 2.52,
+   "kind": "item",
+   "tax_rate_pct": null,
+   "box_2d": null
+  },
+  {
+   "description": "Milk Fresh 2L",
+   "plain_words": "",
+   "qty": 1,
+   "unit_price": 4.95,
+   "amount": 4.95,
+   "kind": "item",
+   "tax_rate_pct": null,
+   "box_2d": null
+  },
+  {
+   "description": "Eggs Large 10s",
+   "plain_words": "",
+   "qty": 1,
+   "unit_price": 3.2,
+   "amount": 3.2,
+   "kind": "item",
+   "tax_rate_pct": null,
+   "box_2d": null
+  },
+  {
+   "description": "Bread Wholemeal",
+   "plain_words": "",
+   "qty": 1,
+   "unit_price": 2.65,
+   "amount": 2.65,
+   "kind": "item",
+   "tax_rate_pct": null,
+   "box_2d": null
+  },
+  {
+   "description": "Chicken Breast (kg)",
+   "plain_words": "",
+   "qty": 0.68,
+   "unit_price": 7.9,
+   "amount": 5.37,
+   "kind": "item",
+   "tax_rate_pct": null,
+   "box_2d": null
+  },
+  {
+   "description": "Lettuce (pcs)",
+   "plain_words": "",
+   "qty": 1,
+   "unit_price": 1.5,
+   "amount": 1.5,
+   "kind": "item",
+   "tax_rate_pct": null,
+   "box_2d": null
+  },
+  {
+   "description": "Tomato (kg)",
+   "plain_words": "",
+   "qty": 0.48,
+   "unit_price": 3.8,
+   "amount": 1.82,
+   "kind": "item",
+   "tax_rate_pct": null,
+   "box_2d": null
+  },
+  {
+   "description": "Orange Juice 1L",
+   "plain_words": "",
+   "qty": 1,
+   "unit_price": 3.9,
+   "amount": 3.9,
+   "kind": "item",
+   "tax_rate_pct": null,
+   "box_2d": null
+  },
+  {
+   "description": "Toilet Tissue 10s",
+   "plain_words": "",
+   "qty": 1,
+   "unit_price": 6.5,
+   "amount": 6.5,
+   "kind": "item",
+   "tax_rate_pct": null,
+   "box_2d": null
+  },
+  {
+   "description": "Sub Total",
+   "plain_words": "",
+   "qty": null,
+   "unit_price": null,
+   "amount": 34.07,
+   "kind": "subtotal",
+   "tax_rate_pct": null,
+   "box_2d": null
+  },
+  {
+   "description": "GST 8%",
+   "plain_words": "",
+   "qty": null,
+   "unit_price": null,
+   "amount": 2.73,
+   "kind": "tax",
+   "tax_rate_pct": null,
+   "box_2d": null
+  },
+  {
+   "description": "Total",
+   "plain_words": "",
+   "qty": null,
+   "unit_price": null,
+   "amount": 36.8,
+   "kind": "total",
+   "tax_rate_pct": null,
+   "box_2d": null
+  },
+  {
+   "description": "Mastercard",
+   "plain_words": "",
+   "qty": null,
+   "unit_price": null,
+   "amount": 36.8,
+   "kind": "payment",
+   "tax_rate_pct": null,
+   "box_2d": null
+  },
+  {
+   "description": "GST Summary Amount(S$) 8%",
+   "plain_words": "",
+   "qty": null,
+   "unit_price": null,
+   "amount": 2.73,
+   "kind": "other",
+   "tax_rate_pct": null,
+   "box_2d": null
+  }
+ ]
+}

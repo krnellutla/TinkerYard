@@ -1,0 +1,6 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    { "name": "tallyback", "runtimeExecutable": "npm", "runtimeArgs": ["run", "dev", "--prefix", "tallyback"], "port": 3000 }
+  ]
+}

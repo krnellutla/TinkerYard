@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 760" font-family="Helvetica, Arial, sans-serif">
+  <rect width="960" height="760" fill="#ffffff"/>
+  <text x="32" y="44" font-size="24" font-weight="700" fill="#1c1b19">TallyBack — Move 3: the boxes and the line</text>
+  <text x="32" y="68" font-size="14" fill="#6b675f">Whose machine each piece lives on. The key never leaves our server.</text>
+
+  <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#1c1b19"/></marker></defs>
+
+  <!-- boxes -->
+  <rect x="32" y="96" width="200" height="120" rx="12" fill="#f6f4ef" stroke="#1c1b19" stroke-width="2"/>
+  <text x="132" y="126" font-size="16" font-weight="700" text-anchor="middle">UI</text>
+  <text x="132" y="148" font-size="13" text-anchor="middle">camera / upload, highlight,</text>
+  <text x="132" y="166" font-size="13" text-anchor="middle">promise, message, WhatsApp</text>
+  <text x="132" y="200" font-size="12" fill="#6b675f" text-anchor="middle">USER'S PHONE (browser)</text>
+
+  <rect x="312" y="96" width="250" height="120" rx="12" fill="#f6f4ef" stroke="#1c1b19" stroke-width="2"/>
+  <text x="437" y="126" font-size="16" font-weight="700" text-anchor="middle">Our server</text>
+  <text x="437" y="148" font-size="13" text-anchor="middle">API routes · runChecks() ·</text>
+  <text x="437" y="166" font-size="13" text-anchor="middle">verifier · API keys live here</text>
+  <text x="437" y="200" font-size="12" fill="#6b675f" text-anchor="middle">VERCEL (our account)</text>
+
+  <rect x="642" y="96" width="286" height="120" rx="12" fill="#f3f0fb" stroke="#5b3fb5" stroke-width="2"/>
+  <text x="785" y="126" font-size="16" font-weight="700" text-anchor="middle">LLM</text>
+  <text x="785" y="148" font-size="13" text-anchor="middle">Gemini 3.8 → 3.5 → flash-latest</text>
+  <text x="785" y="166" font-size="13" text-anchor="middle">backup: Groq (qwen / gpt-oss)</text>
+  <text x="785" y="200" font-size="12" fill="#6b675f" text-anchor="middle">GOOGLE / GROQ servers</text>
+
+  <rect x="312" y="252" width="250" height="96" rx="12" fill="#f6f4ef" stroke="#1c1b19" stroke-width="2"/>
+  <text x="437" y="282" font-size="16" font-weight="700" text-anchor="middle">Database + files</text>
+  <text x="437" y="304" font-size="13" text-anchor="middle">Postgres rows · private photo bucket</text>
+  <text x="437" y="332" font-size="12" fill="#6b675f" text-anchor="middle">SUPABASE (RLS on)</text>
+
+  <line x1="232" y1="156" x2="306" y2="156" stroke="#1c1b19" stroke-width="2" marker-end="url(#a)"/>
+  <text x="269" y="146" font-size="11" text-anchor="middle" fill="#6b675f">photo</text>
+  <line x1="562" y1="140" x2="636" y2="140" stroke="#1c1b19" stroke-width="2" marker-end="url(#a)"/>
+  <text x="599" y="130" font-size="11" text-anchor="middle" fill="#6b675f">photo + prompt</text>
+  <text x="599" y="186" font-size="11" text-anchor="middle" fill="#6b675f">= one package</text>
+  <line x1="636" y1="172" x2="562" y2="172" stroke="#5b3fb5" stroke-width="2" marker-end="url(#a)"/>
+  <line x1="437" y1="216" x2="437" y2="246" stroke="#1c1b19" stroke-width="2" marker-end="url(#a)"/>
+
+  <!-- the line -->
+  <text x="32" y="402" font-size="20" font-weight="700" fill="#1c1b19">The line</text>
+  <line x1="480" y1="420" x2="480" y2="740" stroke="#9a948a" stroke-width="2" stroke-dasharray="6 6"/>
+
+  <text x="32" y="438" font-size="16" font-weight="700" fill="#8a5a00">CODE DECIDES — same input, same answer</text>
+  <g font-size="13" fill="#1c1b19">
+    <text x="40" y="466">• qty × unit price = amount (2-dp weight tolerance)</text>
+    <text x="40" y="488">• lines above the subtotal = subtotal</text>
+    <text x="40" y="510">• tax arithmetic; legal rate by country + date</text>
+    <text x="40" y="532">• tax added vs included — from the printed numbers</text>
+    <text x="40" y="554">• subtotal + extras = total (tender rows ignored)</text>
+    <text x="40" y="576">• bill vs promise; late fee vs paid/due dates</text>
+    <text x="40" y="598">• charges repeating across months, price changes</text>
+    <text x="40" y="620">• verdict: wrong / unexplained / info</text>
+    <text x="40" y="642">• EVERY number in the message + verifier</text>
+    <text x="40" y="664">• masking account / phone numbers before saving</text>
+  </g>
+
+  <text x="504" y="438" font-size="16" font-weight="700" fill="#5b3fb5">AI DECIDES — judgement, can differ</text>
+  <g font-size="13" fill="#1c1b19">
+    <text x="512" y="466">• reading the photo into lines (+ row positions)</text>
+    <text x="512" y="488">• what kind each line is (item, tax, fee…)</text>
+    <text x="512" y="510">• each line in plain words</text>
+    <text x="512" y="532">• the message wording, in their tone,</text>
+    <text x="524" y="550">  using {{placeholders}} only</text>
+  </g>
+
+  <rect x="504" y="584" width="420" height="72" rx="36" fill="#fff1e8" stroke="#c2410c" stroke-width="2" stroke-dasharray="7 5"/>
+  <text x="714" y="612" font-size="14" font-weight="700" fill="#c2410c" text-anchor="middle">NO-GO</text>
+  <text x="714" y="634" font-size="13" fill="#c2410c" text-anchor="middle">AI states an amount code didn't compute</text>
+  <text x="714" y="650" font-size="11" fill="#c2410c" text-anchor="middle">(verifier rejects it → code-written template)</text>
+
+  <rect x="352" y="682" width="256" height="58" rx="10" fill="#ffffff" stroke="#1c1b19" stroke-width="2"/>
+  <text x="480" y="704" font-size="12" font-weight="700" fill="#6b675f" text-anchor="middle">MY CALL</text>
+  <text x="480" y="724" font-size="12" text-anchor="middle">wrong = code can prove it · else unexplained</text>
+</svg>
