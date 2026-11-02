@@ -54,7 +54,7 @@ async function selectJson(sql: Sql, query: string, params: unknown[]): Promise<R
   return rows[0]?.rows ?? [];
 }
 
-const DB_FILE = path.join(process.env.VERCEL ? os.tmpdir() : process.cwd(), ".data", "db.json");
+const DB_FILE = path.join(process.env.VERCEL ? os.tmpdir() : process.cwd(), ".data", "reviewscout.json");
 
 async function localAll(): Promise<Row[]> {
   try {

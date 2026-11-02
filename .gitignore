@@ -1,2 +1,36 @@
 .DS_Store
 .vercel
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+
+# next.js
+/.next/
+/out/
+/build
+next-env.d.ts
+*.tsbuildinfo
+
+# testing
+/coverage
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# env files: keys stay local; only the example is committed
+.env*
+!.env.example
+
+# local data when DATABASE_URL isn't set
+/.data
+
+# Friends' receipts and course material stay local
+/Tallyback/References/
+*.pdf
+
+*.pem
+.claude/settings.local.json

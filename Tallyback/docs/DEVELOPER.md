@@ -1,13 +1,13 @@
 # TallyBack: developer notes
 
-User-facing overview: [../README.md](../README.md). Paths below are relative to `Tallyback/`.
+User-facing overview: [../README.md](../README.md). TallyBack is one module of the Tinkeryard app: run everything from the repo root. Paths in the table are relative to `Tallyback/` unless they start with `app/`.
 
 ## Run
 ```bash
 cp .env.example .env.local   # GEMINI_API_KEY required; GROQ_API_KEY, DATABASE_URL, BLOB_READ_WRITE_TOKEN optional
 npm install
-npm run dev                  # http://localhost:3000
-npm test                     # node:test via tsx: checker, verifier, history, real scans
+npm run dev                  # http://localhost:3000/tallyback
+npm test                     # node:test via tsx: checker, verifier, history, real scans (+ Review Scout's)
 npm run build
 ```
 Without any AI key, only "Try a sample receipt" works. Without `DATABASE_URL`, rows go to `.data/db.json` and photos aren't kept; with it but without Blob, photos go to the `bill_photos` table.
@@ -25,15 +25,15 @@ Without any AI key, only "Try a sample receipt" works. Without `DATABASE_URL`, r
 ## Where things live
 | Piece | Runs on | File |
 |---|---|---|
-| UI: capture, highlights, promise, verdict, message, My bills | phone browser | `src/app/page.tsx` |
-| API (keys stay here) | Vercel functions | `src/app/api/{scan,check,message,sent,bills}` |
+| UI: capture, highlights, promise, verdict, message, My bills | phone browser | `src/ui/Home.tsx`, served by `app/(apps)/tallyback/page.tsx` |
+| API (keys stay here) | Vercel functions | `src/api/{scan,check,message,sent,bills,bill}.ts`, served at `/api/tallyback/*` by `app/api/tallyback/` |
 | AI with fallbacks: Gemini → Groq | Google / Groq | `src/lib/llm.ts`, `gemini.ts`, `groq.ts`, `prompts.ts` |
 | Clean-up of model JSON; tax mode decided from numbers | server | `src/lib/normalize.ts` |
 | **Code decides**: all checks and verdicts | server + browser | `src/lib/checks.ts`, `taxRules.ts`, `money.ts` |
 | Message fill, number verifier, words changed | server | `src/lib/message.ts` |
 | "Seen before" price history | server | `src/lib/history.ts`, `billView.ts` |
 | Storage (Neon Postgres or local JSON; private Blob photos), masking | server | `src/lib/store.ts`, `db/schema.ts`, `mask.ts` |
-| Private photo stream (owner device only) | server | `src/app/api/bills/[id]/photo` |
+| Private photo stream (owner device only) | server | `src/api/billPhoto.ts` |
 | Every reply is JSON; saving is best-effort | server | `src/lib/route.ts` |
 | Schema (idempotent, applied on first use) | Neon | `src/lib/db/schema.ts` |
 | One-off copy from the old Supabase project | local | `scripts/migrate-from-supabase.ts` |

@@ -1,5 +1,4 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "ignoreCommand": "[ -n \"$VERCEL_GIT_PREVIOUS_SHA\" ] && git diff --quiet \"$VERCEL_GIT_PREVIOUS_SHA\" HEAD -- . ':(exclude)Tallyback' ':(exclude)Reviewscout' || exit 1",
-  "routes": [{ "src": "/(Tallyback|Reviewscout|\\.claude)(/.*)?", "status": 404 }]
+  "framework": "nextjs"
 }

@@ -4,7 +4,7 @@
 
 Snap a photo of any bill or receipt. TallyBack checks every line and the maths, highlights the charge that doesn't add up, and writes one message you can send on WhatsApp. If everything checks out, it says so and shows the working.
 
-### ▶ Try it: **[tallyback.vercel.app](https://tallyback.vercel.app)**
+### ▶ Try it: **[tinkeryard.dev/tallyback](https://tinkeryard.dev/tallyback)**
 
 Open it on your phone. No sign-up. No bill handy? Tap **"Try a sample receipt"**.
 
@@ -54,11 +54,11 @@ Next.js 15 · TypeScript · Tailwind CSS · Google Gemini (`gemini-3.8-flash`, w
 
 ```bash
 git clone https://github.com/krnellutla/TinkerYard.git
-cd TinkerYard/Tallyback
+cd TinkerYard                # TallyBack is a module of the Tinkeryard app
 cp .env.example .env.local   # add a free Gemini key (aistudio.google.com/apikey); Groq, Neon and Blob are optional
 npm install
-npm run dev                  # http://localhost:3000
-npm test                     # 21 tests, including real receipt scans
+npm run dev                  # http://localhost:3000/tallyback
+npm test                     # TallyBack's 21 tests (including real receipt scans) plus Review Scout's
 ```
 
 Without a database, data is saved to a local file. With `DATABASE_URL` (Neon Postgres), tables are created automatically on first use. Developer details are in [`docs/DEVELOPER.md`](docs/DEVELOPER.md).

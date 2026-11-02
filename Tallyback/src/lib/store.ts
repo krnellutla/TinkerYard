@@ -342,7 +342,7 @@ export async function getBill(id: string, deviceId: string): Promise<StoredBill 
 export function photoUrl(bill: Row, deviceId: string): string | null {
   const p = bill.image_path;
   if (typeof p !== "string" || p.endsWith(".pdf")) return null;
-  return `/api/bills/${bill.id}/photo?deviceId=${encodeURIComponent(deviceId)}`;
+  return `/api/tallyback/bills/${bill.id}/photo?deviceId=${encodeURIComponent(deviceId)}`;
 }
 
 // Earlier lines from the same shop, on this device, for "has this shown up before?"
