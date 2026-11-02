@@ -1,6 +1,0 @@
-# Friends' receipts and course material stay local
-References/
-*.pdf
-
-.DS_Store
-.claude/settings.local.json
