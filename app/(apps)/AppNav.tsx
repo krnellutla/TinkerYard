@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Account } from "@signin/ui/Account";
 
 // A switcher above whichever app is open, with a way back to the landing page.
 const APPS = [
@@ -29,6 +30,7 @@ export function AppNav() {
           </Link>
         );
       })}
+      <Account />
     </nav>
   );
 }

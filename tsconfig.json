@@ -28,6 +28,9 @@
       ],
       "@reviewscout/*": [
         "./Reviewscout/src/*"
+      ],
+      "@signin/*": [
+        "./Auth/src/*"
       ]
     }
   },
