@@ -3,6 +3,7 @@ import { bestEffort, jsonRoute } from "@tallyback/lib/route";
 import { llmEnabled, readBill } from "@tallyback/lib/llm";
 import { saveBill, uploadImage } from "@tallyback/lib/store";
 import { historyFor } from "@tallyback/lib/billView";
+import { ownerOf, signedInUser, signInRequired } from "@signin/session";
 import sample from "@tallyback/lib/sample.json";
 import type { Extraction } from "@tallyback/lib/types";
 
@@ -12,13 +13,19 @@ const unsaved = (ex: Extraction) => ({ billId: crypto.randomUUID(), lineIds: ex.
 
 export const POST = jsonRoute(async (req: Request) => {
   const form = await req.formData();
-  const deviceId = String(form.get("deviceId") ?? "anon");
+  const user = await signedInUser(req);
+  const owner = ownerOf(user, form.get("deviceId"));
 
+  // The sample receipt costs nothing, so it works for guests too.
   if (form.get("sample") === "1") {
     const ex = sample as unknown as Extraction;
-    const { billId, lineIds } = await bestEffort("save sample", () => saveBill(deviceId, ex, null, "sample"), unsaved(ex));
+    const save = () => (owner ? saveBill(owner, ex, null, "sample") : Promise.resolve(unsaved(ex)));
+    const { billId, lineIds } = await bestEffort("save sample", save, unsaved(ex));
     return NextResponse.json({ billId, lineIds, extraction: ex });
   }
+
+  // Reading a real bill calls the AI: signed-in, invited people only.
+  if (!user || !owner) return signInRequired("check a real bill");
 
   const file = form.get("file");
   if (!(file instanceof File)) return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
@@ -31,10 +38,10 @@ export const POST = jsonRoute(async (req: Request) => {
     const { extraction: ex, model } = await readBill(bytes.toString("base64"), mime);
     if (!ex.is_bill || !ex.lines.length)
       return NextResponse.json({ error: "That doesn't look like a bill. Try a clearer, flatter photo." }, { status: 422 });
-    const { billId, lineIds } = await bestEffort("save bill", () => saveBill(deviceId, ex, null, model), unsaved(ex));
+    const { billId, lineIds } = await bestEffort("save bill", () => saveBill(owner, ex, null, model), unsaved(ex));
     // Store the image after we have a row to link it to. A storage hiccup must not lose the result.
     await uploadImage(billId, bytes, mime).catch((e) => console.error(e));
-    const history = await historyFor(deviceId, billId, ex).catch(() => ({}));
+    const history = await historyFor(owner, billId, ex).catch(() => ({}));
     return NextResponse.json({ billId, lineIds, extraction: ex, history });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);

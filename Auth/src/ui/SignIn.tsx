@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { authClient } from "../client";
+import { sessionChanged } from "./prompt";
 
 // Email → 6-digit code, with "email me a link instead". No passwords.
 type Step = "email" | "code" | "link-sent";
@@ -55,7 +56,14 @@ export function SignIn({ onClose, reason, errorCode }: { onClose: () => void; re
       },
     );
 
-  const verify = () => attempt(() => authClient.signIn.emailOtp({ email: email.trim(), otp: code.trim() }), onClose);
+  const verify = () =>
+    attempt(
+      () => authClient.signIn.emailOtp({ email: email.trim(), otp: code.trim() }),
+      () => {
+        sessionChanged();
+        onClose();
+      },
+    );
 
   const sendLink = () =>
     attempt(

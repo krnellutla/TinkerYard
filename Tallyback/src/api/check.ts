@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import { bestEffort, jsonRoute } from "@tallyback/lib/route";
 import { runChecks } from "@tallyback/lib/checks";
-import { saveCheck } from "@tallyback/lib/store";
+import { findBill, saveCheck } from "@tallyback/lib/store";
+import { ownerOf, signedInUser } from "@signin/session";
 import type { Extraction, Promise } from "@tallyback/lib/types";
 
 
 // The server re-runs the checks itself: the browser's numbers are never trusted.
+// Checking is code, not AI, so guests can do it; it's saved only to a bill the asker owns.
 export const POST = jsonRoute(async (req: Request) => {
   const { billId, deviceId, lineIds, extraction, promise } = (await req.json()) as {
     billId: string;
@@ -15,6 +17,8 @@ export const POST = jsonRoute(async (req: Request) => {
     promise: Promise;
   };
   const result = runChecks(extraction, promise);
-  const findingIds = await bestEffort("save check", () => saveCheck(billId, deviceId, lineIds, promise, result), {} as Record<string, string>);
+  const owner = ownerOf(await signedInUser(req), deviceId);
+  const save = async () => (owner && (await findBill(billId, owner)) ? saveCheck(billId, owner, lineIds, promise, result) : {});
+  const findingIds = await bestEffort("save check", save, {} as Record<string, string>);
   return NextResponse.json({ result, findingIds });
 });

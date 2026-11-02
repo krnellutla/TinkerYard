@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { authClient } from "../client";
 import { SignIn } from "./SignIn";
+import { onAskToSignIn, sessionChanged } from "./prompt";
 
 // Right side of the app switcher: "Sign in", or who you are and "Sign out".
 export function Account() {
@@ -10,6 +11,17 @@ export function Account() {
   const [signingIn, setSigningIn] = useState(false);
   const [menu, setMenu] = useState(false);
   const [linkError, setLinkError] = useState<string | undefined>();
+  const [reason, setReason] = useState<string | undefined>();
+
+  // An app asked for sign-in before a costly action ("Sign in to check a real bill").
+  useEffect(
+    () =>
+      onAskToSignIn((why) => {
+        setReason(why);
+        setSigningIn(true);
+      }),
+    [],
+  );
 
   // A used or expired sign-in link lands here with ?error=…: explain it and offer a new one.
   useEffect(() => {
@@ -35,9 +47,11 @@ export function Account() {
         {signingIn && (
           <SignIn
             errorCode={linkError}
+            reason={reason}
             onClose={() => {
               setSigningIn(false);
               setLinkError(undefined);
+              setReason(undefined);
             }}
           />
         )}
@@ -63,6 +77,7 @@ export function Account() {
             onClick={async () => {
               setMenu(false);
               await authClient.signOut();
+              sessionChanged();
             }}
             className="mt-3 w-full rounded-xl border border-line py-2 font-medium"
           >

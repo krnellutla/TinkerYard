@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Markdown } from "./Markdown";
+import { askToSignIn, isSignedIn, onSessionChanged } from "@signin/ui/prompt";
 
 // Review Scout: type a product, get a cited summary of what YouTube reviewers said, then ask follow-ups.
 // INPUT: the product question (+ how many videos, and whether to read comments)
@@ -73,16 +74,45 @@ export default function ReviewScout() {
   const [followUp, setFollowUp] = useState("");
   const [past, setPast] = useState<PastSearch[] | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
+  // A search typed before signing in runs as soon as sign-in succeeds. The refs let the
+  // sign-in listener (set up once) reach the latest page state.
+  const pendingSearch = useRef<string | null>(null);
+  const latest = useRef<{ stage: Stage; search: (q: string) => Promise<void>; openHistory: () => Promise<void> }>({
+    stage,
+    search: async () => {},
+    openHistory: async () => {},
+  });
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [turns, status]);
+
+  useEffect(
+    () =>
+      onSessionChanged(async () => {
+        const q = pendingSearch.current;
+        if (q && (await isSignedIn())) {
+          pendingSearch.current = null;
+          latest.current.search(q);
+        } else if (latest.current.stage === "history") latest.current.openHistory(); // an account's searches differ from a guest's
+      }),
+    [],
+  );
+
+  // Searching and asking call the AI: invited accounts only. The server checks too.
+  async function needsSignIn(why: string) {
+    if (await isSignedIn()) return false;
+    setError(why);
+    askToSignIn(why);
+    return true;
+  }
 
   async function ask(id: string, message: string | null) {
     setStatus(message ? "Checking the reviews…" : "Writing the summary…");
     try {
       const r = await post(`/api/reviewscout/searches/${id}/ask`, { deviceId: deviceId(), message });
       const j = await readJson(r);
+      if (r.status === 401) askToSignIn(j.error);
       if (!r.ok) throw new Error(j.error ?? "Something went wrong");
       setTurns(j.messages);
     } catch (e) {
@@ -96,6 +126,10 @@ export default function ReviewScout() {
     const q = question.trim();
     if (!q) return;
     setError(null);
+    if (await needsSignIn("Sign in to search reviews.")) {
+      pendingSearch.current = q;
+      return;
+    }
     setFound([]);
     setTurns([{ role: "user", content: q }]);
     setStage("chat");
@@ -103,6 +137,7 @@ export default function ReviewScout() {
     try {
       const r = await post("/api/reviewscout/searches", { deviceId: deviceId(), topic: q, nVideos, withComments });
       const j = await readJson(r);
+      if (r.status === 401) askToSignIn(j.error);
       if (j.found) setFound(j.found);
       if (!r.ok) throw new Error(j.error ?? "Something went wrong");
       setSearchId(j.id);
@@ -116,8 +151,9 @@ export default function ReviewScout() {
   async function sendFollowUp() {
     const m = followUp.trim();
     if (!m || status) return;
-    setFollowUp("");
     setError(null);
+    if (await needsSignIn("Sign in to ask about these reviews.")) return;
+    setFollowUp("");
     setTurns((t) => [...t, { role: "user", content: m }]);
     await ask(searchId, m);
   }
@@ -142,6 +178,8 @@ export default function ReviewScout() {
     // A search whose summary never got written: write it now.
     if (j.messages.length === 1) await ask(j.id, null);
   }
+
+  latest.current = { stage, search, openHistory };
 
   function reset() {
     setStage("start");

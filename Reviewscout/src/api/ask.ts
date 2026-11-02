@@ -4,14 +4,19 @@ import { chatAbout, llmEnabled } from "@reviewscout/lib/llm";
 import { getSearch, saveTurns, type ScoutTurn } from "@reviewscout/lib/store";
 import { SCOUT_SYSTEM_PROMPT } from "@reviewscout/lib/prompts";
 import { llmTurns } from "@reviewscout/lib/turns";
+import { ownerOf, signedInUser, signInRequired } from "@signin/session";
 
 
 // Step 2: no message = write the summary; a message = answer a follow-up from the same videos.
+// Both call the AI: signed-in, invited people only, on their own searches.
 export const POST = jsonRoute(async (req: Request, { params }: { params: Promise<{ id: string }> }) => {
   const { id } = await params;
+  const user = await signedInUser(req);
+  if (!user) return signInRequired("ask about these reviews");
   const body = (await req.json()) as { deviceId?: string; message?: string };
-  const s = await getSearch(id, String(body.deviceId ?? "anon"));
-  if (!s) return NextResponse.json({ error: "Search not found on this device" }, { status: 404 });
+  const owner = ownerOf(user, body.deviceId)!;
+  const s = await getSearch(id, owner);
+  if (!s) return NextResponse.json({ error: "Search not found" }, { status: 404 });
 
   const message = body.message?.trim() ? body.message.trim().slice(0, 2000) : null;
   if (message == null && s.messages.length > 1) return NextResponse.json({ messages: s.messages }); // summary already written

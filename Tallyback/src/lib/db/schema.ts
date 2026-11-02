@@ -85,6 +85,9 @@ export const SCHEMA = [
     created_at timestamptz not null default now()
   )`,
   `create index if not exists messages_line_idx on messages (line_item_id)`,
+  // Sign-in: a bill belongs to an account once someone signs in (null = a guest's, kept by device).
+  `alter table bills add column if not exists user_id text`,
+  `create index if not exists bills_user_idx on bills (user_id, created_at desc)`,
 ];
 
 export const TABLES = ["bills", "line_items", "promises", "findings", "messages"] as const;

@@ -4,6 +4,7 @@ import { promises as fs } from "fs";
 import os from "os";
 import path from "path";
 import type { Found } from "./youtube";
+import type { Owner } from "@signin/owner";
 
 // Postgres (Neon) when DATABASE_URL is set; otherwise a local JSON file so the app runs with zero setup.
 // One row per product search. The collected transcripts (corpus) are kept so follow-up questions
@@ -27,6 +28,9 @@ const SCHEMA = [
     updated_at timestamptz not null default now()
   )`,
   `create index if not exists scout_searches_device_idx on scout_searches (device_id, created_at desc)`,
+  // Sign-in: a search belongs to an account once someone signs in (null = a guest's, kept by device).
+  `alter table scout_searches add column if not exists user_id text`,
+  `create index if not exists scout_searches_user_idx on scout_searches (user_id, created_at desc)`,
 ];
 
 const dbUrl = () => (process.env.DATABASE_URL || process.env.POSTGRES_URL || "").trim().replace(/^["']|["']$/g, "");
@@ -99,10 +103,11 @@ const toSearch = (r: Row): ScoutSearch => ({
   createdAt: String(r.created_at),
 });
 
-export async function saveSearch(deviceId: string, s: Omit<ScoutSearch, "id" | "createdAt">): Promise<string> {
+export async function saveSearch(owner: Owner, s: Omit<ScoutSearch, "id" | "createdAt">): Promise<string> {
   const row = {
     id: crypto.randomUUID(),
-    device_id: deviceId,
+    device_id: owner.deviceId,
+    user_id: owner.userId,
     topic: s.topic,
     n_videos: s.nVideos,
     with_comments: s.withComments,
@@ -126,22 +131,41 @@ export async function saveTurns(id: string, messages: ScoutTurn[], model: string
   await sql.query(`update scout_searches set messages = $2::jsonb, model = $3, updated_at = now() where id = $1`, [id, JSON.stringify(messages), model]);
 }
 
-export async function getSearch(id: string, deviceId: string): Promise<ScoutSearch | null> {
+// Who can see a search: the account that owns it, or the device that made it if no account has claimed it.
+const ownerSql = (owner: Owner, n: number) =>
+  owner.userId ? { where: `user_id = $${n}`, param: owner.userId } : { where: `device_id = $${n} and user_id is null`, param: owner.deviceId };
+const ownsRow = (r: Row, owner: Owner) => (owner.userId ? r.user_id === owner.userId : r.device_id === owner.deviceId && !r.user_id);
+
+// First time a signed-in person opens their searches on a device: that device's guest searches become theirs.
+export async function claimDevice(owner: Owner) {
+  if (!owner.userId || !owner.deviceId) return;
   const sql = await db();
   if (!sql) {
-    const row = (await localAll()).find((r) => r.id === id && r.device_id === deviceId);
+    const rows = await localAll();
+    if (!rows.some((r) => r.device_id === owner.deviceId && !r.user_id)) return;
+    return localWrite(rows.map((r) => (r.device_id === owner.deviceId && !r.user_id ? { ...r, user_id: owner.userId } : r)));
+  }
+  await sql.query(`update scout_searches set user_id = $1 where device_id = $2 and user_id is null`, [owner.userId, owner.deviceId]);
+}
+
+export async function getSearch(id: string, owner: Owner): Promise<ScoutSearch | null> {
+  const sql = await db();
+  if (!sql) {
+    const row = (await localAll()).find((r) => r.id === id && ownsRow(r, owner));
     return row ? toSearch(row) : null;
   }
   if (!/^[0-9a-f-]{36}$/i.test(id)) return null;
-  const rows = await selectJson(sql, `select * from scout_searches where id = $1 and device_id = $2`, [id, deviceId]);
+  const o = ownerSql(owner, 2);
+  const rows = await selectJson(sql, `select * from scout_searches where id = $1 and ${o.where}`, [id, o.param]);
   return rows[0] ? toSearch(rows[0]) : null;
 }
 
 // Newest first. The corpus is left out (empty): a list doesn't need 100 KB of transcripts per row.
-export async function listSearches(deviceId: string, limit = 50): Promise<ScoutSearch[]> {
+export async function listSearches(owner: Owner, limit = 50): Promise<ScoutSearch[]> {
   const sql = await db();
+  const o = ownerSql(owner, 1);
   const rows = sql
-    ? await selectJson(sql, `select id, topic, n_videos, with_comments, found, messages, created_at from scout_searches where device_id = $1 order by created_at desc limit $2`, [deviceId, limit])
-    : newest((await localAll()).filter((r) => r.device_id === deviceId)).slice(0, limit);
+    ? await selectJson(sql, `select id, topic, n_videos, with_comments, found, messages, created_at from scout_searches where ${o.where} order by created_at desc limit $2`, [o.param, limit])
+    : newest((await localAll()).filter((r) => ownsRow(r, owner))).slice(0, limit);
   return rows.map((r) => ({ ...toSearch(r), corpus: "" }));
 }

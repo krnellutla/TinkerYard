@@ -6,6 +6,7 @@ import { allClearSummary } from "@tallyback/lib/message";
 import { fmt } from "@tallyback/lib/money";
 import type { LineHistory } from "@tallyback/lib/history";
 import type { Extraction, Finding, Promise as BillPromise } from "@tallyback/lib/types";
+import { askToSignIn, isSignedIn, onSessionChanged } from "@signin/ui/prompt";
 
 type Stage = "start" | "scanning" | "review" | "bills";
 
@@ -91,6 +92,21 @@ export default function Home() {
   const [opening, setOpening] = useState(false);
   const cameraRef = useRef<HTMLInputElement>(null);
   const uploadRef = useRef<HTMLInputElement>(null);
+  // A photo picked before signing in: checked as soon as sign-in succeeds, so it needn't be picked again.
+  const pendingFile = useRef<File | null>(null);
+  const scanRef = useRef<(file: File) => void>(() => {});
+
+  useEffect(
+    () =>
+      onSessionChanged(async () => {
+        const file = pendingFile.current;
+        if (file && (await isSignedIn())) {
+          pendingFile.current = null;
+          scanRef.current(file);
+        }
+      }),
+    [],
+  );
 
   // Code decides, live, as the user tells us what they were promised.
   const result = useMemo(() => (ex ? runChecks(ex, promise) : null), [ex, promise]);
@@ -106,6 +122,14 @@ export default function Home() {
 
   async function scan(file: File | null, sample = false) {
     setError(null);
+    // Reading a real bill calls the AI, so it needs an invited account; the sample doesn't.
+    if (!sample && file && !(await isSignedIn())) {
+      pendingFile.current = file;
+      const why = "Sign in to check a real bill. The sample receipt works without an account.";
+      setError(why);
+      askToSignIn(why);
+      return;
+    }
     setStage("scanning");
     setPromise(EMPTY_PROMISE);
     setSelected(null);
@@ -129,6 +153,7 @@ export default function Home() {
       }
       const r = await fetch("/api/tallyback/scan", { method: "POST", body: fd });
       const j = await readJson(r);
+      if (r.status === 401) askToSignIn(j.error);
       if (!r.ok) throw new Error(j.error ?? "Something went wrong");
       setEx(j.extraction);
       setBillId(j.billId);
@@ -140,6 +165,8 @@ export default function Home() {
       setStage("start");
     }
   }
+
+  scanRef.current = (file: File) => scan(file);
 
   function reset() {
     setStage("start");
@@ -491,11 +518,15 @@ function BillsList({ onOpen, onNew, opening, error }: { onOpen: (id: string) => 
   const [bills, setBills] = useState<BillSummary[] | null>(null);
   const [loadErr, setLoadErr] = useState<string | null>(null);
 
+  // Reloaded after signing in or out: an account's bills differ from a guest's.
   useEffect(() => {
-    fetch(`/api/tallyback/bills?deviceId=${encodeURIComponent(deviceId())}`)
-      .then(readJson)
-      .then((j) => (j.error ? setLoadErr(j.error) : setBills(j.bills ?? [])))
-      .catch(() => setLoadErr("Couldn't load your bills"));
+    const load = () =>
+      fetch(`/api/tallyback/bills?deviceId=${encodeURIComponent(deviceId())}`)
+        .then(readJson)
+        .then((j) => (j.error ? setLoadErr(j.error) : setBills(j.bills ?? [])))
+        .catch(() => setLoadErr("Couldn't load your bills"));
+    load();
+    return onSessionChanged(load);
   }, []);
 
   const recovered = (bills ?? []).filter((b) => b.status === "sent").reduce<Record<string, number>>((acc, b) => {
@@ -576,8 +607,15 @@ function MessagePanel(props: {
   }, [finding.id, finding.diff]);
 
   async function draft() {
-    setBusy(true);
     setErr(null);
+    // Writing the message calls the AI: invited accounts only.
+    if (!(await isSignedIn())) {
+      const why = "Sign in to write the message.";
+      setErr(why);
+      askToSignIn(why);
+      return;
+    }
+    setBusy(true);
     try {
       const deviceIdVal = (() => {
         try {
@@ -594,9 +632,10 @@ function MessagePanel(props: {
       const r = await fetch("/api/tallyback/message", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ billId, lineIds, findingDbIds: c.findingIds, extraction: ex, promise, findingId: finding.id, tone, note }),
+        body: JSON.stringify({ billId, deviceId: deviceIdVal, lineIds, findingDbIds: c.findingIds, extraction: ex, promise, findingId: finding.id, tone, note }),
       });
       const j = await readJson(r);
+      if (r.status === 401) askToSignIn(j.error);
       if (!r.ok) throw new Error(j.error);
       setDrafted(j.text);
       setText(j.text);
@@ -612,7 +651,7 @@ function MessagePanel(props: {
     const r = await fetch("/api/tallyback/sent", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ messageId, drafted, sentText: text, channel }),
+      body: JSON.stringify({ billId, deviceId: deviceId(), messageId, drafted, sentText: text, channel }),
     }).then(readJson);
     setSent(r.wordsChanged ?? 0);
   }

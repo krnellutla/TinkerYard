@@ -3,6 +3,7 @@ import { runChecks } from "./checks";
 import { compareHistory, type PastLine } from "./history";
 import { fmt } from "./money";
 import { pastLines, toExtraction, toPromise, type StoredBill } from "./store";
+import type { Owner } from "@signin/owner";
 
 export type BillStatus = "sent" | "drafted" | "dispute" | "query" | "all_ok";
 
@@ -31,7 +32,7 @@ export function summarise(b: StoredBill) {
   };
 }
 
-export async function historyFor(deviceId: string, billId: string, ex: ReturnType<typeof toExtraction>) {
-  const past = (await pastLines(deviceId, ex.merchant_name, billId)) as PastLine[];
+export async function historyFor(owner: Owner, billId: string, ex: ReturnType<typeof toExtraction>) {
+  const past = (await pastLines(owner, ex.merchant_name, billId)) as PastLine[];
   return compareHistory(ex.lines, past, (n) => fmt(n, ex.currency ?? ""));
 }

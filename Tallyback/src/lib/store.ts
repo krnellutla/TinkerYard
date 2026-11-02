@@ -7,6 +7,7 @@ import path from "path";
 import type { CheckResult, Extraction, ExtractedLine, Promise as BillPromise } from "./types";
 import { maskDigits } from "./mask";
 import { SCHEMA, TABLES, type Table } from "./db/schema";
+import type { Owner } from "@signin/owner";
 
 // Postgres (Neon) when DATABASE_URL is set; otherwise a local JSON file so the app runs with zero setup.
 // Photos go to private Vercel Blob when BLOB_READ_WRITE_TOKEN is set.
@@ -111,9 +112,9 @@ export async function uploadImage(billId: string, bytes: Buffer, mime: string): 
   return link;
 }
 
-// Stream a private photo back, only to the device that owns the bill.
-export async function readImage(billId: string, deviceId: string): Promise<{ stream: ReadableStream; type: string } | null> {
-  const b = await getBillRow(billId, deviceId);
+// Stream a private photo back, only to whoever owns the bill.
+export async function readImage(billId: string, owner: Owner): Promise<{ stream: ReadableStream; type: string } | null> {
+  const b = await findBill(billId, owner);
   const p = b?.image_path;
   if (typeof p !== "string") return null;
   if (p.startsWith(DB_PHOTO)) {
@@ -132,12 +133,13 @@ export async function readImage(billId: string, deviceId: string): Promise<{ str
   return { stream: res.stream, type: res.blob.contentType ?? "image/jpeg" };
 }
 
-export async function saveBill(deviceId: string, ex: Extraction, imagePath: string | null, model: string) {
+export async function saveBill(owner: Owner, ex: Extraction, imagePath: string | null, model: string) {
   const billId = uuid();
   await insert("bills", [
     {
       id: billId,
-      device_id: deviceId,
+      device_id: owner.deviceId,
+      user_id: owner.userId,
       merchant_name: ex.merchant_name,
       merchant_country: ex.merchant_country,
       merchant_contact: ex.merchant_whatsapp,
@@ -177,13 +179,13 @@ export async function saveBill(deviceId: string, ex: Extraction, imagePath: stri
   return { billId, lineIds };
 }
 
-export async function saveCheck(billId: string, deviceId: string, lineIds: string[], promise: BillPromise, result: CheckResult) {
+export async function saveCheck(billId: string, owner: Owner, lineIds: string[], promise: BillPromise, result: CheckResult) {
   // Promises are rows, so "what was I promised, and when did it change?" is a query.
   await insert("promises", [
     {
       id: uuid(),
       bill_id: billId,
-      device_id: deviceId,
+      device_id: owner.deviceId,
       expected_total: promise.expectedTotal,
       prices_include_tax: promise.pricesIncludeTax,
       paid_on: promise.paidOn,
@@ -236,8 +238,19 @@ export async function saveDraft(m: {
   return id;
 }
 
-export async function markSent(messageId: string, sentText: string, wordsChanged: number, channel: string) {
-  await update("messages", messageId, { sent_text: sentText, words_changed: wordsChanged, channel, sent_at: now() });
+// Only a message drafted for this bill: the caller has already checked who owns the bill.
+export async function markSent(billId: string, messageId: string, sentText: string, wordsChanged: number, channel: string) {
+  const sql = await db();
+  if (!sql) {
+    const data = await localAll();
+    if (!(data.messages ?? []).some((m) => m.id === messageId && m.bill_id === billId)) return;
+    return update("messages", messageId, { sent_text: sentText, words_changed: wordsChanged, channel, sent_at: now() });
+  }
+  if (!/^[0-9a-f-]{36}$/i.test(messageId)) return;
+  await sql.query(
+    `update messages set sent_text = $3, words_changed = $4, channel = $5, sent_at = now() where id = $1 and bill_id = $2`,
+    [messageId, billId, sentText, wordsChanged, channel],
+  );
 }
 
 // ---------- Reads for "My bills" ----------
@@ -298,11 +311,29 @@ export function toPromise(p: Row | null): BillPromise {
 
 const newest = (rows: Row[]) => [...rows].sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
 
-export async function listBills(deviceId: string, limit = 50): Promise<StoredBill[]> {
+// Who can see a bill: the account that owns it, or the device that made it if no account has claimed it.
+const ownerSql = (owner: Owner, n: number) =>
+  owner.userId ? { where: `user_id = $${n}`, param: owner.userId } : { where: `device_id = $${n} and user_id is null`, param: owner.deviceId };
+const ownsRow = (b: Row, owner: Owner) => (owner.userId ? b.user_id === owner.userId : b.device_id === owner.deviceId && !b.user_id);
+
+// First time a signed-in person opens their bills on a device: that device's guest bills become theirs.
+export async function claimDevice(owner: Owner) {
+  if (!owner.userId || !owner.deviceId) return;
   const sql = await db();
   if (!sql) {
     const data = await localAll();
-    return newest((data.bills ?? []).filter((b) => b.device_id === deviceId))
+    if (!(data.bills ?? []).some((b) => b.device_id === owner.deviceId && !b.user_id)) return;
+    data.bills = (data.bills ?? []).map((b) => (b.device_id === owner.deviceId && !b.user_id ? { ...b, user_id: owner.userId } : b));
+    return localWrite(data);
+  }
+  await sql.query(`update bills set user_id = $1 where device_id = $2 and user_id is null`, [owner.userId, owner.deviceId]);
+}
+
+export async function listBills(owner: Owner, limit = 50): Promise<StoredBill[]> {
+  const sql = await db();
+  if (!sql) {
+    const data = await localAll();
+    return newest((data.bills ?? []).filter((b) => ownsRow(b, owner)))
       .slice(0, limit)
       .map((b) => ({
         bill: b,
@@ -311,7 +342,8 @@ export async function listBills(deviceId: string, limit = 50): Promise<StoredBil
         messages: newest((data.messages ?? []).filter((m) => m.bill_id === b.id)),
       }));
   }
-  const bills = await selectJson(sql, `select * from bills where device_id = $1 order by created_at desc limit $2`, [deviceId, limit]);
+  const o = ownerSql(owner, 1);
+  const bills = await selectJson(sql, `select * from bills where ${o.where} order by created_at desc limit $2`, [o.param, limit]);
   if (!bills.length) return [];
   const ids = bills.map((b) => b.id);
   const [lines, promises, messages] = await Promise.all(
@@ -326,29 +358,31 @@ export async function listBills(deviceId: string, limit = 50): Promise<StoredBil
   }));
 }
 
-async function getBillRow(id: string, deviceId: string): Promise<Row | null> {
+// The bill row, only if this owner may see it.
+export async function findBill(id: string, owner: Owner): Promise<Row | null> {
   const sql = await db();
-  if (!sql) return ((await localAll()).bills ?? []).find((b) => b.id === id && b.device_id === deviceId) ?? null;
+  if (!sql) return ((await localAll()).bills ?? []).find((b) => b.id === id && ownsRow(b, owner)) ?? null;
   if (!/^[0-9a-f-]{36}$/i.test(id)) return null;
-  return (await selectJson(sql, `select * from bills where id = $1 and device_id = $2`, [id, deviceId]))[0] ?? null;
+  const o = ownerSql(owner, 2);
+  return (await selectJson(sql, `select * from bills where id = $1 and ${o.where}`, [id, o.param]))[0] ?? null;
 }
 
-export async function getBill(id: string, deviceId: string): Promise<StoredBill | null> {
-  const all = await listBills(deviceId, 200);
+export async function getBill(id: string, owner: Owner): Promise<StoredBill | null> {
+  const all = await listBills(owner, 200);
   return all.find((b) => b.bill.id === id) ?? null;
 }
 
-// Photos are private: the page asks our server, which checks the device before streaming it.
+// Photos are private: the page asks our server, which checks the owner before streaming it.
 export function photoUrl(bill: Row, deviceId: string): string | null {
   const p = bill.image_path;
   if (typeof p !== "string" || p.endsWith(".pdf")) return null;
   return `/api/tallyback/bills/${bill.id}/photo?deviceId=${encodeURIComponent(deviceId)}`;
 }
 
-// Earlier lines from the same shop, on this device, for "has this shown up before?"
-export async function pastLines(deviceId: string, merchant: string | null, excludeBillId: string) {
+// Earlier lines from the same shop, for this owner, for "has this shown up before?"
+export async function pastLines(owner: Owner, merchant: string | null, excludeBillId: string) {
   if (!merchant) return [];
-  const all = await listBills(deviceId, 200);
+  const all = await listBills(owner, 200);
   const key = merchant.trim().toLowerCase();
   return all
     .filter((b) => b.bill.id !== excludeBillId && String(b.bill.merchant_name ?? "").trim().toLowerCase() === key)
