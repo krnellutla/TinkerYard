@@ -4,221 +4,428 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Tinkeryard</title>
-<meta name="description" content="A yard for half-finished AI things. Small models, odd experiments, and notes on what broke.">
+<meta name="description" content="Small AI tools that each do one job: check a bill, sum up what YouTube reviewers said, sort a note. Built in the open, with notes on what broke.">
+<meta name="theme-color" content="#D9DDD4" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121B18" media="(prefers-color-scheme: dark)">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2316231F'/%3E%3Cpath d='M11 6v21' stroke='%23F2F3EC' stroke-width='2.5'/%3E%3Cpath d='M11 7h12l-4 5 4 5H11z' fill='%23EE3F6C'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,600..800&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,500..800&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap" rel="stylesheet">
 <style>
 :root{
-  --concrete:#D9DDD4;
-  --paper:#F2F3EC;
+  --ground:#D9DDD4;      /* concrete: the yard itself */
+  --surface:#F2F3EC;     /* paper */
+  --raised:#FFFFFF;
   --ink:#16231F;
+  --muted:#56645C;
+  --line:#B4BBAF;
+  --plot:#9CA597;        /* plot boundaries on the map */
   --lawn:#2D6A3E;
-  --flag:#EE3F6C;
-  --gravel:#5C6A62;
+  --gate:#2D6A3E;
+  --flag:#E0335F;
+  --flag-ink:#FFFFFF;
+  --on-dark:#F2F3EC;
+  --on-dark-muted:#AEBAB1;
+  --panel:#16231F;       /* the workbench: always dark */
   --display:"Bricolage Grotesque","Arial Narrow",sans-serif;
   --text:"Source Serif 4",Georgia,serif;
   --gutter:clamp(16px,5vw,64px);
+  color-scheme:light;
 }
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#121B18;--surface:#18241F;--raised:#1F2D27;--ink:#E6EAE3;--muted:#9DAAA1;--line:#33443C;--plot:#3E5047;
+    --lawn:#5FAE73;--gate:#1F4A2B;--flag:#F2557D;--panel:#0C1311;color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#121B18;--surface:#18241F;--raised:#1F2D27;--ink:#E6EAE3;--muted:#9DAAA1;--line:#33443C;--plot:#3E5047;
+  --lawn:#5FAE73;--gate:#1F4A2B;--flag:#F2557D;--panel:#0C1311;color-scheme:dark;
+}
+
 *{box-sizing:border-box}
-html{-webkit-text-size-adjust:100%}
-body{margin:0;background:var(--concrete);color:var(--ink);font-family:var(--text);font-size:1.125rem;line-height:1.6}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--text);font-size:1.125rem;line-height:1.6;overflow-x:hidden}
 a{color:inherit}
 :focus-visible{outline:3px solid var(--flag);outline-offset:3px}
 .wrap{padding-inline:var(--gutter);max-width:1240px;margin-inline:auto}
+.skip{position:absolute;left:-9999px}
+.skip:focus{left:16px;top:16px;z-index:10;background:var(--surface);padding:8px 12px}
+
+h1,h2,h3{font-family:var(--display);letter-spacing:-.015em}
+h2{font-stretch:78%;font-weight:800;font-size:clamp(2.2rem,5vw,3.6rem);line-height:.98;margin:0 0 14px}
+h3{font-stretch:82%;font-weight:700;margin:0}
+p{margin:0}
+.sub{max-width:36em;color:var(--muted)}
+
+/* buttons */
+.btn{display:inline-flex;align-items:center;gap:10px;font-family:var(--display);font-stretch:85%;font-weight:700;font-size:1.05rem;line-height:1;text-decoration:none;padding:15px 22px;border-radius:3px;border:0;cursor:pointer;background:var(--flag);color:var(--flag-ink)}
+.btn:hover{filter:brightness(.92)}
+.btn.ghost{background:transparent;color:inherit;box-shadow:inset 0 0 0 2px currentColor}
+.btn.ghost:hover{background:color-mix(in srgb,currentColor 8%,transparent);filter:none}
+
+/* flags: the one mark that carries status everywhere on the page */
+.flag{display:block;width:16px;height:20px;flex:none}
+.flag{color:var(--ink)}
+.f-here{--cloth:var(--flag)}
+.f-run{--cloth:var(--lawn)}
+.f-exp{--cloth:transparent;--cloth-line:var(--ink)}
 
 /* top bar */
-.bar{display:flex;justify-content:space-between;align-items:center;padding-block:20px;font-family:var(--display);font-weight:700;font-stretch:80%}
-.mark{display:flex;align-items:center;gap:10px;font-size:1.35rem;text-decoration:none;letter-spacing:-.01em}
-.mark svg{width:22px;height:26px}
-.bar nav{display:flex;gap:24px;font-size:1.05rem;font-weight:600}
+.bar{display:flex;justify-content:space-between;align-items:center;gap:16px;padding-block:20px}
+.mark{display:flex;align-items:center;gap:10px;font-family:var(--display);font-stretch:80%;font-weight:700;font-size:1.35rem;text-decoration:none}
+.mark svg{width:20px;height:24px}
+.bar nav{display:flex;gap:clamp(14px,2.5vw,28px);font-family:var(--display);font-stretch:85%;font-weight:600;font-size:1.02rem}
 .bar nav a{text-decoration:none;padding-block:6px;border-bottom:2px solid transparent}
 .bar nav a:hover{border-color:var(--flag)}
 
 /* hero */
-.hero{padding-block:clamp(32px,7vw,88px) clamp(40px,7vw,96px)}
-h1{font-family:var(--display);font-stretch:75%;font-weight:800;font-size:clamp(3.4rem,13.5vw,10.5rem);line-height:.86;letter-spacing:-.025em;margin:0 0 clamp(28px,4vw,48px);max-width:11ch}
-.lede{max-width:34em;font-size:clamp(1.15rem,2vw,1.4rem);margin:0 0 40px}
+.hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);gap:clamp(32px,5vw,72px);align-items:center;padding-block:clamp(28px,6vw,72px) clamp(48px,7vw,96px)}
+h1{font-stretch:75%;font-weight:800;font-size:clamp(3.2rem,8.4vw,7rem);line-height:.88;letter-spacing:-.03em;margin:0 0 28px;max-width:9ch}
+.lede{font-size:clamp(1.15rem,1.8vw,1.35rem);max-width:30em;margin-bottom:32px}
+.cta{display:flex;flex-wrap:wrap;gap:12px}
 
-.bench{background:var(--ink);color:var(--paper);padding:clamp(20px,3vw,36px);max-width:860px;position:relative}
-.bench::before{content:"";position:absolute;left:clamp(20px,3vw,36px);top:-18px;width:3px;height:52px;background:var(--paper)}
-.bench::after{content:"";position:absolute;left:calc(clamp(20px,3vw,36px) + 3px);top:-18px;width:30px;height:24px;background:var(--flag);clip-path:polygon(0 0,100% 0,72% 50%,100% 100%,0 100%)}
-.bench h2{font-family:var(--display);font-stretch:85%;font-size:1.5rem;margin:14px 0 6px;font-weight:700;letter-spacing:-.01em}
-.bench .hint{margin:0 0 20px;color:#B9C3BB;font-size:1rem}
-.bench form{display:flex;gap:10px;flex-wrap:wrap}
-.bench label{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
-.bench input{flex:1 1 260px;min-width:0;font:inherit;font-size:1.15rem;background:var(--paper);color:var(--ink);border:0;padding:14px 16px;border-radius:2px}
-.bench input::placeholder{color:#6d786f}
-button{font-family:var(--display);font-stretch:85%;font-weight:700;font-size:1.05rem;cursor:pointer;border:0;border-radius:2px;padding:14px 22px;background:var(--flag);color:#fff}
-button:hover{background:#d62f5b}
-button.quiet{background:transparent;color:var(--paper);box-shadow:inset 0 0 0 2px #52625a}
-button.quiet:hover{background:#22332d}
-.out{min-height:5.2em;margin:22px 0 4px;font-size:clamp(1.2rem,2.4vw,1.55rem);line-height:1.45}
-.out .seed{color:#B9C3BB}
-.out .gen{color:var(--paper)}
-.out .cursor{display:inline-block;width:.5ch;height:1.1em;background:var(--flag);vertical-align:-.15em;margin-left:2px}
-.fine{margin:12px 0 0;font-size:.9rem;color:#9AA89F}
+/* the yard map: every project as a staked plot */
+.map{margin:0;background:var(--surface);padding:clamp(14px,2vw,22px);border-radius:4px}
+.map-grid{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(6,1fr);grid-auto-rows:minmax(96px,auto);gap:10px}
+.plot{position:relative;border:1.5px dashed var(--plot);border-radius:2px}
+.plot a{display:flex;flex-direction:column;justify-content:flex-end;height:100%;padding:38px 12px 10px;text-decoration:none;transition:background .15s}
+.plot a:hover{background:color-mix(in srgb,var(--ink) 5%,transparent)}
+.plot .flag{position:absolute;top:10px;left:12px}
+.plot b{font-family:var(--display);font-stretch:82%;font-weight:700;font-size:1.15rem;line-height:1.05}
+.plot small{font-size:.85rem;color:var(--muted);line-height:1.3;margin-top:3px}
+.plot.big{grid-column:span 3;grid-row:span 2;border-style:solid;border-color:var(--ink)}
+.plot.big b{font-size:clamp(1.4rem,2.4vw,1.9rem)}
+.plot.big .flag{width:22px;height:28px}
+.plot.mid{grid-column:span 2}
+.plot.wide{grid-column:span 3}
+.legend{display:flex;flex-wrap:wrap;gap:6px 18px;margin-top:14px;font-size:.88rem;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend .flag{width:12px;height:15px}
 
 /* sections */
-section{padding-block:clamp(48px,7vw,96px)}
-.paper{background:var(--paper)}
-h2.sec{font-family:var(--display);font-stretch:75%;font-weight:800;font-size:clamp(2.4rem,6vw,4.4rem);line-height:.95;letter-spacing:-.02em;margin:0 0 12px}
-.sub{max-width:36em;margin:0 0 32px;color:var(--gravel)}
+section{padding-block:clamp(56px,8vw,104px)}
+.on-surface{background:var(--surface)}
+.head{margin-bottom:clamp(28px,4vw,44px)}
 
+/* featured apps */
+.apps{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(16px,2.5vw,28px)}
+.app{display:flex;flex-direction:column;background:var(--raised);border-radius:4px;border:1px solid var(--line);overflow:hidden}
+.app .stage{background:var(--panel);color:var(--on-dark);padding:clamp(20px,3vw,32px);min-height:330px;display:flex;align-items:center;justify-content:center}
+.app .body{padding:clamp(20px,3vw,32px);display:flex;flex-direction:column;gap:16px;flex:1}
+.app h3{font-size:clamp(1.8rem,3vw,2.4rem);line-height:1}
+.facts{list-style:none;margin:0;padding:0;border-top:1px solid var(--line)}
+.facts li{padding:10px 0;border-bottom:1px solid var(--line);font-size:1rem}
+.facts strong{font-family:var(--display);font-stretch:85%;font-weight:700;margin-right:6px}
+.app .row{display:flex;flex-wrap:wrap;align-items:center;gap:12px 18px;margin-top:auto;padding-top:6px}
+.app .note{font-size:.92rem;color:var(--muted);max-width:24em}
 
-.projects{list-style:none;margin:0;padding:0;border-top:3px solid var(--ink)}
-.projects li{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr) auto;gap:8px 32px;align-items:baseline;padding:22px 0;border-bottom:1px solid #b9bfb3}
-.projects li[hidden]{display:none}
-.projects h3{font-family:var(--display);font-stretch:80%;font-weight:700;font-size:clamp(1.6rem,3vw,2.2rem);line-height:1.05;margin:0;letter-spacing:-.01em}
-.projects p{margin:0}
-.projects h3 a{text-decoration:none}
-.projects h3 a:hover{text-decoration:underline;text-decoration-color:var(--flag);text-decoration-thickness:3px;text-underline-offset:5px}
-.projects .stack{color:var(--gravel);font-size:.95rem;font-style:italic;grid-column:2}
-.status{display:inline-flex;align-items:center;gap:8px;font-family:var(--display);font-stretch:85%;font-weight:700;font-size:1rem;grid-row:1;grid-column:3;justify-self:end;white-space:nowrap}
-.status svg{width:22px;height:22px;flex:none}
+/* product sketches inside the stages */
+.sketch{display:grid;gap:14px;width:100%;max-width:340px}
+.receipt{width:min(290px,100%);background:#FBFBF6;color:#16231F;font-size:.9rem;line-height:1.35;padding:18px 18px 16px;transform:rotate(-1.5deg);
+  -webkit-mask:linear-gradient(#000 0 0) top/100% calc(100% - 8px) no-repeat,radial-gradient(circle 5px at 50% 100%,transparent 98%,#000) bottom/12px 8px repeat-x;
+          mask:linear-gradient(#000 0 0) top/100% calc(100% - 8px) no-repeat,radial-gradient(circle 5px at 50% 100%,transparent 98%,#000) bottom/12px 8px repeat-x}
+.receipt .t{font-family:var(--display);font-stretch:80%;font-weight:700;font-size:1.05rem;text-align:center;margin-bottom:10px}
+.receipt .l{display:flex;justify-content:space-between;gap:12px;padding:3px 0}
+.receipt .l.sum{border-top:1px dashed #9aa39a;margin-top:6px;padding-top:7px}
+.receipt .l.bad{background:#FDE3EA;box-shadow:0 0 0 2px #E0335F;margin-inline:-6px;padding-inline:6px}
+.receipt .why{font-size:.8rem;color:#B0244B;margin-top:6px}
+.bubble{background:#DCF8C6;color:#16231F;border-radius:10px 10px 2px 10px;padding:10px 12px;font-size:.9rem;line-height:1.4;justify-self:end;max-width:92%;transform:rotate(1deg)}
+.summary{width:100%;max-width:380px;font-size:.95rem;line-height:1.55}
+.summary .q{font-family:var(--display);font-stretch:85%;font-weight:600;background:#22332D;padding:10px 14px;border-radius:3px;margin-bottom:16px;display:flex;justify-content:space-between;gap:10px}
+.summary .q span{color:var(--on-dark-muted);font-weight:500;white-space:nowrap}
+.summary p{margin-bottom:10px}
+.cite{display:inline-block;font-family:var(--display);font-stretch:85%;font-weight:600;font-size:.78rem;background:#2D3F38;color:#F2F3EC;padding:1px 7px;border-radius:2px;white-space:nowrap;vertical-align:1px}
+.cite::before{content:"";display:inline-block;border-left:6px solid #F2557D;border-top:4px solid transparent;border-bottom:4px solid transparent;margin-right:5px}
+.summary .example{font-size:.8rem;color:var(--on-dark-muted);text-align:right;margin:0}
 
-/* embedded demo */
-.embed{max-width:860px;border:3px solid var(--ink);background:#fff}
-.embed iframe{display:block;width:100%;height:640px;border:0}
-.embed-tall iframe{height:900px}
-.embed-note{max-width:860px;margin:16px 0 0;color:var(--gravel);font-size:1rem}
-.embed-note a{color:var(--ink)}
+/* also running */
+.runs{list-style:none;margin:0;padding:0;border-top:2px solid var(--ink)}
+.runs li{display:grid;grid-template-columns:minmax(0,4fr) minmax(0,6fr) minmax(0,3fr);gap:6px 32px;align-items:baseline;padding:22px 0;border-bottom:1px solid var(--line)}
+.runs h3{font-size:clamp(1.4rem,2.4vw,1.8rem);display:flex;align-items:center;gap:10px}
+.runs h3 a{text-decoration:none}
+.runs h3 a:hover{text-decoration:underline;text-decoration-color:var(--flag);text-decoration-thickness:3px;text-underline-offset:5px}
+.runs .url{font-size:.95rem;color:var(--muted);justify-self:end;text-align:right}
 
+/* experiments */
+.exps{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(16px,2.5vw,28px)}
+.exp{border:1.5px dashed var(--plot);border-radius:4px;padding:clamp(20px,3vw,32px);display:flex;flex-direction:column;gap:14px}
+.exp h3{font-size:clamp(1.6rem,2.6vw,2rem);display:flex;align-items:center;gap:10px}
+.score{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+.score b{font-family:var(--display);font-stretch:75%;font-weight:800;font-size:clamp(2.6rem,5vw,3.6rem);line-height:1;letter-spacing:-.02em}
+.score span{color:var(--muted);font-size:1rem;max-width:18em;line-height:1.35}
+.links{font-size:.95rem;color:var(--muted)}
+.frame{border:2px solid var(--ink);background:#fff;border-radius:2px;overflow:hidden;margin-bottom:8px}
+.frame iframe{display:block;width:100%;height:620px;border:0}
+.exp .row{display:flex;flex-wrap:wrap;gap:12px 18px;align-items:center;margin-top:auto}
 
-/* gate */
-.gate{background:var(--lawn);color:var(--paper)}
-.gate h2.sec{max-width:12ch}
-.gate p{max-width:32em;margin:0 0 28px;font-size:1.25rem}
-.gate .row{display:flex;gap:12px;flex-wrap:wrap}
-.gate a.btn{font-family:var(--display);font-stretch:85%;font-weight:700;font-size:1.1rem;text-decoration:none;padding:14px 24px;border-radius:2px;background:var(--paper);color:var(--ink)}
-.gate a.btn:hover{background:#fff}
-.gate a.btn.alt{background:transparent;color:var(--paper);box-shadow:inset 0 0 0 2px var(--paper)}
-.gate a.btn.alt:hover{background:#245631}
+/* the babbler: smallest model on the yard */
+.bench{grid-column:1 / -1;background:var(--panel);color:var(--on-dark);border-radius:4px;padding:clamp(20px,3vw,32px);display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.5fr);gap:clamp(20px,4vw,48px)}
+.bench h3{font-size:clamp(1.5rem,2.4vw,1.9rem);margin-bottom:10px}
+.bench .hint{color:var(--on-dark-muted);font-size:1rem}
+.bench form{display:flex;gap:10px;flex-wrap:wrap}
+.bench label{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.bench input{flex:1 1 220px;min-width:0;font:inherit;font-size:1.05rem;background:#F2F3EC;color:#16231F;border:0;padding:13px 14px;border-radius:3px}
+.bench input::placeholder{color:#6d786f}
+.out{min-height:4.6em;margin-top:18px;font-size:clamp(1.1rem,2vw,1.35rem);line-height:1.45}
+.out .seed{color:var(--on-dark-muted)}
+.cursor{display:inline-block;width:.5ch;height:1.1em;background:#F2557D;vertical-align:-.15em;margin-left:2px;animation:blink 1s steps(2) infinite}
+@keyframes blink{50%{opacity:0}}
 
-footer{padding-block:28px;font-size:.95rem;color:var(--gravel)}
+/* how I build */
+.rules{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(24px,4vw,48px);border-top:2px solid var(--ink);padding-top:28px}
+.rules h3{font-size:1.5rem;line-height:1.1;margin-bottom:10px}
+.rules p{color:var(--muted);font-size:1.05rem}
+
+/* contact */
+.gate{background:var(--gate);color:#F2F3EC}
+.gate .wrap{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:32px;align-items:end}
+.gate h2{max-width:11ch;margin:0}
+.gate p{font-size:1.2rem;max-width:30em;margin-bottom:24px}
+.gate .btn{background:#F2F3EC;color:#16231F}
+.gate .btn.ghost{background:transparent;color:#F2F3EC}
+
+footer{padding-block:28px;font-size:.95rem;color:var(--muted)}
 footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
 
-@media (max-width:720px){
-  .bar nav{gap:16px}
-  .projects li{grid-template-columns:1fr auto}
-  .projects .stack{grid-column:1 / -1}
-  .projects p.what{grid-column:1 / -1}
-  .status{grid-column:2}
+@media (max-width:960px){
+  .hero,.apps,.exps,.bench,.gate .wrap{grid-template-columns:1fr}
 }
-@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
-.cursor{animation:blink 1s steps(2) infinite}
-@keyframes blink{50%{opacity:0}}
-@media (prefers-reduced-motion:reduce){.cursor{animation:none}}
+@media (max-width:720px){
+  .bar nav a.opt{display:none}
+  .map-grid{grid-template-columns:repeat(2,1fr);grid-auto-rows:minmax(84px,auto)}
+  .plot.big,.plot.mid,.plot.wide{grid-column:span 1;grid-row:span 1}
+  .plot.big b{font-size:1.25rem}
+  .map-grid .plot:last-child{grid-column:span 2}
+  .runs li{grid-template-columns:1fr}
+  .runs .url{justify-self:start;text-align:left}
+  .rules{grid-template-columns:1fr}
+  .app .stage{min-height:0}
+  .frame iframe{height:560px}
+}
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  .cursor{animation:none}
+  .plot a{transition:none}
+}
 </style>
 </head>
 <body>
+<a class="skip" href="#top">Skip to content</a>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="flag" viewBox="0 0 16 20"><path d="M2 1v19" stroke="currentColor" stroke-width="2"/><path d="M3.7 2.7h9.8l-3.5 3.8 3.5 3.8H3.7z" fill="var(--cloth,none)" stroke="var(--cloth-line,none)" stroke-width="1.4"/></symbol>
+</svg>
 
 <header class="wrap bar">
-  <a class="mark" href="#top" aria-label="Tinkeryard home">
-    <svg viewBox="0 0 22 26" aria-hidden="true"><path d="M3 1v25" stroke="#16231F" stroke-width="2.6"/><path d="M4 2h16l-5 6 5 6H4z" fill="#EE3F6C"/></svg>
+  <a class="mark" href="/" aria-label="Tinkeryard home">
+    <svg viewBox="0 0 22 26" aria-hidden="true"><path d="M3 1v25" stroke="currentColor" stroke-width="2.6"/><path d="M4 2h16l-5 6 5 6H4z" fill="var(--flag)"/></svg>
     tinkeryard
   </a>
   <nav aria-label="Main">
-    <a href="#projects">Projects</a>
-    <a href="#gate">Follow</a>
+    <a href="#apps">Apps</a>
+    <a href="#experiments">Experiments</a>
+    <a class="opt" href="#how">How I build</a>
+    <a href="#contact">Contact</a>
   </nav>
 </header>
 
 <main id="top">
   <div class="wrap hero">
-    <h1>A yard for half-finished AI things.</h1>
-    <p class="lede">I build small models, odd experiments, and tools nobody asked for. Everything here runs on a laptop, and I write down what broke.</p>
-
-    <div class="bench">
-      <h2>Try the smallest model on the yard</h2>
-      <p class="hint">Type a few words. A word-pair model trained on this page's own copy will finish your sentence.</p>
-      <form id="babble" autocomplete="off">
-        <label for="seed">Start a sentence</label>
-        <input id="seed" name="seed" type="text" maxlength="80" placeholder="The model I trained last night…">
-        <button type="submit">Finish it</button>
-        <button type="button" class="quiet" id="again">Try again</button>
-      </form>
-      <p class="out" id="out" aria-live="polite"></p>
-      <p class="fine">About 40 lines of JavaScript, no server, no API key. It guesses the next word from the last two.</p>
+    <div>
+      <h1>Small AI tools that do one job well.</h1>
+      <p class="lede">Tinkeryard is where I build them in the open. Check a restaurant bill, hear what YouTube reviewers agree on, sort a note. Everything here runs today, and each one comes with notes on what broke.</p>
+      <div class="cta">
+        <a class="btn" href="/tallyback">Check a bill</a>
+        <a class="btn ghost" href="/reviewscout">Search reviews</a>
+      </div>
     </div>
+
+    <figure class="map" aria-labelledby="map-cap">
+      <ul class="map-grid">
+        <li class="plot big"><a href="/tallyback"><svg class="flag f-here" aria-hidden="true"><use href="#flag"/></svg><b>TallyBack</b><small>Finds the charge on a bill that doesn't add up</small></a></li>
+        <li class="plot big"><a href="/reviewscout"><svg class="flag f-here" aria-hidden="true"><use href="#flag"/></svg><b>Review Scout</b><small>What YouTube reviewers said, with timestamps</small></a></li>
+        <li class="plot mid"><a href="https://omni.tinkeryard.dev"><svg class="flag f-run" aria-hidden="true"><use href="#flag"/></svg><b>OmniShelf</b><small>Offline shop inventory</small></a></li>
+        <li class="plot mid"><a href="https://portfolix.tinkeryard.dev"><svg class="flag f-run" aria-hidden="true"><use href="#flag"/></svg><b>Portfolix</b><small>Photographer sites</small></a></li>
+        <li class="plot mid"><a href="https://geo.tinkeryard.dev"><svg class="flag f-run" aria-hidden="true"><use href="#flag"/></svg><b>GEO Tracker</b><small>A 21-day test, in public</small></a></li>
+        <li class="plot wide"><a href="#memo-sorter"><svg class="flag f-exp" aria-hidden="true"><use href="#flag"/></svg><b>Memo Sorter</b><small>A 22M-parameter note tagger</small></a></li>
+        <li class="plot wide"><a href="#fifty-questions"><svg class="flag f-exp" aria-hidden="true"><use href="#flag"/></svg><b>Fifty Questions</b><small>Four small models, one exam</small></a></li>
+      </ul>
+      <figcaption class="legend" id="map-cap">
+        <span><svg class="flag f-here" aria-hidden="true"><use href="#flag"/></svg>Live on this site</span>
+        <span><svg class="flag f-run" aria-hidden="true"><use href="#flag"/></svg>Running on its own address</span>
+        <span><svg class="flag f-exp" aria-hidden="true"><use href="#flag"/></svg>Experiment</span>
+      </figcaption>
+    </figure>
   </div>
 
-  <section class="paper" id="projects">
+  <section class="on-surface" id="apps">
     <div class="wrap">
-      <h2 class="sec">On the bench</h2>
-      <p class="sub">Everything here runs today. Open one to try it.</p>
+      <div class="head">
+        <h2>Live on tinkeryard.dev</h2>
+        <p class="sub">Two apps you can use right now. Both show a free example to anyone. Running your own needs an invite, because each run costs real money.</p>
+      </div>
 
-      <ul class="projects" id="list">
-        <li data-s="running">
-          <h3><a href="https://omni.tinkeryard.dev">OmniShelf</a></h3>
-          <p class="what">Inventory for small shops that keeps working offline. Scan a barcode, and it syncs when the connection comes back.</p>
-          <span class="status"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 2v19" stroke="#16231F" stroke-width="2.4"/><path d="M5 3h14l-4 5 4 5H5z" fill="#2D6A3E"/></svg>Running</span>
-          <p class="stack">omni.tinkeryard.dev &middot; React, Firebase</p>
+      <div class="apps">
+        <article class="app">
+          <div class="stage" aria-hidden="true">
+            <div class="sketch">
+              <div class="receipt">
+                <div class="t">Table 7</div>
+                <div class="l"><span>Paneer tikka</span><span>320</span></div>
+                <div class="l"><span>Butter naan × 4</span><span>240</span></div>
+                <div class="l"><span>Dal makhani</span><span>480</span></div>
+                <div class="l sum"><span>Subtotal</span><span>1,040</span></div>
+                <div class="l bad"><span>Service 10%</span><span>112</span></div>
+                <p class="why">10% of 1,040 is 104. You were charged 8 more.</p>
+              </div>
+              <div class="bubble">Hi, the service charge on table 7 is ₹112, but 10% of ₹1,040 is ₹104. Could you correct it?</div>
+            </div>
+          </div>
+          <div class="body">
+            <h3>TallyBack</h3>
+            <p>Snap a bill. TallyBack points at the line that doesn't add up and writes one polite WhatsApp message to send.</p>
+            <ul class="facts">
+              <li><strong>The AI only reads.</strong>It copies the bill into lines; plain code does every sum.</li>
+              <li><strong>Your bills stay yours.</strong>Saved to your account with the photo, ready for the next dispute.</li>
+            </ul>
+            <div class="row">
+              <a class="btn" href="/tallyback">Check a bill</a>
+              <span class="note">Try the sample receipt without signing in.</span>
+            </div>
+          </div>
+        </article>
+
+        <article class="app">
+          <div class="stage" aria-hidden="true">
+            <div class="summary">
+              <div class="q">Is this robot vacuum worth it? <span>6 videos</span></div>
+              <p>Most reviewers say suction is strong on hard floors <span class="cite">Home Lab 4:12</span> but it struggles with thick rugs <span class="cite">Dan Tests 7:40</span>.</p>
+              <p>Two of six mention the app losing its map after updates <span class="cite">Clean Setup 11:03</span>.</p>
+              <p class="example">Example output</p>
+            </div>
+          </div>
+          <div class="body">
+            <h3>Review Scout</h3>
+            <p>Type a product you're deciding on. Review Scout watches the YouTube reviews for you and sums them up, and every claim links to the moment it was said.</p>
+            <ul class="facts">
+              <li><strong>Every claim is cited.</strong>Click a source to open the video at that second.</li>
+              <li><strong>Ask follow-ups.</strong>Answers come from the same videos and nothing else.</li>
+            </ul>
+            <div class="row">
+              <a class="btn" href="/reviewscout">Search reviews</a>
+              <span class="note">Sign in with an invited email to run a search.</span>
+            </div>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section id="running">
+    <div class="wrap">
+      <div class="head">
+        <h2>Also running</h2>
+        <p class="sub">Earlier builds that live on their own addresses.</p>
+      </div>
+      <ul class="runs">
+        <li>
+          <h3><svg class="flag f-run" aria-hidden="true"><use href="#flag"/></svg><a href="https://omni.tinkeryard.dev">OmniShelf</a></h3>
+          <p>Inventory for small shops that keeps working offline. Scan a barcode, and it syncs when the connection comes back.</p>
+          <span class="url">omni.tinkeryard.dev</span>
         </li>
-        <li data-s="running">
-          <h3><a href="https://portfolix.tinkeryard.dev">Portfolix</a></h3>
-          <p class="what">A portfolio site builder for photographers, where each photographer gets their own domain.</p>
-          <span class="status"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 2v19" stroke="#16231F" stroke-width="2.4"/><path d="M5 3h14l-4 5 4 5H5z" fill="#2D6A3E"/></svg>Running</span>
-          <p class="stack">portfolix.tinkeryard.dev &middot; React, Postgres</p>
+        <li>
+          <h3><svg class="flag f-run" aria-hidden="true"><use href="#flag"/></svg><a href="https://portfolix.tinkeryard.dev">Portfolix</a></h3>
+          <p>A portfolio site builder for photographers, where each photographer gets their own domain.</p>
+          <span class="url">portfolix.tinkeryard.dev</span>
         </li>
-        <li data-s="running">
-          <h3><a href="https://geo.tinkeryard.dev">GEO MVP Tracker</a></h3>
-          <p class="what">A 21-day board for testing an AI visibility audit by hand: the evidence gathered along the way, and a final verdict. Anyone can read it. Only I can edit it.</p>
-          <span class="status"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 2v19" stroke="#16231F" stroke-width="2.4"/><path d="M5 3h14l-4 5 4 5H5z" fill="#2D6A3E"/></svg>Running</span>
-          <p class="stack">geo.tinkeryard.dev</p>
-        </li>
-        <li data-s="running">
-          <h3><a href="/tallyback">TallyBack</a></h3>
-          <p class="what">Snap any bill and it highlights the line that doesn't add up, then writes one WhatsApp message to send. The AI only reads the bill; code does every sum.</p>
-          <span class="status"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 2v19" stroke="#16231F" stroke-width="2.4"/><path d="M5 3h14l-4 5 4 5H5z" fill="#2D6A3E"/></svg>Running</span>
-          <p class="stack">tinkeryard.dev/tallyback &middot; Next.js, Gemini, Neon</p>
-        </li>
-        <li data-s="running">
-          <h3><a href="#fifty-questions">Fifty Questions</a></h3>
-          <p class="what">Fifty questions with automatic checkers. Four small models ran it on my laptop and scored from 29 to 47. Every one of them struggled most with following instructions.</p>
-          <span class="status"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 2v19" stroke="#16231F" stroke-width="2.4"/><path d="M5 3h14l-4 5 4 5H5z" fill="#2D6A3E"/></svg>Running</span>
-          <p class="stack">Python, Transformers, no GPU</p>
-        </li>
-        <li data-s="running">
-          <h3><a href="#memo-sorter">Memo Sorter</a></h3>
-          <p class="what">Tags a short note as idea, todo, reminder or journal. It gets 40 of 48 unseen notes right and still mixes up ideas and todos.</p>
-          <span class="status"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 2v19" stroke="#16231F" stroke-width="2.4"/><path d="M5 3h14l-4 5 4 5H5z" fill="#2D6A3E"/></svg>Running</span>
-          <p class="stack">22M-parameter MiniLM, trained on a laptop CPU in 36 seconds</p>
+        <li>
+          <h3><svg class="flag f-run" aria-hidden="true"><use href="#flag"/></svg><a href="https://geo.tinkeryard.dev">GEO MVP Tracker</a></h3>
+          <p>A 21-day board for testing an AI visibility audit by hand: the evidence gathered along the way, and a final verdict. Anyone can read it.</p>
+          <span class="url">geo.tinkeryard.dev</span>
         </li>
       </ul>
     </div>
   </section>
 
-  <section id="memo-sorter">
+  <section class="on-surface" id="experiments">
     <div class="wrap">
-      <h2 class="sec">Try Memo Sorter</h2>
-      <p class="sub">Type any short note and the model picks a tag. Try something that could be an idea or a todo, and watch it hesitate.</p>
-      <div class="embed">
-        <iframe src="https://knellutla-memo-sorter.hf.space/?__theme=light" title="Memo Sorter demo" loading="lazy" allow="clipboard-write"></iframe>
+      <div class="head">
+        <h2>Experiments</h2>
+        <p class="sub">Small models trained and tested on a laptop. The scores are honest, including the parts that went wrong.</p>
       </div>
-      <p class="embed-note">The demo wakes up slowly if nobody has used it for a while. <a href="https://huggingface.co/spaces/knellutla/memo-sorter">Open it on Hugging Face</a> or read the <a href="https://huggingface.co/knellutla/memo-sorter-minilm">model card</a>.</p>
+
+      <div class="exps">
+        <article class="exp" id="memo-sorter">
+          <h3><svg class="flag f-exp" aria-hidden="true"><use href="#flag"/></svg>Memo Sorter</h3>
+          <div class="score"><b>40 / 48</b><span>unseen notes tagged right. It still mixes up ideas and todos.</span></div>
+          <p>Tags a short note as idea, todo, reminder or journal. A 22M-parameter MiniLM, trained on a laptop CPU in 36 seconds.</p>
+          <div class="slot" data-src="https://knellutla-memo-sorter.hf.space/?__theme=light" data-title="Memo Sorter demo"></div>
+          <div class="row">
+            <button class="btn ghost load" type="button">Load the demo</button>
+            <span class="links"><a href="https://huggingface.co/knellutla/memo-sorter-minilm">Model card</a></span>
+          </div>
+        </article>
+
+        <article class="exp" id="fifty-questions">
+          <h3><svg class="flag f-exp" aria-hidden="true"><use href="#flag"/></svg>Fifty Questions</h3>
+          <div class="score"><b>29–47</b><span>out of 50 across four small models. All of them struggled most with following instructions.</span></div>
+          <p>Fifty questions with automatic checkers. Open any question to read every model's reply, or ask one your own.</p>
+          <div class="slot" data-src="https://knellutla-fifty-questions.hf.space/?__theme=light" data-title="Fifty Questions results"></div>
+          <div class="row">
+            <button class="btn ghost load" type="button">Load the results</button>
+            <span class="links"><a href="https://github.com/krnellutla/fifty-questions">Code on GitHub</a></span>
+          </div>
+        </article>
+
+        <div class="bench">
+          <div>
+            <h3>The smallest model on the yard</h3>
+            <p class="hint">Type a few words. A word-pair model trained on this site's own notes will finish your sentence. About 40 lines of JavaScript, running in your browser.</p>
+          </div>
+          <div>
+            <form id="babble" autocomplete="off">
+              <label for="seed">Start a sentence</label>
+              <input id="seed" name="seed" type="text" maxlength="80" placeholder="The model I trained last night">
+              <button class="btn" type="submit">Finish it</button>
+              <button class="btn ghost" type="button" id="again">Try again</button>
+            </form>
+            <p class="out" id="out" aria-live="polite"></p>
+          </div>
+        </div>
+      </div>
     </div>
   </section>
 
-  <section id="fifty-questions">
+  <section id="how">
     <div class="wrap">
-      <h2 class="sec">Compare small models</h2>
-      <p class="sub">Four small models took the same fifty questions on my laptop. See how each one scored, open any question to read every reply, or ask a model your own.</p>
-      <div class="embed embed-tall">
-        <iframe src="https://knellutla-fifty-questions.hf.space/?__theme=light" title="Fifty Questions results" loading="lazy" allow="clipboard-write"></iframe>
+      <div class="head"><h2>How I build</h2></div>
+      <div class="rules">
+        <div>
+          <h3>The AI reads. Code checks.</h3>
+          <p>Models are good at reading messy things and bad at sums. So the model turns a photo into lines, and ordinary code decides what's wrong.</p>
+        </div>
+        <div>
+          <h3>Show the source.</h3>
+          <p>An answer you can't check isn't worth much. Summaries link to the exact second in the video; bill checks show the line and the math.</p>
+        </div>
+        <div>
+          <h3>Write down what broke.</h3>
+          <p>Every project keeps notes on what failed and why. The failures are usually the most useful part.</p>
+        </div>
       </div>
-      <p class="embed-note">The demo wakes up slowly if nobody has used it for a while. <a href="https://huggingface.co/spaces/knellutla/fifty-questions">Open it on Hugging Face</a> or read the <a href="https://github.com/krnellutla/fifty-questions">code on GitHub</a>.</p>
     </div>
   </section>
 
-  <section class="gate" id="gate">
+  <section class="gate" id="contact">
     <div class="wrap">
-      <h2 class="sec">The gate is open</h2>
-      <p>Follow along as things get built, break, and get fixed. If you are tinkering on something similar, say hello.</p>
-      <div class="row">
-        <a class="btn" href="https://github.com/krnellutla">See the code on GitHub</a>
-        <a class="btn alt" href="mailto:hello@tinkeryard.dev">Email me</a>
+      <h2>Building something similar?</h2>
+      <div>
+        <p>I'm happy to compare notes, or send an invite if you'd like to try the apps with your own bills and searches.</p>
+        <div class="cta">
+          <a class="btn" href="mailto:hello@tinkeryard.dev">Email me</a>
+          <a class="btn ghost" href="https://github.com/krnellutla">See the code on GitHub</a>
+        </div>
       </div>
     </div>
   </section>
@@ -233,6 +440,20 @@ footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
 
 <script>
 (function(){
+  /* demos load only when asked: each one is a whole app from Hugging Face */
+  document.querySelectorAll('.exp .load').forEach(function(btn){
+    btn.addEventListener('click',function(){
+      var slot=btn.closest('.exp').querySelector('.slot');
+      var f=document.createElement('iframe');
+      f.src=slot.dataset.src;f.title=slot.dataset.title;f.allow='clipboard-write';
+      var box=document.createElement('div');box.className='frame';box.appendChild(f);
+      var note=document.createElement('p');note.className='links';
+      note.textContent='It can take a minute to wake up if nobody has used it for a while.';
+      slot.append(box,note);
+      btn.remove();
+    });
+  });
+
   /* word-pair babbler */
   var corpus=[
     "I build small models that run on a laptop and I write down what broke.",
@@ -244,27 +465,27 @@ footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
     "The best prompt I ever wrote was the third one, after the first two failed in interesting ways.",
     "Running a language model on a laptop teaches you what every megabyte is worth.",
     "I keep a pile of half finished projects because each one taught me something the finished ones did not.",
-    "The cat at the door was a different cat than the model expected, so I took more photos.",
+    "The model reads the bill and the code does the sums because models are bad at sums.",
     "Good evaluation is just fifty honest questions and the patience to read every answer.",
     "Nobody asked for this tool, which is the best reason to build it.",
     "When the loss goes down and the output gets worse, check the data before you check the code.",
     "The yard is open to anyone who likes to take things apart and see how they think.",
     "Small experiments are cheap, and cheap experiments are the ones you actually run."
   ];
-  var tokens=[],chain={},starts=[];
+  var chain={},starts=[];
+  function clean(w){return w.toLowerCase().replace(/[.,]/g,'')}
   corpus.forEach(function(s){
     var w=s.split(/\s+/);
     starts.push(w.slice(0,2).join(' '));
     for(var i=0;i<w.length;i++){
-      var k1=w[i].toLowerCase().replace(/[.,]/g,'');
-      var k2=i>0?(w[i-1]+' '+w[i]).toLowerCase().replace(/[.,]/g,''):null;
+      var k1=clean(w[i]);
+      var k2=i>0?clean(w[i-1]+' '+w[i]):null;
       var nxt=w[i+1]||'.END';
       (chain[k1]=chain[k1]||[]).push(nxt);
       if(k2)(chain[k2]=chain[k2]||[]).push(nxt);
     }
   });
   function pick(a){return a[Math.floor(Math.random()*a.length)]}
-  function clean(w){return w.toLowerCase().replace(/[.,]/g,'')}
   function finish(seed){
     var words=seed.trim().split(/\s+/).filter(Boolean);
     if(!words.length){words=pick(starts).split(' ')}
@@ -289,7 +510,7 @@ footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
     var r=finish(input.value);
     out.innerHTML='';
     var s=document.createElement('span');s.className='seed';s.textContent=r.seed+' ';
-    var g=document.createElement('span');g.className='gen';
+    var g=document.createElement('span');
     var c=document.createElement('span');c.className='cursor';c.setAttribute('aria-hidden','true');
     out.append(s,g,c);
     if(reduce){g.textContent=r.gen;c.remove();return}
@@ -301,7 +522,6 @@ footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
   }
   form.addEventListener('submit',function(e){e.preventDefault();run()});
   again.addEventListener('click',run);
-  /* show one example on load so the toy is never an empty box */
   input.value='The model I trained last night';
   run();
 })();
