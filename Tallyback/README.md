@@ -4,9 +4,11 @@
 
 Snap a photo of any bill or receipt. TallyBack checks every line and the maths, highlights the charge that doesn't add up, and writes one message you can send on WhatsApp. If everything checks out, it says so and shows the working.
 
+Shared the bill? **Split this bill** adds it to a group in the **Split with friends** tab: split equally, by amounts, percentages or shares, see who owes whom, and settle up in the fewest payments (see [`docs/SPLITTING.md`](docs/SPLITTING.md)).
+
 ### ▶ Try it: **[tinkeryard.dev/tallyback](https://tinkeryard.dev/tallyback)**
 
-Open it on your phone. No sign-up. No bill handy? Tap **"Try a sample receipt"**.
+Open it on your phone and sign in (invite-only: a passkey or an email code). No bill handy? Tap **"Try a sample receipt"**.
 
 ---
 

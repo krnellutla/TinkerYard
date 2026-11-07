@@ -28,7 +28,7 @@ export function RequireSignIn({ children }: { children: React.ReactNode }) {
 
   if (!data)
     return (
-      <Wall title="Sign in to the yard" intro="TallyBack, Review Scout and SplitBill all use one account. No passwords: a passkey on your device, or a code by email.">
+      <Wall title="Sign in to the yard" intro="TallyBack and Review Scout use one account. No passwords: a passkey on your device, or a code by email.">
         <SignInPanel />
         <p className="mt-4 text-center text-xs text-muted">Invite-only for now: your email must be on the list.</p>
       </Wall>

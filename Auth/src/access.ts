@@ -3,7 +3,7 @@ import { neon } from "@neondatabase/serverless";
 import { promises as fs } from "fs";
 import os from "os";
 import path from "path";
-import { APP_IDS, isAppId, isRole, normalEmail, parseEmails, resolveAccess, type Access, type AppId, type Role, type Settings, type Status } from "./policy";
+import { APP_IDS, appsFromStored, isRole, normalEmail, parseEmails, resolveAccess, type Access, type AppId, type Role, type Settings, type Status } from "./policy";
 
 // Who's on the list and what they may use, kept in Postgres (Neon) when DATABASE_URL is set, or a
 // local JSON file otherwise. The rules themselves live in policy.ts; this file only stores and looks up.
@@ -76,7 +76,7 @@ export type AccessRecord = Omit<Access, "source"> & { note: string; createdBy: s
 const toRecord = (r: Row): AccessRecord => ({
   email: String(r.email),
   role: isRole(r.role) ? (r.role as Role) : "member",
-  apps: ((r.apps as unknown[]) ?? []).filter(isAppId),
+  apps: appsFromStored(r.apps),
   status: r.status === "suspended" ? "suspended" : "active",
   note: String(r.note ?? ""),
   createdBy: String(r.created_by),

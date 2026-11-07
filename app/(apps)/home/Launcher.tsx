@@ -9,9 +9,8 @@ import { useInstall } from "../install";
 // /home: where the installed app opens. Your apps as big tiles, the admin dashboard for admins,
 // and a way to install the yard on this phone if it isn't installed yet.
 const ABOUT: Record<string, string> = {
-  tallyback: "Snap a bill, find the line that doesn't add up.",
+  tallyback: "Check every line of a bill, then split it with friends.",
   reviewscout: "What YouTube reviewers said, with timestamps.",
-  splitbill: "Split costs with friends, settle up.",
 };
 
 export default function Launcher() {

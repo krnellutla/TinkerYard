@@ -10,11 +10,18 @@
 export const APPS = [
   { id: "tallyback", label: "TallyBack", href: "/tallyback" },
   { id: "reviewscout", label: "Review Scout", href: "/reviewscout" },
-  { id: "splitbill", label: "SplitBill", href: "/splitbill" },
 ] as const;
 export type AppId = (typeof APPS)[number]["id"];
 export const APP_IDS: AppId[] = APPS.map((a) => a.id);
 export const isAppId = (v: unknown): v is AppId => typeof v === "string" && (APP_IDS as string[]).includes(v);
+
+// Apps that were folded into another: grants saved under the old name count for the new one.
+// (SplitBill became TallyBack's Split tab.)
+const MERGED: Record<string, AppId> = { splitbill: "tallyback" };
+export const appsFromStored = (stored: unknown): AppId[] => {
+  const ids = (Array.isArray(stored) ? stored : []).map((a) => (typeof a === "string" && a in MERGED ? MERGED[a] : a)).filter(isAppId);
+  return APP_IDS.filter((id) => ids.includes(id)); // known apps, once each, in nav order
+};
 export const appLabel = (id: AppId) => APPS.find((a) => a.id === id)!.label;
 
 export type Permission = "apps:all" | "users:manage";
@@ -56,7 +63,7 @@ export function can(access: Access | null | undefined, action: Action): boolean 
 // The apps someone can actually open, in nav order.
 export const appsFor = (access: Access | null | undefined): AppId[] => APP_IDS.filter((app) => can(access, { type: "app:use", app }));
 
-// Which app a page belongs to, from its path ("/splitbill?g=…" → splitbill). "/admin" is not an app.
+// Which app a page belongs to, from its path ("/tallyback?tab=split" → tallyback). "/admin" is not an app.
 export const appOfPath = (path: string): AppId | null => APPS.find((a) => path === a.href || path.startsWith(`${a.href}/`))?.id ?? null;
 
 // ---- where someone's access comes from ----

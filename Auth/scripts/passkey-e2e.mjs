@@ -109,7 +109,7 @@ function authenticate(options, userHandle, counter, { tamper = false } = {}) {
 
 // ---- 1. every app is closed without an account ----
 const stranger = device();
-for (const p of ["/api/splitbill/groups", "/api/tallyback/bills?deviceId=x", "/api/reviewscout/searches?deviceId=x"]) {
+for (const p of ["/api/tallyback/groups", "/api/tallyback/bills?deviceId=x", "/api/reviewscout/searches?deviceId=x"]) {
   const r = await stranger(p);
   check(r.status === 401, `signed out: GET ${p} → ${r.status}`);
 }
@@ -142,7 +142,7 @@ const authOpts = await phone("/api/auth/passkey/generate-authenticate-options");
 check(authOpts.status === 200 && !!authOpts.json?.challenge, "authentication challenge issued");
 const auth = await phone("/api/auth/passkey/verify-authentication", { method: "POST", body: { response: authenticate(authOpts.json, userHandle, 1) } });
 check(auth.status === 200 && auth.json?.session, `passkey sign-in → ${auth.status} ${auth.status === 200 ? "" : auth.text.slice(0, 200)}`);
-const apps = await phone("/api/splitbill/groups");
+const apps = await phone("/api/tallyback/groups");
 check(apps.status === 200 && apps.json?.me?.email === EMAIL, `then the apps open → ${apps.status} as ${apps.json?.me?.email}`);
 
 // ---- 5. a forged signature gets nothing ----
@@ -150,7 +150,7 @@ const thief = device();
 const opts2 = await thief("/api/auth/passkey/generate-authenticate-options");
 const forged = await thief("/api/auth/passkey/verify-authentication", { method: "POST", body: { response: authenticate(opts2.json, userHandle, 2, { tamper: true }) } });
 check(forged.status !== 200, `forged signature refused → ${forged.status}`);
-check((await thief("/api/splitbill/groups")).status === 401, "and the forger still can't open the apps");
+check((await thief("/api/tallyback/groups")).status === 401, "and the forger still can't open the apps");
 
 // ---- 6. a replayed sign-in (old challenge) is refused ----
 const replay = await phone("/api/auth/passkey/verify-authentication", { method: "POST", body: { response: authenticate(authOpts.json, userHandle, 3) } });

@@ -8,7 +8,7 @@ export default function manifest(): MetadataRoute.Manifest {
     id: "/home",
     name: "Tinkeryard",
     short_name: "Tinkeryard",
-    description: "TallyBack, Review Scout and SplitBill in one app.",
+    description: "TallyBack (check and split bills) and Review Scout in one app.",
     start_url: "/home",
     scope: "/",
     display: "standalone",
@@ -21,8 +21,8 @@ export default function manifest(): MetadataRoute.Manifest {
       { src: "/icon/maskable", sizes: "512x512", type: "image/png", purpose: "maskable" },
     ],
     shortcuts: [
-      { name: "SplitBill", short_name: "SplitBill", url: "/splitbill", description: "Split costs with friends" },
-      { name: "TallyBack", short_name: "TallyBack", url: "/tallyback", description: "Check a bill" },
+      { name: "Check a bill", short_name: "Check a bill", url: "/tallyback", description: "TallyBack: check every line of a bill" },
+      { name: "Split with friends", short_name: "Split", url: "/tallyback?tab=split", description: "TallyBack: groups, balances, settle up" },
       { name: "Review Scout", short_name: "Reviews", url: "/reviewscout", description: "What reviewers said" },
     ],
   };

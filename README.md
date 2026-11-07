@@ -5,9 +5,8 @@ A yard for half-finished AI things. This repo is **one Next.js app** that serves
 | Path | What it is | Code |
 |---|---|---|
 | `/` | Landing page listing the projects (plain HTML) | `public/index.html` |
-| `/tallyback` | Snap any bill, find the line that doesn't add up, send one message | [`Tallyback/`](Tallyback) |
+| `/tallyback` | Snap any bill, find the line that doesn't add up, send one message; then split it with friends (Split tab: groups, four ways to split, simplify debts, settle up) | [`Tallyback/`](Tallyback) |
 | `/reviewscout` | A cited summary of what YouTube reviewers said about a product, with follow-ups | [`Reviewscout/`](Reviewscout) |
-| `/splitbill` | Split shared costs with friends: groups, four ways to split, simplify debts, settle up | [`Splitbill/`](Splitbill) |
 | `/home` | Your apps as tiles: where the installed phone app opens | `app/(apps)/home/` |
 | `/admin` | Admin dashboard: who can sign in, their role (Admin / Member) and which apps they can use | [`Auth/`](Auth) |
 | `/api/auth/*` | Sign-in for every app (all of them need it): register by email code, then passkeys; allow-listed emails only | [`Auth/`](Auth) |
@@ -19,18 +18,15 @@ app/                         Next.js routes only: thin files that point into the
   (apps)/layout.tsx          app switcher above each app, with Sign in / account menu
   (apps)/tallyback/          /tallyback page
   (apps)/reviewscout/        /reviewscout page
-  (apps)/splitbill/          /splitbill page
   api/tallyback/…            /api/tallyback/* → Tallyback/src/api
   api/reviewscout/…          /api/reviewscout/* → Reviewscout/src/api
-  api/splitbill/…            /api/splitbill/* → Splitbill/src/api
   api/auth/[...all]/         /api/auth/* → Auth/src/handler
 public/                      landing page and static files (public/tallyback/…)
-Tallyback/                   module: src/{ui,api,lib}, tests, docs, scripts
+Tallyback/                   module: src/{ui,api,lib}, src/split (the Split tab), tests, docs, scripts
 Reviewscout/                 module: src/{ui,api,lib}, tests
-Splitbill/                   module: src/{ui,api,lib}, tests
 Auth/                        module: sign-in (src/, ui/, tests)
 ```
-Each module keeps its own code and imports only from itself (`@tallyback/*`, `@reviewscout/*`, `@splitbill/*`, `@signin/*`), so either can be changed or removed without touching the other. Route files only re-export a module's handler and declare its Vercel settings (`runtime`, `maxDuration`), which Next.js needs to see in the route file itself.
+Each module keeps its own code and imports only from itself (`@tallyback/*`, `@reviewscout/*`, `@signin/*`), so either can be changed or removed without touching the other. Route files only re-export a module's handler and declare its Vercel settings (`runtime`, `maxDuration`), which Next.js needs to see in the route file itself.
 
 ## On phones: an installable app
 The apps are a **Progressive Web App**: on a phone, open any app and install it (Android Chrome: **Install app**, or the button on `/home`; iPhone Safari: **Share → Add to Home Screen**, with the steps shown on `/home`). It then opens full-screen from its icon, straight to `/home`, with no browser bars.
@@ -49,7 +45,7 @@ Anything fixed to the bottom of a page should sit at `bottom-[var(--tabbar-h)]` 
 ```bash
 cp .env.example .env.local   # GEMINI_API_KEY; GROQ_API_KEY, DATABASE_URL, BLOB_READ_WRITE_TOKEN optional
 npm install
-npm run dev                  # http://localhost:3000, /tallyback, /reviewscout, /splitbill
+npm run dev                  # http://localhost:3000, /tallyback, /reviewscout
 npm test                     # every module's tests
 npm run build
 ```

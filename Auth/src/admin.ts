@@ -125,7 +125,7 @@ async function checkChange(actorEmail: string, email: string, next: { role: Role
   return null;
 }
 
-// Say what changed, for the log: "role member → admin; apps + SplitBill; suspended".
+// Say what changed, for the log: "role member → admin; apps + TallyBack; suspended".
 function describe(before: Access | null, after: z.infer<typeof personIn>) {
   const as = `${ROLES[after.role].label}${after.role === "member" ? ` (${after.apps.map(appLabel).join(", ") || "no apps"})` : ""}`;
   if (!before) return `added as ${as}`;

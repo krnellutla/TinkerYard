@@ -7,8 +7,12 @@ import { fmt } from "@tallyback/lib/money";
 import type { LineHistory } from "@tallyback/lib/history";
 import type { Extraction, Finding, Promise as BillPromise } from "@tallyback/lib/types";
 import { askToSignIn, isSignedIn, onSessionChanged } from "@signin/ui/prompt";
+import { billToDraft, type BillDraft } from "@tallyback/split/lib/fromBill";
+import { SplitPanel } from "@tallyback/split/ui/SplitPanel";
 
 type Stage = "start" | "scanning" | "review" | "bills";
+// Two halves of one app: check a bill, or split costs with friends (Tallyback/src/split).
+type Tab = "bills" | "split";
 
 interface BillSummary {
   id: string;
@@ -78,6 +82,9 @@ async function shrink(file: File): Promise<Blob> {
 }
 
 export default function Home() {
+  const [tab, setTab] = useState<Tab>("bills");
+  const [groupId, setGroupId] = useState<string | null>(null);
+  const [draft, setDraft] = useState<BillDraft | null>(null); // a checked bill on its way into a group
   const [stage, setStage] = useState<Stage>("start");
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -122,10 +129,10 @@ export default function Home() {
 
   async function scan(file: File | null, sample = false) {
     setError(null);
-    // Reading a real bill calls the AI, so it needs an invited account; the sample doesn't.
+    // Every TallyBack action needs an invited account (the sign-in wall normally gets there first).
     if (!sample && file && !(await isSignedIn())) {
       pendingFile.current = file;
-      const why = "Sign in to check a real bill. The sample receipt works without an account.";
+      const why = "Sign in to check a bill.";
       setError(why);
       askToSignIn(why);
       return;
@@ -168,6 +175,37 @@ export default function Home() {
 
   scanRef.current = (file: File) => scan(file);
 
+  // The tab and the open group live in the address (?tab=split&g=…), so Back and reload work,
+  // and old /splitbill links land here (next.config.ts).
+  useEffect(() => {
+    const read = () => {
+      const q = new URL(window.location.href).searchParams;
+      setTab(q.get("tab") === "split" || q.get("g") ? "split" : "bills");
+      setGroupId(q.get("g"));
+    };
+    read();
+    window.addEventListener("popstate", read);
+    return () => window.removeEventListener("popstate", read);
+  }, []);
+
+  function go(next: Tab, group: string | null = null) {
+    const url = new URL(window.location.href);
+    url.searchParams.delete("g");
+    if (next === "split") url.searchParams.set("tab", "split");
+    else url.searchParams.delete("tab");
+    if (group) url.searchParams.set("g", group);
+    window.history.pushState(null, "", url.pathname + url.search);
+    setTab(next);
+    setGroupId(group);
+    window.scrollTo(0, 0);
+  }
+
+  function splitThisBill() {
+    if (!ex) return;
+    setDraft(billToDraft(ex));
+    go("split");
+  }
+
   function reset() {
     setStage("start");
     setEx(null);
@@ -203,14 +241,20 @@ export default function Home() {
   return (
     <main className="mx-auto min-h-dvh max-w-xl px-4 pb-24 pt-6">
       <header className="mb-6 flex items-center justify-between gap-3">
-        <button onClick={reset} className="flex items-center gap-2.5 text-left">
+        <button
+          onClick={() => {
+            reset();
+            go("bills");
+          }}
+          className="flex items-center gap-2.5 text-left"
+        >
           <Logo />
           <span className="flex flex-col leading-tight">
             <span className="text-lg font-semibold tracking-tight">TallyBack</span>
-            <span className="text-xs text-muted">One place to store your bills for the future</span>
+            <span className="text-xs text-muted">Check every bill. Split it with friends.</span>
           </span>
         </button>
-        {stage === "bills" ? (
+        {tab === "split" ? null : stage === "bills" ? (
           <button onClick={reset} className="shrink-0 rounded-full bg-ink px-3 py-1.5 text-sm font-medium text-white">
             + New bill
           </button>
@@ -221,7 +265,35 @@ export default function Home() {
         )}
       </header>
 
-      {stage === "start" && (
+      <div role="tablist" aria-label="TallyBack" className="mb-6 flex gap-1 rounded-full border border-line bg-card p-1 text-sm">
+        {(
+          [
+            ["bills", "Bills"],
+            ["split", "Split with friends"],
+          ] as const
+        ).map(([id, label]) => (
+          <button
+            key={id}
+            role="tab"
+            aria-selected={tab === id}
+            onClick={() => go(id)}
+            className={`h-10 flex-1 rounded-full font-medium ${tab === id ? "bg-ink text-white" : "text-muted hover:text-ink"}`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {tab === "split" && (
+        <SplitPanel
+          groupId={groupId}
+          onOpen={(id) => go("split", id)}
+          draft={draft}
+          onDraftDone={() => setDraft(null)}
+        />
+      )}
+
+      {tab === "bills" && stage === "start" && (
         <section>
           <h1 className="text-[1.9rem] font-semibold leading-tight tracking-tight">
             A bill you don&apos;t trust, turned into one message worth sending.
@@ -247,7 +319,7 @@ export default function Home() {
         </section>
       )}
 
-      {stage === "scanning" && (
+      {tab === "bills" && stage === "scanning" && (
         <section className="flex flex-col items-center pt-10 text-center">
           {preview && <img src={preview} alt="" className="max-h-72 rounded-xl opacity-60 shadow" />}
           <div className="mt-6 h-1.5 w-40 overflow-hidden rounded-full bg-line">
@@ -257,10 +329,11 @@ export default function Home() {
         </section>
       )}
 
-      {stage === "bills" && <BillsList onOpen={openBill} onNew={reset} opening={opening} error={error} />}
+      {tab === "bills" && stage === "bills" && <BillsList onOpen={openBill} onNew={reset} opening={opening} error={error} />}
 
-      {stage === "review" && ex && result && (
+      {tab === "bills" && stage === "review" && ex && result && (
         <Review
+          onSplit={splitThisBill}
           ex={ex}
           setEx={setEx}
           preview={isPdf ? null : preview}
@@ -281,6 +354,7 @@ export default function Home() {
 }
 
 function Review(props: {
+  onSplit: () => void;
   ex: Extraction;
   setEx: (e: Extraction) => void;
   preview: string | null;
@@ -502,6 +576,14 @@ function Review(props: {
       </details>
 
       {p && <MessagePanel key={p.id} {...props} finding={p} />}
+
+      <div className="rounded-2xl border border-line bg-card p-4">
+        <p className="font-medium">Shared this bill?</p>
+        <p className="mt-1 text-sm text-muted">Add it to a group and split it equally, by amounts, percentages or shares.</p>
+        <button onClick={props.onSplit} className="mt-3 flex h-12 w-full items-center justify-center rounded-2xl bg-ink font-medium text-white active:scale-[.99]">
+          Split this bill
+        </button>
+      </div>
     </section>
   );
 }

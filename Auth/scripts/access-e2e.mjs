@@ -47,7 +47,7 @@ async function signIn(email) {
 const apps = async (d) => ({
   tallyback: (await d("/api/tallyback/bills?deviceId=x")).status,
   reviewscout: (await d("/api/reviewscout/searches?deviceId=x")).status,
-  splitbill: (await d("/api/splitbill/groups")).status,
+  split: (await d("/api/tallyback/groups")).status, // TallyBack's Split tab
   admin: (await d("/api/admin/people")).status,
 });
 const person = (email, role, apps, status = "active") => ({ email, role, apps, status, note: "" });
@@ -56,23 +56,24 @@ const person = (email, role, apps, status = "active") => ({ email, role, apps, s
 const admin = await signIn("admin@test.local");
 check(admin.status === 200, "admin signs in");
 const me = (await admin.d("/api/access")).json;
-check(me?.admin === true && me.apps.length === 3, `admin sees every app and the dashboard (${me?.apps})`);
-check(JSON.stringify(await apps(admin.d)) === JSON.stringify({ tallyback: 200, reviewscout: 200, splitbill: 200, admin: 200 }), "admin can open everything");
+check(me?.admin === true && me.apps.length === 2, `admin sees every app and the dashboard (${me?.apps})`);
+check(JSON.stringify(await apps(admin.d)) === JSON.stringify({ tallyback: 200, reviewscout: 200, split: 200, admin: 200 }), "admin can open everything");
 
 // 2. Strangers are refused before any code is sent
 check((await signIn("bob@test.local")).status === 403, "bob (not on any list) can't even get a code");
 
-// 3. Admin adds bob as a member with SplitBill only
-check((await admin.d("/api/admin/people", { method: "POST", body: person("bob@test.local", "member", ["splitbill"]) })).status === 200, "admin adds bob: member, SplitBill only");
+// 3. Admin adds bob as a member with Review Scout only
+check((await admin.d("/api/admin/people", { method: "POST", body: person("bob@test.local", "member", ["reviewscout"]) })).status === 200, "admin adds bob: member, Review Scout only");
 const bob = await signIn("bob@test.local");
 check(bob.status === 200, "bob can sign in now");
 let b = await apps(bob.d);
-check(b.splitbill === 200 && b.tallyback === 403 && b.reviewscout === 403 && b.admin === 403, `bob: SplitBill yes, others 403, admin 403 (${JSON.stringify(b)})`);
-check(JSON.stringify((await bob.d("/api/access")).json?.apps) === '["splitbill"]', "bob's nav lists only SplitBill");
+check(b.reviewscout === 200 && b.tallyback === 403 && b.split === 403 && b.admin === 403, `bob: Review Scout yes; TallyBack (bills and split) 403; admin 403 (${JSON.stringify(b)})`);
+check(JSON.stringify((await bob.d("/api/access")).json?.apps) === '["reviewscout"]', "bob's nav lists only Review Scout");
 
 // 4. Granting an app takes effect at once
-await admin.d("/api/admin/people", { method: "POST", body: person("bob@test.local", "member", ["splitbill", "tallyback"]) });
-check((await apps(bob.d)).tallyback === 200, "admin grants TallyBack → bob can use it at once");
+await admin.d("/api/admin/people", { method: "POST", body: person("bob@test.local", "member", ["reviewscout", "tallyback"]) });
+const granted = await apps(bob.d);
+check(granted.tallyback === 200 && granted.split === 200, "admin grants TallyBack → bob can check and split bills at once");
 
 // 5. Members can't change access, even through the API
 check((await bob.d("/api/admin/people", { method: "POST", body: person("bob@test.local", "admin", []) })).status === 403, "bob can't make himself admin");
@@ -85,17 +86,17 @@ check((await second.d("/api/admin/people", { method: "POST", body: person("secon
 check((await second.d("/api/admin/people?email=second%40test.local", { method: "DELETE" })).status === 409, "…or remove themselves");
 
 // 7. Suspending locks out at once, and blocks new sign-ins
-await admin.d("/api/admin/people", { method: "POST", body: person("bob@test.local", "member", ["splitbill", "tallyback"], "suspended") });
+await admin.d("/api/admin/people", { method: "POST", body: person("bob@test.local", "member", ["reviewscout", "tallyback"], "suspended") });
 b = await apps(bob.d);
-check(b.splitbill !== 200 && b.tallyback !== 200, `suspended bob is locked out at once (${JSON.stringify(b)})`);
+check(b.reviewscout !== 200 && b.tallyback !== 200 && b.split !== 200, `suspended bob is locked out at once (${JSON.stringify(b)})`);
 check((await signIn("bob@test.local")).status === 403, "suspended bob can't sign in again");
 
 // 8. ALLOWED_EMAILS people get every app until an admin restricts them
 const old = await signIn("old@test.local");
-check((await apps(old.d)).splitbill === 200, "old@ (from ALLOWED_EMAILS) gets every app by default");
+check((await apps(old.d)).split === 200, "old@ (from ALLOWED_EMAILS) gets every app by default");
 await admin.d("/api/admin/people", { method: "POST", body: person("old@test.local", "member", ["reviewscout"]) });
 const o = await apps(old.d);
-check(o.splitbill === 403 && o.reviewscout === 200, `admin restricts old@ to Review Scout (${JSON.stringify(o)})`);
+check(o.tallyback === 403 && o.split === 403 && o.reviewscout === 200, `admin restricts old@ to Review Scout (${JSON.stringify(o)})`);
 
 // 9. Removing someone from the dashboard
 check((await admin.d("/api/admin/people?email=bob%40test.local", { method: "DELETE" })).status === 200, "admin removes bob");

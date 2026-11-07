@@ -36,7 +36,7 @@ Nobody else can sign in: no code is created and no email is sent.
 
 **Where it's enforced:**
 - **Sign-in** (`src/auth.ts`): the three locks above ask the policy.
-- **Every app API route:** `appUser(req, "splitbill")` from `src/session.ts` answers `401` when you're not signed in and `403` (`code: "no_access"`) when the app isn't yours, or you're suspended or removed.
+- **Every app API route:** `appUser(req, "tallyback")` from `src/session.ts` answers `401` when you're not signed in and `403` (`code: "no_access"`) when the app isn't yours, or you're suspended or removed.
 - **The admin API** (`/api/admin/people`): `adminUser(req)`.
 - **The pages:** `src/ui/Gate.tsx` shows sign-in, "You don't have access to …", or "Your access is paused". The app switcher lists only your apps, and admins get an Admin dashboard link in the account menu. The pages only help; the server decides.
 
@@ -44,7 +44,7 @@ Lookups are cached for 30 seconds per server instance. A change clears the cache
 
 Adding someone doesn't email them. Tell them to open the site and register with that address.
 
-**Who owns what.** Bills, searches and SplitBill groups belong to accounts. Bills and searches made as a guest before sign-in was required still carry the device that made them; the first time someone opens My bills or Past searches while signed in on that device, those items move to their account (`claimDevice`). Identity always comes from the session cookie on the server, never from anything the browser sends.
+**Who owns what.** Bills, searches and split groups belong to accounts. Bills and searches made as a guest before sign-in was required still carry the device that made them; the first time someone opens My bills or Past searches while signed in on that device, those items move to their account (`claimDevice`). Identity always comes from the session cookie on the server, never from anything the browser sends.
 
 If sign-in isn't working on a server (missing secret or database), the apps stay closed and the wall says so.
 
@@ -95,7 +95,7 @@ DATABASE_URL= RESEND_API_KEY= BETTER_AUTH_URL=http://localhost:3102 ALLOWED_EMAI
 node Auth/scripts/passkey-e2e.mjs http://localhost:3102 dev.log alice@test.local
 ```
 
-To try it by hand, run `npm run dev` and open http://localhost:3000/splitbill in Chrome or Safari: your laptop's Touch ID / Windows Hello, or your phone via the QR code, makes a real passkey for `localhost`. Chrome DevTools → More tools → WebAuthn can also add a virtual authenticator.
+To try it by hand, run `npm run dev` and open http://localhost:3000/tallyback in Chrome or Safari: your laptop's Touch ID / Windows Hello, or your phone via the QR code, makes a real passkey for `localhost`. Chrome DevTools → More tools → WebAuthn can also add a virtual authenticator.
 
 ## Testing roles and app access
 `scripts/access-e2e.mjs` signs in as an admin, a member and a stranger against a running server and checks every rule: strangers can't get a code, members open only their apps (403 elsewhere, and on `/api/admin`), a grant works at once, nobody can make themselves admin, the guard rails hold, suspending locks out at once and blocks new sign-ins, `ALLOWED_EMAILS` people can be restricted, removal works, and everything is logged.
