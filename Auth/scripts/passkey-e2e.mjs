@@ -129,7 +129,8 @@ check(regOpts.json?.authenticatorSelection?.residentKey === "required", `discove
 const reg = await laptop("/api/auth/passkey/verify-registration", { method: "POST", body: { response: register(regOpts.json), name: "Test laptop" } });
 check(reg.status === 200, `passkey registered → ${reg.status} ${reg.status === 200 ? "" : reg.text.slice(0, 200)}`);
 const list = await laptop("/api/auth/passkey/list-user-passkeys");
-check(Array.isArray(list.json) && list.json.length === 1, `account now lists ${list.json?.length} passkey`);
+// At least this one: re-running against the same server adds another device's passkey to the account.
+check(Array.isArray(list.json) && list.json.length >= 1, `account now lists ${list.json?.length} passkey(s)`);
 
 // A stranger can't add a passkey to anyone.
 const strangerReg = await stranger("/api/auth/passkey/generate-register-options");

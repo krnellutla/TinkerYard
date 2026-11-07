@@ -4,7 +4,7 @@ Passwordless sign-in for every app on tinkeryard.dev, built on [Better Auth](htt
 
 - **Register once:** enter your email, get a 6-digit code, type it in (or click an emailed link instead). A code works for 10 minutes, at most 3 wrong tries; a link works once, for 10 minutes.
 - **Then a passkey:** right after, you're offered a passkey ("Skip the email next time"). Your device makes a key pair; the private key stays on the device behind Face ID, a fingerprint or the device PIN, and only the public key is stored here. From then on, **Sign in with a passkey** is one tap, with no email.
-- **New device or lost passkey:** sign in with the email code again, then add a passkey for that device from the account menu. The menu lists your passkeys and lets you remove old ones.
+- **A second device (device B):** passkeys live on the device that made them (unless your password manager syncs them), so device B opens on the email code. Right after signing in, it offers **Add a passkey for this device**, even though device A already has one, and from then on device B signs in with its own passkey. If a passkey sign-in fails or is cancelled, the screen falls back to the email code. **Use a passkey instead** stays available for synced passkeys. The account menu lists every device's passkey and lets you remove old ones.
 - **Invite-only:** only people on the list can sign in (see Roles and app access below). Anyone else is told so, and **no code is created and no email is sent**. A second check refuses to create an account for any other address, and a third refuses to start a session for someone who has since been removed or suspended, however they sign in (so it also shuts out their passkeys).
 - **Sessions** last 30 days in a signed cookie. The cookie is trusted for 5 minutes at a time, so most requests don't touch the database.
 
@@ -12,6 +12,7 @@ Passwordless sign-in for every app on tinkeryard.dev, built on [Better Auth](htt
 Passkeys are the WebAuthn standard. To register, the server sends a random challenge; the device creates a key pair for this site only and returns the public key, which goes in the `passkey` table. To sign in, the server sends a fresh challenge and the device signs it with the private key after your face, fingerprint or PIN; the server checks the signature against the stored public key. Nothing secret is kept on the server, and a passkey can't be phished: it only works on the site it was made for.
 
 - **Site:** the passkey's "relying party" is the host in `BETTER_AUTH_URL` (`tinkeryard.dev` in production, `localhost` locally), so passkeys made locally never work in production and vice versa. If the domain ever changes, existing passkeys stop working and people re-register by email.
+- **Which device has one:** the server knows the account's passkeys, not which device each lives on, so the browser keeps a small marker (`localStorage`, `src/ui/device.ts`): set when a passkey is created or used here, cleared when one fails here or the last one is removed. It only decides what to show first; the server still checks every passkey.
 - **Discoverable passkeys** (`residentKey: "required"`): the device knows which account a passkey belongs to, so signing in needs no email. The email field also offers saved passkeys in its autofill.
 - **Adding a passkey needs a session**, which only comes from the email code, so the invite list guards registration too.
 - Plugin: `@better-auth/passkey` (official, built on SimpleWebAuthn), pinned to the same version as `better-auth`.
@@ -62,7 +63,8 @@ If sign-in isn't working on a server (missing secret or database), the apps stay
 | `src/client.ts` | Browser calls: send code, verify, send link, passkeys, sign out, current session |
 | `src/ui/SignIn.tsx` | Sign-in steps: passkey, or email → code / link (as a panel or a dialog) |
 | `src/ui/Gate.tsx` | The wall around every app: sign in, then only the apps your role allows; the passkey offer after sign-in |
-| `src/ui/Passkeys.tsx` | "Create a passkey" prompt, and the passkey list in the account menu |
+| `src/ui/Passkeys.tsx` | "Create a passkey" / "Add a passkey for this device" prompt, and the passkey list in the account menu |
+| `src/ui/device.ts` | Does this device have a passkey? The marker, and when to offer one (tested in `tests/`) |
 | `src/ui/Account.tsx` | "Sign in" or the account menu (passkeys, sign out), in the app switcher |
 | `scripts/passkey-e2e.mjs` | End-to-end passkey test with a software authenticator (see below) |
 | `scripts/access-e2e.mjs` | End-to-end test of roles and app access (see below) |

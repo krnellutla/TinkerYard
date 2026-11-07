@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { authClient } from "../client";
+import { deviceHasPasskey, markDevicePasskey, passkeyOffer } from "./device";
 import { KeyIcon, passkeysSupported } from "./SignIn";
 
 // Passkeys after sign-in: the offer to create one, and the list in the account menu.
@@ -20,11 +21,19 @@ const MESSAGES: Record<string, string> = {
   FAILED_TO_VERIFY_REGISTRATION: "The passkey couldn't be checked. Please try again.",
 };
 
+// null: created (or this device already had one); "": cancelled; anything else: what went wrong.
 async function createPasskey(): Promise<string | null> {
   try {
     const r = await authClient.passkey.addPasskey({ name: deviceLabel() });
     const err = r?.error as { code?: string; message?: string } | null | undefined;
-    if (!err) return null;
+    if (!err) {
+      markDevicePasskey(true);
+      return null;
+    }
+    if (err.code === "PREVIOUSLY_REGISTERED") {
+      markDevicePasskey(true); // the browser says this device already holds one for the account
+      return null;
+    }
     if (err.code && CANCELLED.has(err.code)) return "";
     return (err.code && MESSAGES[err.code]) || err.message || "Couldn't create the passkey.";
   } catch {
@@ -34,9 +43,11 @@ async function createPasskey(): Promise<string | null> {
 
 const DISMISSED = "ty-passkey-later";
 
-// Right after signing in with email: if the account has no passkey yet, offer one, once per browser session.
+// After signing in on a device without a passkey (a new account, or device B when the passkey is on
+// device A): offer one for this device, once per browser session.
 export function PasskeyPrompt() {
   const { data: keys, isPending } = authClient.useListPasskeys();
+  const [deviceHas, setDeviceHas] = useState(deviceHasPasskey);
   const [hidden, setHidden] = useState(() => {
     try {
       return sessionStorage.getItem(DISMISSED) === "1";
@@ -47,7 +58,8 @@ export function PasskeyPrompt() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (hidden || isPending || !keys || keys.length > 0 || !passkeysSupported()) return null;
+  const offer = passkeyOffer({ supported: passkeysSupported(), deviceHas, dismissed: hidden, accountPasskeys: isPending || !keys ? null : keys.length });
+  if (offer === "none") return null;
   const later = () => {
     try {
       sessionStorage.setItem(DISMISSED, "1");
@@ -62,10 +74,12 @@ export function PasskeyPrompt() {
           <KeyIcon />
         </span>
         <h2 id="pk-title" className="mt-3 text-lg font-semibold">
-          Skip the email next time
+          {offer === "first" ? "Skip the email next time" : "Add a passkey for this device"}
         </h2>
         <p className="mt-1 text-sm text-muted">
-          Create a passkey and sign in with your face, fingerprint or device PIN. It stays on your device (and syncs through your password manager), so there&apos;s nothing to remember and nothing to leak.
+          {offer === "first"
+            ? "Create a passkey and sign in with your face, fingerprint or device PIN. It stays on your device (and syncs through your password manager), so there's nothing to remember and nothing to leak."
+            : "Your passkey is on another device. Add one here too, and this device signs in with your face, fingerprint or PIN instead of an email code."}
         </p>
         <button
           disabled={busy}
@@ -74,8 +88,9 @@ export function PasskeyPrompt() {
             setError(null);
             const e = await createPasskey();
             setBusy(false);
-            if (e) setError(e);
-            else if (e === "") setError("Cancelled. You can create one any time from the account menu.");
+            if (e === null) setDeviceHas(true);
+            else if (e) setError(e);
+            else setError("Cancelled. You can create one any time from the account menu.");
           }}
           className="mt-4 flex h-12 w-full items-center justify-center rounded-xl bg-ink font-medium text-white disabled:opacity-40"
         >
@@ -114,6 +129,7 @@ export function PasskeyList() {
                 if (!confirm(`Remove “${k.name || "Passkey"}”? That device will need email to sign in again.`)) return;
                 setBusy(true);
                 const r = await authClient.passkey.deletePasskey({ id: k.id });
+                if (!r.error && keys.length === 1) markDevicePasskey(false); // that was the last one
                 setBusy(false);
                 setError(r.error ? (r.error.message ?? "Couldn't remove it.") : null);
               }}
@@ -129,7 +145,8 @@ export function PasskeyList() {
           disabled={busy}
           onClick={async () => {
             setBusy(true);
-            setError((await createPasskey()) || null);
+            const e = await createPasskey();
+            setError(e === null ? null : e || "Cancelled.");
             setBusy(false);
           }}
           className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl border border-line py-2 font-medium disabled:opacity-40"

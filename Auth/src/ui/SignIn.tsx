@@ -2,11 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import { authClient } from "../client";
+import { deviceHasPasskey, markDevicePasskey } from "./device";
 import { sessionChanged } from "./prompt";
 
 // Signing in, with no passwords:
-//   returning visitor → "Sign in with a passkey" (face, fingerprint or device PIN)
-//   first visit, or a new device → email → 6-digit code (or a link); a passkey is offered right after (PasskeyPrompt)
+//   this device has a passkey → "Sign in with a passkey" (face, fingerprint or device PIN)
+//   first visit, or a new device (device B) → email → 6-digit code (or a link); a passkey for this
+//   device is offered right after (PasskeyPrompt). A passkey that fails or is cancelled falls back to email.
 type Step = "start" | "email" | "code" | "link-sent";
 
 // Better Auth's error codes, in plain words.
@@ -25,7 +27,9 @@ export const passkeysSupported = () => typeof window !== "undefined" && "PublicK
 
 // The sign-in steps on their own, so they can sit in a page (the sign-in wall) or in a dialog.
 export function SignInPanel({ onDone, reason, errorCode }: { onDone?: () => void; reason?: string; errorCode?: string }) {
-  const [step, setStep] = useState<Step>("start");
+  // A device known to hold a passkey starts on the passkey; any other device starts on the email code.
+  const [step, setStep] = useState<Step>(() => (deviceHasPasskey() ? "start" : "email"));
+  const [note, setNote] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
@@ -45,7 +49,10 @@ export function SignInPanel({ onDone, reason, errorCode }: { onDone?: () => void
     authClient.signIn
       .passkey({ autoFill: true })
       .then((r) => {
-        if (r && !r.error) done();
+        if (r && !r.error) {
+          markDevicePasskey(true);
+          done();
+        }
       })
       .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -72,7 +79,27 @@ export function SignInPanel({ onDone, reason, errorCode }: { onDone?: () => void
     }
   }
 
-  const withPasskey = () => attempt(() => authClient.signIn.passkey(), done);
+  // Signing in with a passkey. Success means this device has one; failure (none here, cancelled, not
+  // recognised) moves to the email code, so device B is never stuck at an empty passkey dialog.
+  async function withPasskey() {
+    setBusy(true);
+    setError(null);
+    setNote(null);
+    try {
+      const r = await authClient.signIn.passkey();
+      if (!r?.error) {
+        markDevicePasskey(true);
+        return done();
+      }
+      markDevicePasskey(false);
+      setNote("No passkey for Tinkeryard on this device? Sign in with an email code, then add one for this device.");
+      setStep("email");
+    } catch {
+      setError("Couldn't reach the server. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   const sendCode = () =>
     attempt(
@@ -108,9 +135,9 @@ export function SignInPanel({ onDone, reason, errorCode }: { onDone?: () => void
             <p className="rounded-xl bg-warn-soft p-3 text-sm text-warn">This browser can&apos;t use passkeys. Continue with email instead.</p>
           )}
           <button onClick={() => setStep("email")} disabled={busy} className="h-12 w-full rounded-xl border border-line bg-paper font-medium disabled:opacity-40">
-            First time here? Register with email
+            Use an email code instead
           </button>
-          <p className="text-center text-xs text-muted">New device or lost your passkey? Use email too, then add a passkey for this device.</p>
+          <p className="text-center text-xs text-muted">Lost your passkey? Use an email code, then add a new one for this device.</p>
         </div>
       )}
 
@@ -122,7 +149,13 @@ export function SignInPanel({ onDone, reason, errorCode }: { onDone?: () => void
           }}
           className="space-y-3"
         >
-          <p className="text-sm text-muted">We&apos;ll email you a 6-digit code to prove it&apos;s you. No password, ever.</p>
+          {note ? (
+            <p className="rounded-xl bg-warn-soft p-3 text-sm text-warn">{note}</p>
+          ) : (
+            <p className="text-sm text-muted">
+              First time here, or on a new device? We&apos;ll email you a 6-digit code. After that you can add a passkey, so this device skips the email next time.
+            </p>
+          )}
           <input
             ref={inputRef}
             type="email"
@@ -139,9 +172,13 @@ export function SignInPanel({ onDone, reason, errorCode }: { onDone?: () => void
             {busy ? "Sending…" : "Email me a code"}
           </button>
           <div className="flex justify-between">
-            <button type="button" onClick={() => setStep("start")} className={link}>
-              Back
-            </button>
+            {canPasskey ? (
+              <button type="button" onClick={withPasskey} disabled={busy} className={link}>
+                Use a passkey instead
+              </button>
+            ) : (
+              <span />
+            )}
             <button type="button" onClick={sendLink} disabled={busy || !email.includes("@")} className={link}>
               Email me a link instead
             </button>
