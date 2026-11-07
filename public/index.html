@@ -3,8 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Tinkeryard</title>
-<meta name="description" content="Small AI tools that each do one job: check a bill, sum up what YouTube reviewers said, sort a note. Built in the open, with notes on what broke.">
+<meta name="color-scheme" content="light dark">
+<script>
+try {
+  document.querySelector('meta[name="color-scheme"]').content = localStorage.getItem("color-scheme") ?? "light dark";
+} catch (e) {}
+</script>
+<title>Tinkeryard — Small AI tools built in the open</title>
+<meta name="description" content="A yard for small AI tools and experiments that each do one job: check a bill, sum up what YouTube reviewers said, sort a note. Built in the open, with field notes on what broke.">
 <meta name="theme-color" content="#D9DDD4" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#121B18" media="(prefers-color-scheme: dark)">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2316231F'/%3E%3Cpath d='M11 6v21' stroke='%23F2F3EC' stroke-width='2.5'/%3E%3Cpath d='M11 7h12l-4 5 4 5H11z' fill='%23EE3F6C'/%3E%3C/svg%3E">
@@ -12,201 +18,1352 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,500..800&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap" rel="stylesheet">
 <style>
-:root{
-  --ground:#D9DDD4;      /* concrete: the yard itself */
-  --surface:#F2F3EC;     /* paper */
-  --raised:#FFFFFF;
-  --ink:#16231F;
-  --muted:#56645C;
-  --line:#B4BBAF;
-  --plot:#9CA597;        /* plot boundaries on the map */
-  --lawn:#2D6A3E;
-  --gate:#2D6A3E;
-  --flag:#E0335F;
-  --flag-ink:#FFFFFF;
-  --on-dark:#F2F3EC;
-  --on-dark-muted:#AEBAB1;
-  --panel:#16231F;       /* the workbench: always dark */
-  --display:"Bricolage Grotesque","Arial Narrow",sans-serif;
-  --text:"Source Serif 4",Georgia,serif;
-  --gutter:clamp(16px,5vw,64px);
-  color-scheme:light;
+:root {
+  color-scheme: light dark;
+
+  &:has(> head > meta[name="color-scheme"][content="dark"]) {
+    color-scheme: dark;
+  }
+  &:has(> head > meta[name="color-scheme"][content="light"]) {
+    color-scheme: light;
+  }
+
+  /* Raw light & dark material tokens */
+  --ground-light: #D9DDD4;
+  --ground-dark: #111916;
+  --surface-light: #F2F3EC;
+  --surface-dark: #17221E;
+  --raised-light: #FFFFFF;
+  --raised-dark: #1E2C26;
+  --ink-light: #16231F;
+  --ink-dark: #E8ECE5;
+  --muted-light: #526058;
+  --muted-dark: #9DAAA1;
+  --line-light: #B4BBAF;
+  --line-dark: #2F4038;
+  --plot-light: #8E9889;
+  --plot-dark: #43574D;
+  --lawn-light: #2D6A3E;
+  --lawn-dark: #5FAE73;
+  --exp-light: #D97706;
+  --exp-dark: #FBBF24;
+  --gate-light: #235331;
+  --gate-dark: #183B22;
+  --flag-light: #E0335F;
+  --flag-dark: #F2557D;
+  --warn-light: #9A3412;
+  --warn-dark: #FDBA74;
+  --warn-bg-light: #FFEDD5;
+  --warn-bg-dark: #2C1A12;
+
+  /* Fallback assignments for pre-light-dark() browsers */
+  --ground: var(--ground-light);
+  --surface: var(--surface-light);
+  --raised: var(--raised-light);
+  --ink: var(--ink-light);
+  --muted: var(--muted-light);
+  --line: var(--line-light);
+  --plot: var(--plot-light);
+  --lawn: var(--lawn-light);
+  --exp: var(--exp-light);
+  --gate: var(--gate-light);
+  --flag: var(--flag-light);
+  --warn: var(--warn-light);
+  --warn-bg: var(--warn-bg-light);
+
+  @media (prefers-color-scheme: dark) {
+    --ground: var(--ground-dark);
+    --surface: var(--surface-dark);
+    --raised: var(--raised-dark);
+    --ink: var(--ink-dark);
+    --muted: var(--muted-dark);
+    --line: var(--line-dark);
+    --plot: var(--plot-dark);
+    --lawn: var(--lawn-dark);
+    --exp: var(--exp-dark);
+    --gate: var(--gate-dark);
+    --flag: var(--flag-dark);
+    --warn: var(--warn-dark);
+    --warn-bg: var(--warn-bg-dark);
+  }
+
+  @supports (color: light-dark(white, black)) {
+    --ground: light-dark(var(--ground-light), var(--ground-dark));
+    --surface: light-dark(var(--surface-light), var(--surface-dark));
+    --raised: light-dark(var(--raised-light), var(--raised-dark));
+    --ink: light-dark(var(--ink-light), var(--ink-dark));
+    --muted: light-dark(var(--muted-light), var(--muted-dark));
+    --line: light-dark(var(--line-light), var(--line-dark));
+    --plot: light-dark(var(--plot-light), var(--plot-dark));
+    --lawn: light-dark(var(--lawn-light), var(--lawn-dark));
+    --exp: light-dark(var(--exp-light), var(--exp-dark));
+    --gate: light-dark(var(--gate-light), var(--gate-dark));
+    --flag: light-dark(var(--flag-light), var(--flag-dark));
+    --warn: light-dark(var(--warn-light), var(--warn-dark));
+    --warn-bg: light-dark(var(--warn-bg-light), var(--warn-bg-dark));
+  }
+
+  --flag-ink: #FFFFFF;
+  --on-dark: #F2F3EC;
+  --on-dark-muted: #A9B7AE;
+  --panel: #131E1A;
+  --panel-raised: #1B2B25;
+  --panel-line: #2C4038;
+  --display: "Bricolage Grotesque", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --text: "Source Serif 4", Georgia, serif;
+  --mono: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, monospace;
+  --gutter: clamp(1rem, 4.5vw, 3.75rem);
+  --in-oklab: ;
+  accent-color: var(--flag);
 }
-@media (prefers-color-scheme:dark){
-  :root:not([data-theme="light"]){
-    --ground:#121B18;--surface:#18241F;--raised:#1F2D27;--ink:#E6EAE3;--muted:#9DAAA1;--line:#33443C;--plot:#3E5047;
-    --lawn:#5FAE73;--gate:#1F4A2B;--flag:#F2557D;--panel:#0C1311;color-scheme:dark;
+
+@supports (background: linear-gradient(in oklab, white, black)) {
+  :root {
+    --in-oklab: in oklab;
   }
 }
-:root[data-theme="dark"]{
-  --ground:#121B18;--surface:#18241F;--raised:#1F2D27;--ink:#E6EAE3;--muted:#9DAAA1;--line:#33443C;--plot:#3E5047;
-  --lawn:#5FAE73;--gate:#1F4A2B;--flag:#F2557D;--panel:#0C1311;color-scheme:dark;
+
+* { box-sizing: border-box; }
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+  @media (prefers-reduced-motion: reduce) {
+    scroll-behavior: auto;
+  }
 }
 
-*{box-sizing:border-box}
-html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
-body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--text);font-size:1.125rem;line-height:1.6;overflow-x:hidden}
-a{color:inherit}
-:focus-visible{outline:3px solid var(--flag);outline-offset:3px}
-.wrap{padding-inline:var(--gutter);max-width:1240px;margin-inline:auto}
-.skip{position:absolute;left:-9999px}
-.skip:focus{left:16px;top:16px;z-index:10;background:var(--surface);padding:8px 12px}
-
-h1,h2,h3{font-family:var(--display);letter-spacing:-.015em}
-h2{font-stretch:78%;font-weight:800;font-size:clamp(2.2rem,5vw,3.6rem);line-height:.98;margin:0 0 14px}
-h3{font-stretch:82%;font-weight:700;margin:0}
-p{margin:0}
-.sub{max-width:36em;color:var(--muted)}
-
-/* buttons */
-.btn{display:inline-flex;align-items:center;gap:10px;font-family:var(--display);font-stretch:85%;font-weight:700;font-size:1.05rem;line-height:1;text-decoration:none;padding:15px 22px;border-radius:3px;border:0;cursor:pointer;background:var(--flag);color:var(--flag-ink)}
-.btn:hover{filter:brightness(.92)}
-.btn.ghost{background:transparent;color:inherit;box-shadow:inset 0 0 0 2px currentColor}
-.btn.ghost:hover{background:color-mix(in srgb,currentColor 8%,transparent);filter:none}
-
-/* flags: the one mark that carries status everywhere on the page */
-.flag{display:block;width:16px;height:20px;flex:none}
-.flag{color:var(--ink)}
-.f-here{--cloth:var(--flag)}
-.f-run{--cloth:var(--lawn)}
-.f-exp{--cloth:transparent;--cloth-line:var(--ink)}
-
-/* top bar */
-.bar{display:flex;justify-content:space-between;align-items:center;gap:16px;padding-block:20px}
-.mark{display:flex;align-items:center;gap:10px;font-family:var(--display);font-stretch:80%;font-weight:700;font-size:1.35rem;text-decoration:none}
-.mark svg{width:20px;height:24px}
-.bar nav{display:flex;gap:clamp(14px,2.5vw,28px);font-family:var(--display);font-stretch:85%;font-weight:600;font-size:1.02rem}
-.bar nav a{text-decoration:none;padding-block:6px;border-bottom:2px solid transparent}
-.bar nav a:hover{border-color:var(--flag)}
-
-/* hero */
-.hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);gap:clamp(32px,5vw,72px);align-items:center;padding-block:clamp(28px,6vw,72px) clamp(48px,7vw,96px)}
-h1{font-stretch:75%;font-weight:800;font-size:clamp(3.2rem,8.4vw,7rem);line-height:.88;letter-spacing:-.03em;margin:0 0 28px;max-width:9ch}
-.lede{font-size:clamp(1.15rem,1.8vw,1.35rem);max-width:30em;margin-bottom:32px}
-.cta{display:flex;flex-wrap:wrap;gap:12px}
-
-/* the yard map: every project as a staked plot */
-.map{margin:0;background:var(--surface);padding:clamp(14px,2vw,22px);border-radius:4px}
-.map-grid{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(6,1fr);grid-auto-rows:minmax(96px,auto);gap:10px}
-.plot{position:relative;border:1.5px dashed var(--plot);border-radius:2px}
-.plot a{display:flex;flex-direction:column;justify-content:flex-end;height:100%;padding:38px 12px 10px;text-decoration:none;transition:background .15s}
-.plot a:hover{background:color-mix(in srgb,var(--ink) 5%,transparent)}
-.plot .flag{position:absolute;top:10px;left:12px}
-.plot b{font-family:var(--display);font-stretch:82%;font-weight:700;font-size:1.15rem;line-height:1.05}
-.plot small{font-size:.85rem;color:var(--muted);line-height:1.3;margin-top:3px}
-.plot.big{grid-column:span 3;grid-row:span 2;border-style:solid;border-color:var(--ink)}
-.plot.big b{font-size:clamp(1.4rem,2.4vw,1.9rem)}
-.plot.big .flag{width:22px;height:28px}
-.plot.mid{grid-column:span 2}
-.plot.wide{grid-column:span 3}
-.legend{display:flex;flex-wrap:wrap;gap:6px 18px;margin-top:14px;font-size:.88rem;color:var(--muted)}
-.legend span{display:inline-flex;align-items:center;gap:6px}
-.legend .flag{width:12px;height:15px}
-
-/* sections */
-section{padding-block:clamp(56px,8vw,104px)}
-.on-surface{background:var(--surface)}
-.head{margin-bottom:clamp(28px,4vw,44px)}
-
-/* featured apps */
-.apps{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(16px,2.5vw,28px)}
-.app{display:flex;flex-direction:column;background:var(--raised);border-radius:4px;border:1px solid var(--line);overflow:hidden}
-.app .stage{background:var(--panel);color:var(--on-dark);padding:clamp(20px,3vw,32px);min-height:330px;display:flex;align-items:center;justify-content:center}
-.app .body{padding:clamp(20px,3vw,32px);display:flex;flex-direction:column;gap:16px;flex:1}
-.app h3{font-size:clamp(1.8rem,3vw,2.4rem);line-height:1}
-.facts{list-style:none;margin:0;padding:0;border-top:1px solid var(--line)}
-.facts li{padding:10px 0;border-bottom:1px solid var(--line);font-size:1rem}
-.facts strong{font-family:var(--display);font-stretch:85%;font-weight:700;margin-right:6px}
-.app .row{display:flex;flex-wrap:wrap;align-items:center;gap:12px 18px;margin-top:auto;padding-top:6px}
-.app .note{font-size:.92rem;color:var(--muted);max-width:24em}
-
-/* product sketches inside the stages */
-.sketch{display:grid;gap:14px;width:100%;max-width:340px}
-.receipt{width:min(290px,100%);background:#FBFBF6;color:#16231F;font-size:.9rem;line-height:1.35;padding:18px 18px 16px;transform:rotate(-1.5deg);
-  -webkit-mask:linear-gradient(#000 0 0) top/100% calc(100% - 8px) no-repeat,radial-gradient(circle 5px at 50% 100%,transparent 98%,#000) bottom/12px 8px repeat-x;
-          mask:linear-gradient(#000 0 0) top/100% calc(100% - 8px) no-repeat,radial-gradient(circle 5px at 50% 100%,transparent 98%,#000) bottom/12px 8px repeat-x}
-.receipt .t{font-family:var(--display);font-stretch:80%;font-weight:700;font-size:1.05rem;text-align:center;margin-bottom:10px}
-.receipt .l{display:flex;justify-content:space-between;gap:12px;padding:3px 0}
-.receipt .l.sum{border-top:1px dashed #9aa39a;margin-top:6px;padding-top:7px}
-.receipt .l.bad{background:#FDE3EA;box-shadow:0 0 0 2px #E0335F;margin-inline:-6px;padding-inline:6px}
-.receipt .why{font-size:.8rem;color:#B0244B;margin-top:6px}
-.bubble{background:#DCF8C6;color:#16231F;border-radius:10px 10px 2px 10px;padding:10px 12px;font-size:.9rem;line-height:1.4;justify-self:end;max-width:92%;transform:rotate(1deg)}
-.summary{width:100%;max-width:380px;font-size:.95rem;line-height:1.55}
-.summary .q{font-family:var(--display);font-stretch:85%;font-weight:600;background:#22332D;padding:10px 14px;border-radius:3px;margin-bottom:16px;display:flex;justify-content:space-between;gap:10px}
-.summary .q span{color:var(--on-dark-muted);font-weight:500;white-space:nowrap}
-.summary p{margin-bottom:10px}
-.cite{display:inline-block;font-family:var(--display);font-stretch:85%;font-weight:600;font-size:.78rem;background:#2D3F38;color:#F2F3EC;padding:1px 7px;border-radius:2px;white-space:nowrap;vertical-align:1px}
-.cite::before{content:"";display:inline-block;border-left:6px solid #F2557D;border-top:4px solid transparent;border-bottom:4px solid transparent;margin-right:5px}
-.summary .example{font-size:.8rem;color:var(--on-dark-muted);text-align:right;margin:0}
-
-/* also running */
-.runs{list-style:none;margin:0;padding:0;border-top:2px solid var(--ink)}
-.runs li{display:grid;grid-template-columns:minmax(0,4fr) minmax(0,6fr) minmax(0,3fr);gap:6px 32px;align-items:baseline;padding:22px 0;border-bottom:1px solid var(--line)}
-.runs h3{font-size:clamp(1.4rem,2.4vw,1.8rem);display:flex;align-items:center;gap:10px}
-.runs h3 a{text-decoration:none}
-.runs h3 a:hover{text-decoration:underline;text-decoration-color:var(--flag);text-decoration-thickness:3px;text-underline-offset:5px}
-.runs .url{font-size:.95rem;color:var(--muted);justify-self:end;text-align:right}
-
-/* experiments */
-.exps{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(16px,2.5vw,28px)}
-.exp{border:1.5px dashed var(--plot);border-radius:4px;padding:clamp(20px,3vw,32px);display:flex;flex-direction:column;gap:14px}
-.exp h3{font-size:clamp(1.6rem,2.6vw,2rem);display:flex;align-items:center;gap:10px}
-.score{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
-.score b{font-family:var(--display);font-stretch:75%;font-weight:800;font-size:clamp(2.6rem,5vw,3.6rem);line-height:1;letter-spacing:-.02em}
-.score span{color:var(--muted);font-size:1rem;max-width:18em;line-height:1.35}
-.links{font-size:.95rem;color:var(--muted)}
-.frame{border:2px solid var(--ink);background:#fff;border-radius:2px;overflow:hidden;margin-bottom:8px}
-.frame iframe{display:block;width:100%;height:620px;border:0}
-.exp .row{display:flex;flex-wrap:wrap;gap:12px 18px;align-items:center;margin-top:auto}
-
-/* the babbler: smallest model on the yard */
-.bench{grid-column:1 / -1;background:var(--panel);color:var(--on-dark);border-radius:4px;padding:clamp(20px,3vw,32px);display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.5fr);gap:clamp(20px,4vw,48px)}
-.bench h3{font-size:clamp(1.5rem,2.4vw,1.9rem);margin-bottom:10px}
-.bench .hint{color:var(--on-dark-muted);font-size:1rem}
-.bench form{display:flex;gap:10px;flex-wrap:wrap}
-.bench label{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
-.bench input{flex:1 1 220px;min-width:0;font:inherit;font-size:1.05rem;background:#F2F3EC;color:#16231F;border:0;padding:13px 14px;border-radius:3px}
-.bench input::placeholder{color:#6d786f}
-.out{min-height:4.6em;margin-top:18px;font-size:clamp(1.1rem,2vw,1.35rem);line-height:1.45}
-.out .seed{color:var(--on-dark-muted)}
-.cursor{display:inline-block;width:.5ch;height:1.1em;background:#F2557D;vertical-align:-.15em;margin-left:2px;animation:blink 1s steps(2) infinite}
-@keyframes blink{50%{opacity:0}}
-
-/* how I build */
-.rules{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(24px,4vw,48px);border-top:2px solid var(--ink);padding-top:28px}
-.rules h3{font-size:1.5rem;line-height:1.1;margin-bottom:10px}
-.rules p{color:var(--muted);font-size:1.05rem}
-
-/* contact */
-.gate{background:var(--gate);color:#F2F3EC}
-.gate .wrap{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:32px;align-items:end}
-.gate h2{max-width:11ch;margin:0}
-.gate p{font-size:1.2rem;max-width:30em;margin-bottom:24px}
-.gate .btn{background:#F2F3EC;color:#16231F}
-.gate .btn.ghost{background:transparent;color:#F2F3EC}
-
-footer{padding-block:28px;font-size:.95rem;color:var(--muted)}
-footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
-
-@media (max-width:960px){
-  .hero,.apps,.exps,.bench,.gate .wrap{grid-template-columns:1fr}
+body {
+  margin: 0;
+  background-color: var(--ground);
+  /* Subtle surveyor blueprint grid using CSS gradients with hard stops */
+  background-image:
+    linear-gradient(to right, color-mix(in oklab, var(--line) 32%, transparent) 1px, transparent 0),
+    linear-gradient(to bottom, color-mix(in oklab, var(--line) 32%, transparent) 1px, transparent 0);
+  background-size: 3.5rem 3.5rem;
+  color: var(--ink);
+  font-family: var(--text);
+  font-size: 1.125rem;
+  line-height: 1.55;
+  text-align: start;
+  overflow-x: hidden;
 }
-@media (max-width:720px){
-  .bar nav a.opt{display:none}
-  .map-grid{grid-template-columns:repeat(2,1fr);grid-auto-rows:minmax(84px,auto)}
-  .plot.big,.plot.mid,.plot.wide{grid-column:span 1;grid-row:span 1}
-  .plot.big b{font-size:1.25rem}
-  .map-grid .plot:last-child{grid-column:span 2}
-  .runs li{grid-template-columns:1fr}
-  .runs .url{justify-self:start;text-align:left}
-  .rules{grid-template-columns:1fr}
-  .app .stage{min-height:0}
-  .frame iframe{height:560px}
+
+a { color: inherit; }
+:focus-visible { outline: 3px solid var(--flag); outline-offset: 3px; }
+
+.wrap {
+  padding-inline: var(--gutter);
+  max-width: 80rem;
+  margin-inline: auto;
 }
-@media (prefers-reduced-motion:reduce){
-  html{scroll-behavior:auto}
-  .cursor{animation:none}
-  .plot a{transition:none}
+
+.skip {
+  position: absolute;
+  left: -9999px;
+}
+.skip:focus {
+  left: 1rem;
+  top: 1rem;
+  z-index: 50;
+  background: var(--surface);
+  padding: 0.5rem 0.75rem;
+}
+
+/* Balanced headings & pretty body wrapping */
+h1, h2, h3 {
+  font-family: var(--display);
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+}
+h2 {
+  font-stretch: 90%;
+  font-weight: 800;
+  font-size: clamp(2rem, 1.35rem + 2.8vw, 3.25rem);
+  line-height: 1.02;
+  margin: 0 0 0.75rem;
+}
+h3 {
+  font-stretch: 92%;
+  font-weight: 700;
+  margin: 0;
+}
+p, li, dd {
+  margin: 0;
+  text-wrap: pretty;
+}
+.sub {
+  max-width: 60ch;
+  color: var(--muted);
+}
+
+/* Surveyor monospace coordinates & tags */
+.coord, .spec-pill, .zone-tag {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+.zone-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--muted);
+  margin-bottom: 0.65rem;
+}
+.zone-tag::before {
+  content: "";
+  display: inline-block;
+  width: 0.55rem;
+  height: 0.55rem;
+  background: var(--flag);
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-family: var(--display);
+  font-stretch: 85%;
+  font-weight: 700;
+  font-size: 1.02rem;
+  line-height: 1;
+  text-decoration: none;
+  padding: 0.9rem 1.35rem;
+  border-radius: 3px;
+  border: 0;
+  cursor: pointer;
+  background: var(--flag);
+  color: var(--flag-ink);
+  transition: transform 0.15s ease, background-color 0.15s ease;
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+.btn:hover {
+  background: color-mix(in oklab, var(--flag) 88%, black);
+  transform: translateY(-1px);
+  @media (prefers-reduced-motion: reduce) {
+    transform: none;
+  }
+}
+.btn.ghost {
+  background: transparent;
+  color: inherit;
+  box-shadow: inset 0 0 0 1.5px currentColor;
+}
+.btn.ghost:hover {
+  background: color-mix(in oklab, currentColor 8%, transparent);
+}
+
+/* Flags: the one mark that carries status everywhere on the page */
+.flag {
+  display: block;
+  width: 1rem;
+  height: 1.25rem;
+  flex: none;
+  color: var(--ink);
+}
+.f-here { --cloth: var(--flag); }
+.f-run { --cloth: var(--lawn); }
+.f-exp { --cloth: var(--exp); --cloth-line: currentColor; }
+
+/* Top surveyor telemetry strip */
+.survey-strip {
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in oklab, var(--surface) 75%, transparent);
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.survey-strip .wrap {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding-block: 0.45rem;
+  flex-wrap: wrap;
+}
+.survey-strip .status-dot {
+  display: inline-block;
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: var(--lawn);
+  margin-right: 0.4rem;
+}
+
+/* Header & Navigation */
+.bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding-block: 1.15rem;
+  border-bottom: 2px solid var(--ink);
+}
+.mark {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  font-family: var(--display);
+  font-stretch: 80%;
+  font-weight: 800;
+  font-size: 1.45rem;
+  text-decoration: none;
+  letter-spacing: -0.02em;
+}
+.mark svg { width: 1.35rem; height: 1.6rem; }
+.bar-right {
+  display: flex;
+  align-items: center;
+  gap: clamp(0.75rem, 2vw, 1.75rem);
+}
+.bar nav {
+  display: flex;
+  gap: clamp(0.85rem, 2.2vw, 1.75rem);
+  font-family: var(--display);
+  font-stretch: 85%;
+  font-weight: 600;
+  font-size: 1rem;
+}
+.bar nav a {
+  text-decoration: none;
+  padding-block: 0.35rem;
+  border-bottom: 2px solid transparent;
+}
+.bar nav a:hover { border-color: var(--flag); }
+
+/* Theme toggle button */
+.theme-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1.5px solid var(--line);
+  border-radius: 3px;
+  padding: 0.4rem 0.65rem;
+  cursor: pointer;
+}
+.theme-btn:hover {
+  border-color: var(--ink);
+}
+.theme-btn .t-dark { display: none; }
+@media (prefers-color-scheme: dark) {
+  :root:not(:has(> head > meta[name="color-scheme"][content="light"])) .theme-btn .t-light { display: none; }
+  :root:not(:has(> head > meta[name="color-scheme"][content="light"])) .theme-btn .t-dark { display: inline; }
+}
+:root:has(> head > meta[name="color-scheme"][content="dark"]) .theme-btn .t-light { display: none; }
+:root:has(> head > meta[name="color-scheme"][content="dark"]) .theme-btn .t-dark { display: inline; }
+
+/* Hero + Architectural Yard Blueprint */
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.18fr);
+  gap: clamp(2rem, 4.5vw, 4rem);
+  align-items: start;
+  padding-block: clamp(2rem, 5vw, 4.25rem) clamp(2.5rem, 5vw, 4.5rem);
+}
+h1 {
+  font-stretch: 92%;
+  font-weight: 800;
+  font-size: clamp(2.9rem, 1.7rem + 4.6vw, 5.1rem);
+  line-height: 0.95;
+  letter-spacing: -0.02em;
+  margin: 0 0 1.35rem;
+  max-width: 12ch;
+}
+.lede {
+  font-size: clamp(1.125rem, 1rem + 0.55vw, 1.32rem);
+  max-width: 54ch;
+  margin-bottom: 1.6rem;
+}
+.cta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1.75rem;
+}
+.hero-notes {
+  border-top: 1px dashed var(--plot);
+  padding-top: 1rem;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  font-size: 0.9rem;
+}
+.hero-notes dt {
+  font-family: var(--mono);
+  font-size: 0.74rem;
+  color: var(--muted);
+}
+.hero-notes dd {
+  font-family: var(--display);
+  font-weight: 700;
+  font-stretch: 84%;
+  font-size: 1.05rem;
+  margin-top: 0.15rem;
+}
+
+/* The Interactive Yard Blueprint */
+.map {
+  margin: 0;
+  background: var(--surface);
+  border: 2px solid var(--ink);
+  border-radius: 4px;
+  padding: clamp(0.9rem, 2vw, 1.35rem);
+  box-shadow: 6px 6px 0 color-mix(in oklab, var(--ink) 14%, transparent);
+  position: relative;
+}
+.map-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding-bottom: 0.8rem;
+  margin-bottom: 0.85rem;
+  border-bottom: 1px solid var(--line);
+}
+.map-title {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.filter-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: var(--display);
+  font-stretch: 85%;
+  font-weight: 600;
+  font-size: 0.82rem;
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  padding: 0.25rem 0.55rem;
+  cursor: pointer;
+}
+.filter-btn:hover {
+  color: var(--ink);
+  border-color: var(--ink);
+}
+.filter-btn[aria-pressed="true"] {
+  background: var(--ink);
+  color: var(--surface);
+  border-color: var(--ink);
+}
+.filter-btn[aria-pressed="true"] .f-exp {
+  color: var(--surface);
+}
+.filter-btn .flag {
+  width: 0.75rem;
+  height: 0.95rem;
+}
+
+.map-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  grid-auto-rows: minmax(6.4rem, auto);
+  gap: 0.6rem;
+}
+.plot {
+  position: relative;
+  border: 1.5px dashed var(--plot);
+  border-radius: 2px;
+  background: color-mix(in oklab, var(--raised) 55%, var(--surface));
+  transition: transform 0.16s ease, opacity 0.2s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+.plot.dimmed {
+  opacity: 0.25;
+}
+.plot:hover, .plot:focus-within {
+  border-color: var(--flag);
+  border-style: solid;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 0 color-mix(in oklab, var(--ink) 16%, transparent);
+  @media (prefers-reduced-motion: reduce) {
+    transform: none;
+  }
+}
+.plot a {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  height: 100%;
+  padding: 2.4rem 0.75rem 0.65rem;
+  text-decoration: none;
+}
+.plot .flag {
+  position: absolute;
+  top: 0.55rem;
+  left: 0.7rem;
+}
+.plot .coord {
+  position: absolute;
+  top: 0.55rem;
+  right: 0.65rem;
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+.plot b {
+  font-family: var(--display);
+  font-stretch: 82%;
+  font-weight: 700;
+  font-size: 1.12rem;
+  line-height: 1.05;
+}
+.plot small {
+  font-size: 0.84rem;
+  color: var(--muted);
+  line-height: 1.3;
+  margin-top: 0.25rem;
+}
+.plot.big {
+  grid-column: span 3;
+  grid-row: span 2;
+  border-style: solid;
+  border-color: var(--ink);
+  background: var(--raised);
+}
+.plot.big b {
+  font-size: clamp(1.35rem, 1.1rem + 1vw, 1.85rem);
+}
+.plot.big .flag {
+  width: 1.35rem;
+  height: 1.7rem;
+}
+.plot.mid { grid-column: span 2; }
+.plot.wide { grid-column: span 3; }
+
+/* Live Surveyor Readout Bar inside Yard Map */
+.map-readout {
+  margin-top: 0.85rem;
+  padding: 0.65rem 0.8rem;
+  background: var(--panel);
+  color: var(--on-dark);
+  border-radius: 3px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.4rem 0.85rem;
+  align-items: baseline;
+  font-size: 0.88rem;
+}
+.map-readout .ro-id {
+  font-family: var(--mono);
+  font-size: 0.76rem;
+  color: #F2557D;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.map-readout .ro-text {
+  color: var(--on-dark);
+  line-height: 1.4;
+}
+.map-readout .ro-broke {
+  grid-column: 1 / -1;
+  font-family: var(--mono);
+  font-size: 0.76rem;
+  color: var(--on-dark-muted);
+  border-top: 1px solid var(--panel-line);
+  padding-top: 0.35rem;
+}
+
+/* The Gatehouse Workbench: Word-Pair Babbler elevated to top of yard */
+.workbench-wrap {
+  padding-bottom: clamp(2.5rem, 5vw, 4.5rem);
+}
+.bench {
+  position: relative;
+  background: var(--panel);
+  color: var(--on-dark);
+  border: 2px solid var(--ink);
+  border-radius: 4px;
+  padding: clamp(1.25rem, 3vw, 2.25rem);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.45fr);
+  gap: clamp(1.25rem, 3.5vw, 3rem);
+  box-shadow: 6px 6px 0 color-mix(in oklab, var(--ink) 14%, transparent);
+}
+/* Physical staked flag piercing the top of the dark workbench */
+.bench::before {
+  content: "";
+  position: absolute;
+  left: clamp(1.25rem, 3vw, 2.25rem);
+  top: -1.1rem;
+  width: 3px;
+  height: 2.3rem;
+  background: var(--flag);
+}
+.bench::after {
+  content: "40-LINE MARKOV BENCH";
+  position: absolute;
+  left: calc(clamp(1.25rem, 3vw, 2.25rem) + 3px);
+  top: -1.1rem;
+  background: var(--flag);
+  color: #fff;
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 0.15rem 0.55rem 0.15rem 0.45rem;
+}
+.bench h2 {
+  font-size: clamp(1.45rem, 1.1rem + 1.2vw, 2rem);
+  margin: 0.35rem 0 0.5rem;
+  color: var(--on-dark);
+}
+.bench .hint {
+  color: var(--on-dark-muted);
+  font-size: 0.98rem;
+  margin-bottom: 0.9rem;
+}
+.seed-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+.seed-chips span {
+  font-family: var(--mono);
+  font-size: 0.74rem;
+  color: var(--on-dark-muted);
+  margin-right: 0.2rem;
+}
+.chip {
+  font-family: var(--mono);
+  font-size: 0.76rem;
+  background: var(--panel-raised);
+  color: var(--on-dark);
+  border: 1px solid var(--panel-line);
+  border-radius: 2px;
+  padding: 0.25rem 0.5rem;
+  cursor: pointer;
+}
+.chip:hover {
+  border-color: #F2557D;
+}
+.bench form {
+  display: flex;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+.bench label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+.bench input {
+  flex: 1 1 14rem;
+  min-width: 0;
+  font: inherit;
+  font-size: 1.02rem;
+  background: #F2F3EC;
+  color: #16231F;
+  border: 0;
+  padding: 0.75rem 0.9rem;
+  border-radius: 3px;
+}
+.bench input::placeholder { color: #66726A; }
+.out {
+  min-height: 3.6em;
+  margin-top: 1rem;
+  font-size: clamp(1.08rem, 0.95rem + 0.6vw, 1.32rem);
+  line-height: 1.45;
+}
+.out .seed { color: var(--on-dark-muted); }
+.cursor {
+  display: inline-block;
+  width: 0.5ch;
+  height: 1.1em;
+  background: #F2557D;
+  vertical-align: -0.15em;
+  margin-left: 2px;
+  animation: blink 1s steps(2) infinite;
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+@keyframes blink { 50% { opacity: 0; } }
+
+.chain-inspector {
+  margin-top: 0.75rem;
+  padding: 0.5rem 0.7rem;
+  background: var(--panel-raised);
+  border-left: 3px solid #F2557D;
+  font-family: var(--mono);
+  font-size: 0.76rem;
+  color: var(--on-dark-muted);
+  overflow-x: auto;
+}
+.chain-inspector code {
+  color: var(--on-dark);
+}
+
+/* Sections */
+section {
+  padding-block: clamp(3.5rem, 7vw, 6rem);
+  border-top: 1.5px solid var(--line);
+}
+.on-surface {
+  background: color-mix(in oklab, var(--surface) 88%, transparent);
+}
+.head {
+  margin-bottom: clamp(1.75rem, 3.5vw, 2.75rem);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+/* Featured Live Apps (Field Dossiers with Interactive Stages) */
+.apps {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(1.25rem, 2.5vw, 2rem);
+}
+.app {
+  display: flex;
+  flex-direction: column;
+  background: var(--raised);
+  border-radius: 4px;
+  border: 2px solid var(--ink);
+  overflow: hidden;
+  box-shadow: 5px 5px 0 color-mix(in oklab, var(--ink) 12%, transparent);
+}
+.app-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.55rem 1rem;
+  background: var(--surface);
+  border-bottom: 1.5px solid var(--ink);
+  font-family: var(--mono);
+  font-size: 0.76rem;
+  color: var(--muted);
+}
+.app-meta strong {
+  color: var(--ink);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.app .stage {
+  background: var(--panel);
+  color: var(--on-dark);
+  padding: clamp(1.15rem, 2.5vw, 1.85rem);
+  min-height: 24rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.stage-hint {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--mono);
+  font-size: 0.74rem;
+  color: var(--on-dark-muted);
+  border-bottom: 1px solid var(--panel-line);
+  padding-bottom: 0.45rem;
+}
+.app .body {
+  padding: clamp(1.25rem, 2.5vw, 1.85rem);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  flex: 1;
+}
+.app h3 {
+  font-size: clamp(1.75rem, 1.3rem + 1.5vw, 2.3rem);
+  line-height: 1;
+}
+.facts {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--line);
+}
+.facts li {
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.98rem;
+}
+.facts strong {
+  font-family: var(--display);
+  font-stretch: 85%;
+  font-weight: 700;
+  margin-right: 0.4rem;
+}
+
+/* Stamped "What Broke" callout inside each Dossier */
+.broke-stamp {
+  background: var(--warn-bg);
+  border-left: 3px solid var(--warn);
+  padding: 0.65rem 0.8rem;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+.broke-stamp b {
+  display: block;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--warn);
+  letter-spacing: 0.03em;
+  margin-bottom: 0.2rem;
+}
+
+.app .row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1.1rem;
+  margin-top: auto;
+  padding-top: 0.4rem;
+}
+.app .note {
+  font-size: 0.88rem;
+  color: var(--muted);
+  max-width: 24ch;
+}
+
+/* Interactive TallyBack Receipt Specimen */
+.sketch {
+  display: grid;
+  gap: 0.75rem;
+  width: 100%;
+  max-width: 22.5rem;
+  margin-inline: auto;
+}
+.receipt {
+  width: 100%;
+  background: #FBFBF6;
+  color: #16231F;
+  font-size: 0.88rem;
+  line-height: 1.35;
+  padding: 1rem 1rem 0.95rem;
+  transform: rotate(-1deg);
+  -webkit-mask:
+    linear-gradient(#000 0 0) top / 100% calc(100% - 8px) no-repeat,
+    radial-gradient(circle 5px at 50% 100%, transparent 98%, #000) bottom / 12px 8px repeat-x;
+  mask:
+    linear-gradient(#000 0 0) top / 100% calc(100% - 8px) no-repeat,
+    radial-gradient(circle 5px at 50% 100%, transparent 98%, #000) bottom / 12px 8px repeat-x;
+}
+.receipt .t {
+  font-family: var(--display);
+  font-stretch: 80%;
+  font-weight: 700;
+  font-size: 1rem;
+  text-align: center;
+  margin-bottom: 0.55rem;
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px dashed #B5BDB5;
+  padding-bottom: 0.35rem;
+}
+.receipt .l {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  gap: 0.75rem;
+  padding: 0.28rem 0.4rem;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  border-radius: 2px;
+  text-align: start;
+}
+.receipt .l:hover {
+  background: #E9ECE4;
+}
+.receipt .l[aria-selected="true"] {
+  outline: 2px solid #16231F;
+  font-weight: 600;
+}
+.receipt .l.sum {
+  border-top: 1px dashed #9AA39A;
+  margin-top: 0.25rem;
+  padding-top: 0.4rem;
+}
+.receipt .l.bad {
+  background: #FDE3EA;
+  box-shadow: 0 0 0 1.5px #E0335F;
+}
+.receipt .why {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  color: #9E1C40;
+  background: #F9EEF1;
+  margin-top: 0.45rem;
+  padding: 0.4rem 0.5rem;
+  border-radius: 2px;
+}
+.tone-bar {
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
+  justify-content: flex-end;
+}
+.tone-btn {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  background: var(--panel-raised);
+  color: var(--on-dark-muted);
+  border: 1px solid var(--panel-line);
+  border-radius: 2px;
+  padding: 0.2rem 0.45rem;
+  cursor: pointer;
+}
+.tone-btn[aria-pressed="true"] {
+  background: #F2557D;
+  color: #fff;
+  border-color: #F2557D;
+}
+.bubble {
+  background: #DCF8C6;
+  color: #16231F;
+  border-radius: 10px 10px 2px 10px;
+  padding: 0.6rem 0.75rem;
+  font-size: 0.86rem;
+  line-height: 1.4;
+  justify-self: end;
+  width: 100%;
+}
+.bubble code {
+  background: #16231F;
+  color: #F2F3EC;
+  padding: 0.05rem 0.3rem;
+  border-radius: 2px;
+  font-family: var(--mono);
+  font-size: 0.78rem;
+}
+
+/* Interactive Review Scout Specimen */
+.summary {
+  width: 100%;
+  max-width: 24rem;
+  margin-inline: auto;
+  font-size: 0.94rem;
+  line-height: 1.55;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+.summary .q {
+  font-family: var(--display);
+  font-stretch: 85%;
+  font-weight: 600;
+  background: var(--panel-raised);
+  border: 1px solid var(--panel-line);
+  padding: 0.55rem 0.8rem;
+  border-radius: 3px;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+.summary .q span {
+  font-family: var(--mono);
+  font-size: 0.76rem;
+  color: var(--on-dark-muted);
+  white-space: nowrap;
+}
+.cite {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-family: var(--display);
+  font-stretch: 85%;
+  font-weight: 600;
+  font-size: 0.78rem;
+  background: #283A33;
+  color: #F2F3EC;
+  border: 1px solid #3E564C;
+  padding: 0.1rem 0.45rem;
+  border-radius: 2px;
+  white-space: nowrap;
+  cursor: pointer;
+  vertical-align: 1px;
+}
+.cite:hover, .cite[aria-pressed="true"] {
+  background: #F2557D;
+  border-color: #F2557D;
+  color: #fff;
+}
+.cite::before {
+  content: "";
+  display: inline-block;
+  border-left: 5px solid currentColor;
+  border-top: 3.5px solid transparent;
+  border-bottom: 3.5px solid transparent;
+}
+.transcript-box {
+  background: var(--panel-raised);
+  border-left: 3px solid #F2557D;
+  padding: 0.55rem 0.7rem;
+  border-radius: 0 3px 3px 0;
+  font-size: 0.83rem;
+  line-height: 1.4;
+}
+.transcript-box .tb-meta {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: #F2557D;
+  margin-bottom: 0.2rem;
+}
+.followup-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+}
+.followup-bar span {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--on-dark-muted);
+}
+
+/* Also Running Ledger */
+.runs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 2px solid var(--ink);
+}
+.runs li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 3.5fr) minmax(0, 6fr) minmax(0, 3fr);
+  gap: 0.4rem 1.75rem;
+  align-items: baseline;
+  padding: 1.35rem 0;
+  border-bottom: 1px solid var(--line);
+}
+.runs .coord {
+  color: var(--muted);
+}
+.runs h3 {
+  font-size: clamp(1.35rem, 1.1rem + 1vw, 1.75rem);
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.runs h3 a { text-decoration: none; }
+.runs h3 a:hover {
+  text-decoration: underline;
+  text-decoration-color: var(--flag);
+  text-decoration-thickness: 3px;
+  text-underline-offset: 5px;
+}
+.runs .url {
+  font-family: var(--mono);
+  font-size: 0.84rem;
+  color: var(--muted);
+  justify-self: end;
+  text-align: end;
+}
+
+/* Experiments Section with Instant Micro-Testers */
+.exps {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(1.25rem, 2.5vw, 2rem);
+}
+.exp {
+  background: var(--raised);
+  border: 1.5px dashed var(--plot);
+  border-top: 3px solid var(--ink);
+  border-radius: 4px;
+  padding: clamp(1.25rem, 2.5vw, 1.85rem);
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  box-shadow: 4px 4px 0 color-mix(in oklab, var(--ink) 10%, transparent);
+}
+.exp-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+.exp h3 {
+  font-size: clamp(1.5rem, 1.2rem + 1vw, 1.95rem);
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.score {
+  display: flex;
+  align-items: baseline;
+  gap: 0.9rem;
+  flex-wrap: wrap;
+  padding: 0.65rem 0;
+  border-block: 1px solid var(--line);
+}
+.score b {
+  font-family: var(--display);
+  font-stretch: 75%;
+  font-weight: 800;
+  font-size: clamp(2.4rem, 1.8rem + 2.5vw, 3.4rem);
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.score span {
+  color: var(--muted);
+  font-size: 0.95rem;
+  max-width: 24ch;
+  line-height: 1.35;
+}
+
+/* Instant sample probes inside Experiment cards */
+.mini-probe {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 0.75rem;
+  font-size: 0.9rem;
+}
+.mini-probe-head {
+  font-family: var(--mono);
+  font-size: 0.74rem;
+  color: var(--muted);
+  margin-bottom: 0.45rem;
+}
+.probe-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.55rem;
+}
+.probe-btn {
+  font-family: var(--display);
+  font-stretch: 85%;
+  font-weight: 600;
+  font-size: 0.82rem;
+  background: var(--raised);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  padding: 0.25rem 0.55rem;
+  cursor: pointer;
+  text-align: start;
+}
+.probe-btn[aria-pressed="true"] {
+  background: var(--ink);
+  color: var(--surface);
+  border-color: var(--ink);
+}
+.probe-out {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  padding-top: 0.45rem;
+  border-top: 1px dashed var(--line);
+  color: var(--ink);
+}
+
+.links { font-size: 0.92rem; color: var(--muted); }
+.frame {
+  border: 2px solid var(--ink);
+  background: #fff;
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 0.5rem;
+}
+.frame iframe {
+  display: block;
+  width: 100%;
+  height: 600px;
+  border: 0;
+}
+.exp .row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.1rem;
+  align-items: center;
+  margin-top: auto;
+  padding-top: 0.35rem;
+}
+
+/* How I Build + Interactive "What Broke" Field Log */
+.rules {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(1.5rem, 3.5vw, 2.75rem);
+  border-top: 2px solid var(--ink);
+  padding-top: 1.75rem;
+  margin-bottom: 2.75rem;
+}
+.rules .rule-num {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  color: var(--flag);
+  font-weight: 700;
+  display: block;
+  margin-bottom: 0.3rem;
+}
+.rules h3 {
+  font-size: 1.45rem;
+  line-height: 1.1;
+  margin-bottom: 0.55rem;
+}
+.rules p {
+  color: var(--muted);
+  font-size: 1.02rem;
+}
+
+/* Field Notes / Failure Ledger */
+.ledger {
+  background: var(--surface);
+  border: 2px solid var(--ink);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.ledger-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 0.75rem 1.15rem;
+  background: var(--panel);
+  color: var(--on-dark);
+}
+.ledger-bar h3 {
+  font-size: 1.15rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.ledger-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.ledger-tab {
+  font-family: var(--mono);
+  font-size: 0.76rem;
+  background: var(--panel-raised);
+  color: var(--on-dark-muted);
+  border: 1px solid var(--panel-line);
+  border-radius: 2px;
+  padding: 0.3rem 0.65rem;
+  cursor: pointer;
+}
+.ledger-tab[aria-selected="true"] {
+  background: var(--flag);
+  color: #fff;
+  border-color: var(--flag);
+}
+.ledger-body {
+  padding: clamp(1.1rem, 2.5vw, 1.65rem);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.25rem;
+}
+.ledger-col h4 {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin: 0 0 0.35rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.ledger-col p {
+  font-size: 0.98rem;
+  line-height: 1.45;
+}
+
+/* Contact Gate */
+.gate {
+  background: var(--gate);
+  color: #F2F3EC;
+  border-top: 2px solid var(--ink);
+}
+.gate .wrap {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 2rem;
+  align-items: end;
+}
+.gate h2 {
+  max-width: 11ch;
+  margin: 0;
+}
+.gate p {
+  font-size: 1.18rem;
+  max-width: 50ch;
+  margin-bottom: 1.5rem;
+}
+.gate .btn {
+  background: #F2F3EC;
+  color: #16231F;
+}
+.gate .btn:hover {
+  background: #FFFFFF;
+}
+.gate .btn.ghost {
+  background: transparent;
+  color: #F2F3EC;
+}
+
+footer {
+  padding-block: 1.75rem;
+  font-size: 0.92rem;
+  color: var(--muted);
+  border-top: 1px solid var(--line);
+}
+footer .wrap {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 60rem) {
+  .hero, .apps, .exps, .bench, .gate .wrap, .ledger-body {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 45rem) {
+  .bar nav a.opt, .survey-strip .opt { display: none; }
+  .map-grid {
+    grid-template-columns: repeat(2, 1fr);
+    grid-auto-rows: minmax(5.5rem, auto);
+  }
+  .plot.big, .plot.mid, .plot.wide {
+    grid-column: span 1;
+    grid-row: span 1;
+  }
+  .plot.big b { font-size: 1.2rem; }
+  .map-grid .plot:last-child { grid-column: span 2; }
+  .runs li { grid-template-columns: 1fr; gap: 0.25rem; }
+  .runs .url { justify-self: start; text-align: start; }
+  .rules, .hero-notes { grid-template-columns: 1fr; }
+  .app .stage { min-height: 0; }
+  .frame iframe { height: 520px; }
 }
 </style>
 </head>
@@ -214,81 +1371,241 @@ footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
 <a class="skip" href="#top">Skip to content</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
-  <symbol id="flag" viewBox="0 0 16 20"><path d="M2 1v19" stroke="currentColor" stroke-width="2"/><path d="M3.7 2.7h9.8l-3.5 3.8 3.5 3.8H3.7z" fill="var(--cloth,none)" stroke="var(--cloth-line,none)" stroke-width="1.4"/></symbol>
+  <symbol id="flag" viewBox="0 0 16 20">
+    <path d="M2 1v19" stroke="currentColor" stroke-width="2"/>
+    <path d="M3.7 2.7h9.8l-3.5 3.8 3.5 3.8H3.7z" fill="var(--cloth,none)" stroke="var(--cloth-line,none)" stroke-width="1.4"/>
+  </symbol>
 </svg>
+
+<div class="survey-strip" role="region" aria-label="Yard telemetry">
+  <div class="wrap">
+    <span><i class="status-dot" aria-hidden="true"></i>SITE SURVEY // TINKERYARD.DEV · 07 PLOTS STAKED</span>
+    <span class="opt">COMPUTE: 1× LAPTOP CPU + GEMINI / GROQ · LOGS: PUBLIC</span>
+  </div>
+</div>
 
 <header class="wrap bar">
   <a class="mark" href="/" aria-label="Tinkeryard home">
     <svg viewBox="0 0 22 26" aria-hidden="true"><path d="M3 1v25" stroke="currentColor" stroke-width="2.6"/><path d="M4 2h16l-5 6 5 6H4z" fill="var(--flag)"/></svg>
     tinkeryard
   </a>
-  <nav aria-label="Main">
-    <a href="#apps">Apps</a>
-    <a href="#experiments">Experiments</a>
-    <a class="opt" href="#how">How I build</a>
-    <a href="#contact">Contact</a>
-  </nav>
+  <div class="bar-right">
+    <nav aria-label="Main">
+      <a href="#apps">Live Apps</a>
+      <a href="#experiments">Experiments</a>
+      <a class="opt" href="#how">What Broke</a>
+      <a href="#contact">Contact</a>
+    </nav>
+    <button type="button" class="theme-btn" id="theme-toggle" aria-label="Switch color theme">
+      <span class="t-light">☾ Night bench</span>
+      <span class="t-dark">☀ Daylight</span>
+    </button>
+  </div>
 </header>
 
 <main id="top">
   <div class="wrap hero">
     <div>
+      <span class="zone-tag">ZONE 00 // OPEN-AIR WORKBENCH</span>
       <h1>Small AI tools that do one job well.</h1>
-      <p class="lede">Tinkeryard is where I build them in the open. Check a restaurant bill, hear what YouTube reviewers agree on, sort a note. Everything here runs today, and each one comes with notes on what broke.</p>
+      <p class="lede">Tinkeryard is where I build them in the open. Check a restaurant bill, hear what YouTube reviewers agree on, sort a note. Everything here runs today, and each plot keeps field notes on what broke.</p>
       <div class="cta">
         <a class="btn" href="/tallyback">Check a bill</a>
         <a class="btn ghost" href="/reviewscout">Search reviews</a>
       </div>
+      <dl class="hero-notes">
+        <div>
+          <dt>RULE 01</dt>
+          <dd>AI reads, code checks</dd>
+        </div>
+        <div>
+          <dt>RULE 02</dt>
+          <dd>Every claim cited</dd>
+        </div>
+        <div>
+          <dt>RULE 03</dt>
+          <dd>Failures logged</dd>
+        </div>
+      </dl>
     </div>
 
     <figure class="map" aria-labelledby="map-cap">
-      <ul class="map-grid">
-        <li class="plot big"><a href="/tallyback"><svg class="flag f-here" aria-hidden="true"><use href="#flag"/></svg><b>TallyBack</b><small>Finds the charge on a bill that doesn't add up</small></a></li>
-        <li class="plot big"><a href="/reviewscout"><svg class="flag f-here" aria-hidden="true"><use href="#flag"/></svg><b>Review Scout</b><small>What YouTube reviewers said, with timestamps</small></a></li>
-        <li class="plot mid"><a href="https://omni.tinkeryard.dev"><svg class="flag f-run" aria-hidden="true"><use href="#flag"/></svg><b>OmniShelf</b><small>Offline shop inventory</small></a></li>
-        <li class="plot mid"><a href="https://portfolix.tinkeryard.dev"><svg class="flag f-run" aria-hidden="true"><use href="#flag"/></svg><b>Portfolix</b><small>Photographer sites</small></a></li>
-        <li class="plot mid"><a href="https://geo.tinkeryard.dev"><svg class="flag f-run" aria-hidden="true"><use href="#flag"/></svg><b>GEO Tracker</b><small>A 21-day test, in public</small></a></li>
-        <li class="plot wide"><a href="#memo-sorter"><svg class="flag f-exp" aria-hidden="true"><use href="#flag"/></svg><b>Memo Sorter</b><small>A 22M-parameter note tagger</small></a></li>
-        <li class="plot wide"><a href="#fifty-questions"><svg class="flag f-exp" aria-hidden="true"><use href="#flag"/></svg><b>Fifty Questions</b><small>Four small models, one exam</small></a></li>
+      <div class="map-top">
+        <span class="map-title" id="map-cap">YARD BLUEPRINT — HOVER OR FILTER PLOTS</span>
+        <div class="legend" role="group" aria-label="Filter yard plots by status">
+          <button type="button" class="filter-btn" data-filter="all" aria-pressed="true">All (7)</button>
+          <button type="button" class="filter-btn" data-filter="here" aria-pressed="false">
+            <svg class="flag f-here" aria-hidden="true"><use href="#flag"/></svg>Live here
+          </button>
+          <button type="button" class="filter-btn" data-filter="run" aria-pressed="false">
+            <svg class="flag f-run" aria-hidden="true"><use href="#flag"/></svg>Own address
+          </button>
+          <button type="button" class="filter-btn" data-filter="exp" aria-pressed="false">
+            <svg class="flag f-exp" aria-hidden="true"><use href="#flag"/></svg>Experiment
+          </button>
+        </div>
+      </div>
+
+      <ul class="map-grid" id="yard-grid">
+        <li class="plot big" data-kind="here" data-id="PLOT 01 // TALLYBACK" data-spec="Next.js · Gemini Flash + deterministic TS math verifier" data-broke="Broke: LLM hallucinated bill sums & invented numbers in drafts → Fix: pure code arithmetic + {{placeholder}} verifier.">
+          <a href="/tallyback">
+            <svg class="flag f-here" aria-hidden="true"><use href="#flag"/></svg>
+            <span class="coord">N-01</span>
+            <b>TallyBack</b>
+            <small>Finds the charge on a bill that doesn't add up</small>
+          </a>
+        </li>
+        <li class="plot big" data-kind="here" data-id="PLOT 02 // REVIEW SCOUT" data-spec="Next.js · YouTube caption tracks + timestamp citation linker" data-broke="Broke: Cloud IPs got blocked & markers only appeared once a minute → Fix: mobile caption client + explicit skipped-video notices.">
+          <a href="/reviewscout">
+            <svg class="flag f-here" aria-hidden="true"><use href="#flag"/></svg>
+            <span class="coord">N-02</span>
+            <b>Review Scout</b>
+            <small>What YouTube reviewers said, with timestamps</small>
+          </a>
+        </li>
+        <li class="plot mid" data-kind="run" data-id="PLOT 03 // OMNISHELF" data-spec="omni.tinkeryard.dev · Offline-first barcode inventory" data-broke="Broke: Flaky shop Wi-Fi dropped stock counts mid-scan → Fix: local queue that reconciles on reconnect.">
+          <a href="https://omni.tinkeryard.dev">
+            <svg class="flag f-run" aria-hidden="true"><use href="#flag"/></svg>
+            <span class="coord">E-03</span>
+            <b>OmniShelf</b>
+            <small>Offline shop inventory</small>
+          </a>
+        </li>
+        <li class="plot mid" data-kind="run" data-id="PLOT 04 // PORTFOLIX" data-spec="portfolix.tinkeryard.dev · Multi-tenant photographer sites" data-broke="Broke: Uncompressed RAW exports tanked mobile LCP → Fix: edge resize + custom domain routing.">
+          <a href="https://portfolix.tinkeryard.dev">
+            <svg class="flag f-run" aria-hidden="true"><use href="#flag"/></svg>
+            <span class="coord">E-04</span>
+            <b>Portfolix</b>
+            <small>Photographer sites</small>
+          </a>
+        </li>
+        <li class="plot mid" data-kind="run" data-id="PLOT 05 // GEO TRACKER" data-spec="geo.tinkeryard.dev · 21-day manual AI visibility audit" data-broke="Broke: Automated scraping gave noisy answers → Fix: 21-day hand-logged evidence board.">
+          <a href="https://geo.tinkeryard.dev">
+            <svg class="flag f-run" aria-hidden="true"><use href="#flag"/></svg>
+            <span class="coord">E-05</span>
+            <b>GEO Tracker</b>
+            <small>A 21-day test, in public</small>
+          </a>
+        </li>
+        <li class="plot wide" data-kind="exp" data-id="PLOT 06 // MEMO SORTER" data-spec="22M MiniLM · Trained on laptop CPU in 36s · 40/48 accuracy" data-broke="Broke: Mixes up 'ideas' and 'todos' when notes start with action verbs but lack a deadline.">
+          <a href="#memo-sorter">
+            <svg class="flag f-exp" aria-hidden="true"><use href="#flag"/></svg>
+            <span class="coord">S-06</span>
+            <b>Memo Sorter</b>
+            <small>A 22M-parameter note tagger</small>
+          </a>
+        </li>
+        <li class="plot wide" data-kind="exp" data-id="PLOT 07 // FIFTY QUESTIONS" data-spec="4 small laptop models · Automated grading harness · Score: 29–47 / 50" data-broke="Broke: Every small model passed trivia easily but failed strict formatting & negative constraints.">
+          <a href="#fifty-questions">
+            <svg class="flag f-exp" aria-hidden="true"><use href="#flag"/></svg>
+            <span class="coord">S-07</span>
+            <b>Fifty Questions</b>
+            <small>Four small models, one exam</small>
+          </a>
+        </li>
       </ul>
-      <figcaption class="legend" id="map-cap">
-        <span><svg class="flag f-here" aria-hidden="true"><use href="#flag"/></svg>Live on this site</span>
-        <span><svg class="flag f-run" aria-hidden="true"><use href="#flag"/></svg>Running on its own address</span>
-        <span><svg class="flag f-exp" aria-hidden="true"><use href="#flag"/></svg>Experiment</span>
-      </figcaption>
+
+      <div class="map-readout" id="map-readout" aria-live="polite">
+        <span class="ro-id" id="ro-id">PLOT 01 // TALLYBACK</span>
+        <span class="ro-text" id="ro-spec">Next.js · Gemini Flash + deterministic TS math verifier</span>
+        <span class="ro-broke" id="ro-broke">Broke: LLM hallucinated bill sums &amp; invented numbers in drafts → Fix: pure code arithmetic + {{placeholder}} verifier.</span>
+      </div>
     </figure>
+  </div>
+
+  <!-- Elevated Gatehouse Instrument: The 40-line Word-Pair Babbler -->
+  <div class="wrap workbench-wrap">
+    <div class="bench">
+      <div>
+        <h2>The smallest model on the yard</h2>
+        <p class="hint">Type a few words or pick a seed. A 2-gram word-pair model trained on this yard's own field notes will finish your sentence—and show you the exact lookup bucket it picked from.</p>
+        <div class="seed-chips" aria-label="Sample seed phrases">
+          <span>SEEDS:</span>
+          <button type="button" class="chip" data-seed="The model I trained last night">trained last night</button>
+          <button type="button" class="chip" data-seed="The model reads the bill">reads the bill</button>
+          <button type="button" class="chip" data-seed="When the loss goes down">loss goes down</button>
+          <button type="button" class="chip" data-seed="Small experiments are cheap">cheap experiments</button>
+        </div>
+      </div>
+      <div>
+        <form id="babble" autocomplete="off">
+          <label for="seed">Start a sentence</label>
+          <input id="seed" name="seed" type="text" maxlength="80" placeholder="The model I trained last night">
+          <button class="btn" type="submit">Finish it</button>
+          <button class="btn ghost" type="button" id="again">Roll again</button>
+        </form>
+        <p class="out" id="out" aria-live="polite"></p>
+        <div class="chain-inspector" id="chain-inspector">
+          2-GRAM TABLE: <code id="chain-trace">chain["last night"] → ["learned"]</code>
+        </div>
+      </div>
+    </div>
   </div>
 
   <section class="on-surface" id="apps">
     <div class="wrap">
       <div class="head">
-        <h2>Live on tinkeryard.dev</h2>
-        <p class="sub">Two apps you can use right now. Both show a free example to anyone. Running your own needs an invite, because each run costs real money.</p>
+        <div>
+          <span class="zone-tag">ZONE 01 // LIVE PRODUCTION PLOTS</span>
+          <h2>Live on tinkeryard.dev</h2>
+          <p class="sub">Two apps you can use right now. Poke the interactive specimens below to see how they verify claims, or open the full apps. Running your own needs an invite because each run costs real API money.</p>
+        </div>
       </div>
 
       <div class="apps">
+        <!-- TallyBack Interactive Dossier -->
         <article class="app">
-          <div class="stage" aria-hidden="true">
+          <div class="app-meta">
+            <strong><svg class="flag f-here" aria-hidden="true"><use href="#flag"/></svg>PLOT N-01 · TALLYBACK</strong>
+            <span>GEMINI OCR + TS MATH CHECK</span>
+          </div>
+          <div class="stage">
+            <div class="stage-hint">
+              <span>INTERACTIVE SPECIMEN // CLICK ANY RECEIPT LINE</span>
+              <span>TABLE 7</span>
+            </div>
             <div class="sketch">
-              <div class="receipt">
-                <div class="t">Table 7</div>
-                <div class="l"><span>Paneer tikka</span><span>320</span></div>
-                <div class="l"><span>Butter naan × 4</span><span>240</span></div>
-                <div class="l"><span>Dal makhani</span><span>480</span></div>
-                <div class="l sum"><span>Subtotal</span><span>1,040</span></div>
-                <div class="l bad"><span>Service 10%</span><span>112</span></div>
-                <p class="why">10% of 1,040 is 104. You were charged 8 more.</p>
+              <div class="receipt" role="listbox" aria-label="Sample receipt lines">
+                <div class="t"><span>Spice Garden — Table 7</span><span>INR (₹)</span></div>
+                <button type="button" class="l" role="option" aria-selected="false" data-ai='{"line":"Paneer tikka","qty":1,"price":320}' data-check="320.00 === 320.00 · Line item OK">
+                  <span>Paneer tikka</span><span>320</span>
+                </button>
+                <button type="button" class="l" role="option" aria-selected="false" data-ai='{"line":"Butter naan × 4","qty":4,"unit":60,"price":240}' data-check="4 × 60 = 240.00 · Line multiplication OK">
+                  <span>Butter naan × 4</span><span>240</span>
+                </button>
+                <button type="button" class="l" role="option" aria-selected="false" data-ai='{"line":"Dal makhani","qty":1,"price":480}' data-check="480.00 === 480.00 · Line item OK">
+                  <span>Dal makhani</span><span>480</span>
+                </button>
+                <button type="button" class="l sum" role="option" aria-selected="false" data-ai='{"subtotal":1040}' data-check="320 + 240 + 480 = 1,040.00 · Subtotal verified">
+                  <span>Subtotal</span><span>1,040</span>
+                </button>
+                <button type="button" class="l bad" role="option" aria-selected="true" data-ai='{"label":"Service 10%","rate":0.10,"printed":112}' data-check="1,040 × 10% = 104.00 ≠ 112.00 · OVERCHARGE +₹8">
+                  <span>Service 10%</span><span>112</span>
+                </button>
+                <p class="why" id="receipt-inspector">CODE CHECK: 1,040 × 10% = 104.00 ≠ 112.00 · OVERCHARGE +₹8</p>
               </div>
-              <div class="bubble">Hi, the service charge on table 7 is ₹112, but 10% of ₹1,040 is ₹104. Could you correct it?</div>
+
+              <div class="tone-bar" role="group" aria-label="WhatsApp draft mode">
+                <button type="button" class="tone-btn" data-tone="polite" aria-pressed="true">Polite</button>
+                <button type="button" class="tone-btn" data-tone="direct" aria-pressed="false">Direct</button>
+                <button type="button" class="tone-btn" data-tone="code" aria-pressed="false">Show {{placeholders}}</button>
+              </div>
+              <div class="bubble" id="wa-bubble">
+                Hi, the service charge on table 7 is ₹112, but 10% of ₹1,040 is ₹104. Could you please correct it?
+              </div>
             </div>
           </div>
           <div class="body">
             <h3>TallyBack</h3>
             <p>Snap a bill. TallyBack points at the line that doesn't add up and writes one polite WhatsApp message to send.</p>
             <ul class="facts">
-              <li><strong>The AI only reads.</strong>It copies the bill into lines; plain code does every sum.</li>
+              <li><strong>The AI only reads.</strong>It copies the bill into lines; plain TypeScript code does every sum.</li>
               <li><strong>Your bills stay yours.</strong>Saved to your account with the photo, ready for the next dispute.</li>
             </ul>
+            <div class="broke-stamp">
+              <b>FIELD NOTE #04 // WHAT BROKE IN TESTING</b>
+              Card payment rows printed <em>after</em> the total were subtracted as discounts, and LLMs invented numbers in replies. Now only rows above subtotal count, and <code>message.ts</code> rejects any digit not in <code>{{placeholders}}</code>.
+            </div>
             <div class="row">
               <a class="btn" href="/tallyback">Check a bill</a>
               <span class="note">Try the sample receipt without signing in.</span>
@@ -296,22 +1613,52 @@ footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
           </div>
         </article>
 
+        <!-- Review Scout Interactive Dossier -->
         <article class="app">
-          <div class="stage" aria-hidden="true">
+          <div class="app-meta">
+            <strong><svg class="flag f-here" aria-hidden="true"><use href="#flag"/></svg>PLOT N-02 · REVIEW SCOUT</strong>
+            <span>YOUTUBE CAPTIONS + TIMESTAMP CITATIONS</span>
+          </div>
+          <div class="stage">
+            <div class="stage-hint">
+              <span>INTERACTIVE SPECIMEN // CLICK ANY CITATION OR FOLLOW-UP</span>
+              <span>6 VIDEOS CITED</span>
+            </div>
             <div class="summary">
-              <div class="q">Is this robot vacuum worth it? <span>6 videos</span></div>
-              <p>Most reviewers say suction is strong on hard floors <span class="cite">Home Lab 4:12</span> but it struggles with thick rugs <span class="cite">Dan Tests 7:40</span>.</p>
-              <p>Two of six mention the app losing its map after updates <span class="cite">Clean Setup 11:03</span>.</p>
-              <p class="example">Example output</p>
+              <div class="q" id="rs-query">Is this robot vacuum worth it? <span>6 videos</span></div>
+              <p id="rs-body-1">
+                Most reviewers say suction is strong on hard floors
+                <button type="button" class="cite" data-cite="homelab" aria-pressed="true">Home Lab 4:12</button>
+                but it struggles with thick rugs
+                <button type="button" class="cite" data-cite="dantests" aria-pressed="false">Dan Tests 7:40</button>.
+              </p>
+              <p id="rs-body-2">
+                Two of six mention the app losing its floor map after firmware updates
+                <button type="button" class="cite" data-cite="cleansetup" aria-pressed="false">Clean Setup 11:03</button>.
+              </p>
+              <div class="transcript-box" id="rs-transcript" aria-live="polite">
+                <div class="tb-meta" id="rs-tb-meta">SOURCE TRANSCRIPT · Home Lab @ 04:12</div>
+                <div id="rs-tb-quote">“On hardwood and tile it pulls coffee grounds in a single pass—zero scatter from the side brush.”</div>
+              </div>
+              <div class="followup-bar" role="group" aria-label="Sample follow-up questions">
+                <span>ASK FOLLOW-UP:</span>
+                <button type="button" class="tone-btn rs-follow" data-q="overview" aria-pressed="true">Overview</button>
+                <button type="button" class="tone-btn rs-follow" data-q="pethair" aria-pressed="false">Tangle with pet hair?</button>
+                <button type="button" class="tone-btn rs-follow" data-q="noise" aria-pressed="false">How loud is max mode?</button>
+              </div>
             </div>
           </div>
           <div class="body">
             <h3>Review Scout</h3>
             <p>Type a product you're deciding on. Review Scout watches the YouTube reviews for you and sums them up, and every claim links to the moment it was said.</p>
             <ul class="facts">
-              <li><strong>Every claim is cited.</strong>Click a source to open the video at that second.</li>
+              <li><strong>Every claim is cited.</strong>Click a source to open the video at that exact second.</li>
               <li><strong>Ask follow-ups.</strong>Answers come from the same videos and nothing else.</li>
             </ul>
+            <div class="broke-stamp">
+              <b>FIELD NOTE #11 // WHAT BROKE IN TESTING</b>
+              YouTube blocked datacenter IPs and hid web caption tracks, while long transcript chunks only had 1-minute markers. Switched to mobile caption client and surfaced skipped-video counts openly.
+            </div>
             <div class="row">
               <a class="btn" href="/reviewscout">Search reviews</a>
               <span class="note">Sign in with an invited email to run a search.</span>
@@ -325,21 +1672,27 @@ footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
   <section id="running">
     <div class="wrap">
       <div class="head">
-        <h2>Also running</h2>
-        <p class="sub">Earlier builds that live on their own addresses.</p>
+        <div>
+          <span class="zone-tag">ZONE 02 // SATELLITE ADDRESSES</span>
+          <h2>Also running</h2>
+          <p class="sub">Earlier builds that live on their own subdomains across tinkeryard.dev.</p>
+        </div>
       </div>
       <ul class="runs">
         <li>
+          <span class="coord">PLOT E-03</span>
           <h3><svg class="flag f-run" aria-hidden="true"><use href="#flag"/></svg><a href="https://omni.tinkeryard.dev">OmniShelf</a></h3>
           <p>Inventory for small shops that keeps working offline. Scan a barcode, and it syncs when the connection comes back.</p>
           <span class="url">omni.tinkeryard.dev</span>
         </li>
         <li>
+          <span class="coord">PLOT E-04</span>
           <h3><svg class="flag f-run" aria-hidden="true"><use href="#flag"/></svg><a href="https://portfolix.tinkeryard.dev">Portfolix</a></h3>
           <p>A portfolio site builder for photographers, where each photographer gets their own domain.</p>
           <span class="url">portfolix.tinkeryard.dev</span>
         </li>
         <li>
+          <span class="coord">PLOT E-05</span>
           <h3><svg class="flag f-run" aria-hidden="true"><use href="#flag"/></svg><a href="https://geo.tinkeryard.dev">GEO MVP Tracker</a></h3>
           <p>A 21-day board for testing an AI visibility audit by hand: the evidence gathered along the way, and a final verdict. Anyone can read it.</p>
           <span class="url">geo.tinkeryard.dev</span>
@@ -351,67 +1704,118 @@ footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
   <section class="on-surface" id="experiments">
     <div class="wrap">
       <div class="head">
-        <h2>Experiments</h2>
-        <p class="sub">Small models trained and tested on a laptop. The scores are honest, including the parts that went wrong.</p>
+        <div>
+          <span class="zone-tag">ZONE 03 // LAPTOP BENCHMARKS &amp; SMALL MODELS</span>
+          <h2>Experiments</h2>
+          <p class="sub">Small models trained and tested on a laptop CPU. Try the instant specimen probes below, or wake the full Hugging Face Spaces.</p>
+        </div>
       </div>
 
       <div class="exps">
         <article class="exp" id="memo-sorter">
-          <h3><svg class="flag f-exp" aria-hidden="true"><use href="#flag"/></svg>Memo Sorter</h3>
+          <div class="exp-top">
+            <h3><svg class="flag f-exp" aria-hidden="true"><use href="#flag"/></svg>Memo Sorter</h3>
+            <span class="coord">PLOT S-06 · 22M MINILM</span>
+          </div>
           <div class="score"><b>40 / 48</b><span>unseen notes tagged right. It still mixes up ideas and todos.</span></div>
           <p>Tags a short note as idea, todo, reminder or journal. A 22M-parameter MiniLM, trained on a laptop CPU in 36 seconds.</p>
+
+          <div class="mini-probe" aria-label="Instant Memo Sorter specimen test">
+            <div class="mini-probe-head">INSTANT SPECIMEN PROBE // SEE WHERE 22M MINILM SUCCEEDS &amp; FAILS:</div>
+            <div class="probe-pills">
+              <button type="button" class="probe-btn memo-probe" data-out="PREDICTED: reminder (94% conf) · Correct — time trigger 'at 8pm' anchored it." aria-pressed="true">“Call mom at 8pm”</button>
+              <button type="button" class="probe-btn memo-probe" data-out="PREDICTED: journal (91% conf) · Correct — past-tense reflection." aria-pressed="false">“Long walk in the rain today”</button>
+              <button type="button" class="probe-btn memo-probe" data-out="PREDICTED: todo (52% conf) · MISCLASSIFIED (True: idea) — action verb 'Build' fooled the 22M model." aria-pressed="false">“Build a receipt scanner someday”</button>
+            </div>
+            <div class="probe-out" id="memo-probe-out">PREDICTED: reminder (94% conf) · Correct — time trigger 'at 8pm' anchored it.</div>
+          </div>
+
           <div class="slot" data-src="https://knellutla-memo-sorter.hf.space/?__theme=light" data-title="Memo Sorter demo"></div>
           <div class="row">
-            <button class="btn ghost load" type="button">Load the demo</button>
+            <button class="btn ghost load" type="button">Load full Hugging Face demo</button>
             <span class="links"><a href="https://huggingface.co/knellutla/memo-sorter-minilm">Model card</a></span>
           </div>
         </article>
 
         <article class="exp" id="fifty-questions">
-          <h3><svg class="flag f-exp" aria-hidden="true"><use href="#flag"/></svg>Fifty Questions</h3>
+          <div class="exp-top">
+            <h3><svg class="flag f-exp" aria-hidden="true"><use href="#flag"/></svg>Fifty Questions</h3>
+            <span class="coord">PLOT S-07 · 4 SMALL MODELS</span>
+          </div>
           <div class="score"><b>29–47</b><span>out of 50 across four small models. All of them struggled most with following instructions.</span></div>
           <p>Fifty questions with automatic checkers. Open any question to read every model's reply, or ask one your own.</p>
+
+          <div class="mini-probe" aria-label="Instant Fifty Questions specimen test">
+            <div class="mini-probe-head">SAMPLE EXAM FAILURE // INSTRUCTION FOLLOWING VS. TRIVIA:</div>
+            <div class="probe-pills">
+              <button type="button" class="probe-btn fq-probe" data-out="PROMPT: 'Reply with ONLY the number: 14 × 3' → Qwen-1.5B: '42' (PASS) · SmolLM-360M: 'The answer is 42.' (FAIL: extra words)." aria-pressed="true">Q14: Strict 1-word math</button>
+              <button type="button" class="probe-btn fq-probe" data-out="PROMPT: 'Write 3 sentences without the letter e' → 3 of 4 small models slipped 'the' or 'more' by sentence two." aria-pressed="false">Q31: Negative constraint</button>
+              <button type="button" class="probe-btn fq-probe" data-out="PROMPT: 'Return valid JSON with keys name & age' → Llama-1B: 100% valid · TinyLlama: wrapped in markdown fences." aria-pressed="false">Q44: JSON schema</button>
+            </div>
+            <div class="probe-out" id="fq-probe-out">PROMPT: 'Reply with ONLY the number: 14 × 3' → Qwen-1.5B: '42' (PASS) · SmolLM-360M: 'The answer is 42.' (FAIL: extra words).</div>
+          </div>
+
           <div class="slot" data-src="https://knellutla-fifty-questions.hf.space/?__theme=light" data-title="Fifty Questions results"></div>
           <div class="row">
-            <button class="btn ghost load" type="button">Load the results</button>
+            <button class="btn ghost load" type="button">Load full 50-question results</button>
             <span class="links"><a href="https://github.com/krnellutla/fifty-questions">Code on GitHub</a></span>
           </div>
         </article>
-
-        <div class="bench">
-          <div>
-            <h3>The smallest model on the yard</h3>
-            <p class="hint">Type a few words. A word-pair model trained on this site's own notes will finish your sentence. About 40 lines of JavaScript, running in your browser.</p>
-          </div>
-          <div>
-            <form id="babble" autocomplete="off">
-              <label for="seed">Start a sentence</label>
-              <input id="seed" name="seed" type="text" maxlength="80" placeholder="The model I trained last night">
-              <button class="btn" type="submit">Finish it</button>
-              <button class="btn ghost" type="button" id="again">Try again</button>
-            </form>
-            <p class="out" id="out" aria-live="polite"></p>
-          </div>
-        </div>
       </div>
     </div>
   </section>
 
   <section id="how">
     <div class="wrap">
-      <div class="head"><h2>How I build</h2></div>
+      <div class="head">
+        <div>
+          <span class="zone-tag">ZONE 04 // SHOP RULES &amp; INCIDENT LOGS</span>
+          <h2>How I build</h2>
+          <p class="sub">Three rules from running small models and real bills, followed by the actual failure log from this repo.</p>
+        </div>
+      </div>
+
       <div class="rules">
         <div>
+          <span class="rule-num">PRINCIPLE 01</span>
           <h3>The AI reads. Code checks.</h3>
           <p>Models are good at reading messy things and bad at sums. So the model turns a photo into lines, and ordinary code decides what's wrong.</p>
         </div>
         <div>
+          <span class="rule-num">PRINCIPLE 02</span>
           <h3>Show the source.</h3>
           <p>An answer you can't check isn't worth much. Summaries link to the exact second in the video; bill checks show the line and the math.</p>
         </div>
         <div>
+          <span class="rule-num">PRINCIPLE 03</span>
           <h3>Write down what broke.</h3>
           <p>Every project keeps notes on what failed and why. The failures are usually the most useful part.</p>
+        </div>
+      </div>
+
+      <div class="ledger" aria-label="Notes on what broke across projects">
+        <div class="ledger-bar">
+          <h3><svg class="flag f-here" aria-hidden="true"><use href="#flag"/></svg>Field Incident Ledger — What Broke &amp; How It Was Fixed</h3>
+          <div class="ledger-tabs" role="tablist" aria-label="Select project failure log">
+            <button type="button" class="ledger-tab" role="tab" aria-selected="true" data-log="tallyback">TallyBack</button>
+            <button type="button" class="ledger-tab" role="tab" aria-selected="false" data-log="reviewscout">Review Scout</button>
+            <button type="button" class="ledger-tab" role="tab" aria-selected="false" data-log="memosorter">Memo Sorter</button>
+            <button type="button" class="ledger-tab" role="tab" aria-selected="false" data-log="fiftyq">Fifty Questions</button>
+          </div>
+        </div>
+        <div class="ledger-body" id="ledger-content" aria-live="polite">
+          <div class="ledger-col">
+            <h4>01 // What I Assumed</h4>
+            <p id="log-assumed">Vision LLMs could read a restaurant receipt, check the tax math, and draft a polite WhatsApp dispute in one prompt.</p>
+          </div>
+          <div class="ledger-col">
+            <h4>02 // How Real Data Broke It</h4>
+            <p id="log-broke">Card payment rows printed below the total were subtracted as S$56.95 "errors", models guessed GST was included when it was added, and drafts invented numbers.</p>
+          </div>
+          <div class="ledger-col">
+            <h4>03 // The Deterministic Fix</h4>
+            <p id="log-fix">Restricted item sums to rows above the subtotal, let printed totals decide tax mode in <code>checks.ts</code>, and built a <code>{{placeholder}}</code> verifier that rejects stray digits.</p>
+          </div>
         </div>
       </div>
     </div>
@@ -419,7 +1823,10 @@ footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
 
   <section class="gate" id="contact">
     <div class="wrap">
-      <h2>Building something similar?</h2>
+      <div>
+        <span class="zone-tag" style="color:#A9B7AE">ZONE 05 // OPEN GATE</span>
+        <h2>Building something similar?</h2>
+      </div>
       <div>
         <p>I'm happy to compare notes, or send an invite if you'd like to try the apps with your own bills and searches.</p>
         <div class="cta">
@@ -440,22 +1847,265 @@ footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
 
 <script>
 (function(){
-  /* demos load only when asked: each one is a whole app from Hugging Face */
-  document.querySelectorAll('.exp .load').forEach(function(btn){
-    btn.addEventListener('click',function(){
-      var slot=btn.closest('.exp').querySelector('.slot');
-      var f=document.createElement('iframe');
-      f.src=slot.dataset.src;f.title=slot.dataset.title;f.allow='clipboard-write';
-      var box=document.createElement('div');box.className='frame';box.appendChild(f);
-      var note=document.createElement('p');note.className='links';
-      note.textContent='It can take a minute to wake up if nobody has used it for a while.';
-      slot.append(box,note);
+  /* 1. Two-state Dark Mode Toggle (modern-web-guidance compliant) */
+  var metaScheme = document.querySelector('meta[name="color-scheme"]');
+  var themeBtn = document.getElementById('theme-toggle');
+  var mqDark = window.matchMedia('(prefers-color-scheme: dark)');
+
+  function getRenderedScheme() {
+    var stored = null;
+    try { stored = localStorage.getItem('color-scheme'); } catch (e) {}
+    if (stored === 'light' || stored === 'dark') return stored;
+    return mqDark.matches ? 'dark' : 'light';
+  }
+
+  if (themeBtn && metaScheme) {
+    themeBtn.addEventListener('click', function() {
+      var current = getRenderedScheme();
+      var target = current === 'dark' ? 'light' : 'dark';
+      var sys = mqDark.matches ? 'dark' : 'light';
+      try {
+        if (target !== sys) {
+          localStorage.setItem('color-scheme', target);
+          metaScheme.content = target;
+        } else {
+          localStorage.removeItem('color-scheme');
+          metaScheme.content = 'light dark';
+        }
+      } catch (e) {
+        metaScheme.content = target;
+      }
+    });
+  }
+
+  window.addEventListener('storage', function(e) {
+    if (e.key === 'color-scheme' && metaScheme) {
+      metaScheme.content = e.newValue || 'light dark';
+    }
+  });
+
+  /* 2. Interactive Yard Map Filter & Surveyor Telemetry Readout */
+  var plots = document.querySelectorAll('#yard-grid .plot');
+  var filterBtns = document.querySelectorAll('.filter-btn');
+  var roId = document.getElementById('ro-id');
+  var roSpec = document.getElementById('ro-spec');
+  var roBroke = document.getElementById('ro-broke');
+
+  function inspectPlot(plot) {
+    if (!plot || !roId) return;
+    roId.textContent = plot.dataset.id || '';
+    roSpec.textContent = plot.dataset.spec || '';
+    roBroke.textContent = plot.dataset.broke || '';
+  }
+
+  plots.forEach(function(plot) {
+    plot.addEventListener('mouseenter', function() { inspectPlot(plot); });
+    plot.addEventListener('focusin', function() { inspectPlot(plot); });
+  });
+
+  filterBtns.forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var f = btn.dataset.filter;
+      filterBtns.forEach(function(b) { b.setAttribute('aria-pressed', b === btn ? 'true' : 'false'); });
+      var firstMatch = null;
+      plots.forEach(function(p) {
+        var match = (f === 'all' || p.dataset.kind === f);
+        p.classList.toggle('dimmed', !match);
+        if (match && !firstMatch) firstMatch = p;
+      });
+      if (firstMatch) inspectPlot(firstMatch);
+    });
+  });
+
+  /* 3. Interactive TallyBack Receipt Specimen & Verifier Toggle */
+  var receiptLines = document.querySelectorAll('.receipt .l');
+  var receiptInspector = document.getElementById('receipt-inspector');
+  var toneBtns = document.querySelectorAll('.tone-btn[data-tone]');
+  var waBubble = document.getElementById('wa-bubble');
+
+  receiptLines.forEach(function(line) {
+    line.addEventListener('click', function() {
+      receiptLines.forEach(function(l) { l.setAttribute('aria-selected', l === line ? 'true' : 'false'); });
+      if (receiptInspector) {
+        receiptInspector.textContent = 'CODE CHECK: ' + (line.dataset.check || '');
+      }
+    });
+  });
+
+  var tones = {
+    polite: 'Hi, the service charge on table 7 is ₹112, but 10% of ₹1,040 is ₹104. Could you please correct it?',
+    direct: 'Table 7 bill check: Service charge 10% on ₹1,040 subtotal should be ₹104, not ₹112 (overcharged by ₹8). Please send a revised bill.',
+    code: 'Hi, the service charge on <code>{{table}}</code> is <code>{{printed}}</code>, but <code>{{rate}}</code> of <code>{{subtotal}}</code> is <code>{{expected}}</code>. <em>(Verifier locks digits so LLM cannot invent numbers)</em>'
+  };
+
+  toneBtns.forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      toneBtns.forEach(function(b) { b.setAttribute('aria-pressed', b === btn ? 'true' : 'false'); });
+      var t = btn.dataset.tone;
+      if (waBubble && tones[t]) {
+        waBubble.innerHTML = tones[t];
+      }
+    });
+  });
+
+  /* 4. Interactive Review Scout Citation & Follow-up Specimen */
+  var cites = {
+    homelab: {
+      meta: 'SOURCE TRANSCRIPT · Home Lab @ 04:12',
+      quote: '“On hardwood and tile it pulls coffee grounds in a single pass—zero scatter from the side brush.”'
+    },
+    dantests: {
+      meta: 'SOURCE TRANSCRIPT · Dan Tests @ 07:40',
+      quote: '“Once it climbs onto a high-pile rug, the main roller stalls twice and leaves lint in the weave.”'
+    },
+    cleansetup: {
+      meta: 'SOURCE TRANSCRIPT · Clean Setup @ 11:03',
+      quote: '“After the v2.4 update pushed Tuesday, my saved upstairs floor plan vanished and needed a full re-run.”'
+    },
+    petcite: {
+      meta: 'SOURCE TRANSCRIPT · Dan Tests @ 09:18',
+      quote: '“Long golden retriever hair wraps around the axle ends after two rooms; you still need the cutter tool weekly.”'
+    },
+    noisecite: {
+      meta: 'SOURCE TRANSCRIPT · Vacuum Wars @ 05:51',
+      quote: '“Standard mode sits at a quiet 58 dB, while Max boost jumps to 71 dB—loud enough to drown out a call.”'
+    }
+  };
+
+  var rsMeta = document.getElementById('rs-tb-meta');
+  var rsQuote = document.getElementById('rs-tb-quote');
+
+  function bindCiteButtons() {
+    document.querySelectorAll('.summary .cite').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        document.querySelectorAll('.summary .cite').forEach(function(b) {
+          b.setAttribute('aria-pressed', b === btn ? 'true' : 'false');
+        });
+        var entry = cites[btn.dataset.cite];
+        if (entry && rsMeta && rsQuote) {
+          rsMeta.textContent = entry.meta;
+          rsQuote.textContent = entry.quote;
+        }
+      });
+    });
+  }
+  bindCiteButtons();
+
+  var followups = {
+    overview: {
+      q: 'Is this robot vacuum worth it? <span>6 videos</span>',
+      p1: 'Most reviewers say suction is strong on hard floors <button type="button" class="cite" data-cite="homelab" aria-pressed="true">Home Lab 4:12</button> but it struggles with thick rugs <button type="button" class="cite" data-cite="dantests" aria-pressed="false">Dan Tests 7:40</button>.',
+      p2: 'Two of six mention the app losing its floor map after firmware updates <button type="button" class="cite" data-cite="cleansetup" aria-pressed="false">Clean Setup 11:03</button>.',
+      defaultCite: 'homelab'
+    },
+    pethair: {
+      q: 'Follow-up: Does it tangle with pet hair? <span>4 of 6 videos</span>',
+      p1: 'Three reviewers found long dog hair wrapping around the roller ends after two rooms <button type="button" class="cite" data-cite="petcite" aria-pressed="true">Dan Tests 9:18</button>.',
+      p2: 'Short cat hair on hard floors cleared into the bin without clogging the chute <button type="button" class="cite" data-cite="homelab" aria-pressed="false">Home Lab 4:12</button>.',
+      defaultCite: 'petcite'
+    },
+    noise: {
+      q: 'Follow-up: How loud is max mode? <span>3 of 6 videos</span>',
+      p1: 'Measured at 58 dB on standard suction, rising to 71 dB on carpet boost <button type="button" class="cite" data-cite="noisecite" aria-pressed="true">Vacuum Wars 5:51</button>.',
+      p2: 'Quiet enough for night runs on tile if auto-boost is switched off in the app <button type="button" class="cite" data-cite="cleansetup" aria-pressed="false">Clean Setup 11:03</button>.',
+      defaultCite: 'noisecite'
+    }
+  };
+
+  document.querySelectorAll('.rs-follow').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('.rs-follow').forEach(function(b) {
+        b.setAttribute('aria-pressed', b === btn ? 'true' : 'false');
+      });
+      var data = followups[btn.dataset.q];
+      if (!data) return;
+      document.getElementById('rs-query').innerHTML = data.q;
+      document.getElementById('rs-body-1').innerHTML = data.p1;
+      document.getElementById('rs-body-2').innerHTML = data.p2;
+      var entry = cites[data.defaultCite];
+      if (entry && rsMeta && rsQuote) {
+        rsMeta.textContent = entry.meta;
+        rsQuote.textContent = entry.quote;
+      }
+      bindCiteButtons();
+    });
+  });
+
+  /* 5. Instant Experiment Probes & On-Demand Hugging Face Iframes */
+  function bindProbes(selector, outId) {
+    var btns = document.querySelectorAll(selector);
+    var outEl = document.getElementById(outId);
+    btns.forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        btns.forEach(function(b) { b.setAttribute('aria-pressed', b === btn ? 'true' : 'false'); });
+        if (outEl) outEl.textContent = btn.dataset.out || '';
+      });
+    });
+  }
+  bindProbes('.memo-probe', 'memo-probe-out');
+  bindProbes('.fq-probe', 'fq-probe-out');
+
+  document.querySelectorAll('.exp .load').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var slot = btn.closest('.exp').querySelector('.slot');
+      var f = document.createElement('iframe');
+      f.src = slot.dataset.src;
+      f.title = slot.dataset.title;
+      f.allow = 'clipboard-write';
+      var box = document.createElement('div');
+      box.className = 'frame';
+      box.appendChild(f);
+      var note = document.createElement('p');
+      note.className = 'links';
+      note.textContent = 'It can take a minute to wake up if nobody has used it for a while.';
+      slot.append(box, note);
       btn.remove();
     });
   });
 
-  /* word-pair babbler */
-  var corpus=[
+  /* 6. Interactive Field Incident Ledger ("What Broke") */
+  var logs = {
+    tallyback: {
+      assumed: 'Vision LLMs could read a restaurant receipt, check the tax math, and draft a polite WhatsApp dispute in one prompt.',
+      broke: 'Card payment rows printed below the total were subtracted as S$56.95 "errors", models guessed GST was included when it was added, and drafts invented numbers.',
+      fix: 'Restricted item sums to rows above the subtotal, let printed totals decide tax mode in <code>checks.ts</code>, and built a <code>{{placeholder}}</code> verifier that rejects stray digits.'
+    },
+    reviewscout: {
+      assumed: 'Fetching YouTube transcripts from a cloud server and asking an LLM for timestamped summaries would work out of the box.',
+      broke: 'YouTube blocked cloud datacenter IPs and hid web caption tracks; long transcript windows only carried 1-minute markers so citations drifted.',
+      fix: 'Switched to the mobile caption client, grounded every claim to exact caption cue offsets, and surfaced skipped-video counts openly in the UI.'
+    },
+    memosorter: {
+      assumed: 'Fine-tuning a 22M-parameter MiniLM on laptop CPU for 36 seconds would cleanly separate ideas, todos, reminders, and journal entries.',
+      broke: 'Scored 40 / 48 on unseen notes, but consistently confused "ideas" and "todos" whenever a speculative note started with an imperative verb ("Build a...").',
+      fix: 'Published the confusion matrix on the model card and added confidence thresholds so borderline idea/todo notes flag their hesitation.'
+    },
+    fiftyq: {
+      assumed: 'Sub-2B parameter models running locally on a laptop would fail mostly on factual knowledge and multi-step reasoning.',
+      broke: 'Scored 29–47 out of 50, but their #1 failure mode wasn\'t knowledge—it was ignoring strict output rules like "reply with ONLY a number" or "no markdown fences".',
+      fix: 'Built deterministic Python checkers for all 50 questions so every model is graded on exact adherence rather than vibes.'
+    }
+  };
+
+  var ledgerTabs = document.querySelectorAll('.ledger-tab');
+  var logAssumed = document.getElementById('log-assumed');
+  var logBroke = document.getElementById('log-broke');
+  var logFix = document.getElementById('log-fix');
+
+  ledgerTabs.forEach(function(tab) {
+    tab.addEventListener('click', function() {
+      ledgerTabs.forEach(function(t) { t.setAttribute('aria-selected', t === tab ? 'true' : 'false'); });
+      var entry = logs[tab.dataset.log];
+      if (entry && logAssumed && logBroke && logFix) {
+        logAssumed.textContent = entry.assumed;
+        logBroke.textContent = entry.broke;
+        logFix.innerHTML = entry.fix;
+      }
+    });
+  });
+
+  /* 7. Word-Pair Babbler with Live 2-Gram Chain Inspector */
+  var corpus = [
     "I build small models that run on a laptop and I write down what broke.",
     "The model I trained last night learned to say hello and nothing else.",
     "Most of tinkering is waiting for a download to finish and wondering if the idea was any good.",
@@ -472,57 +2122,83 @@ footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
     "The yard is open to anyone who likes to take things apart and see how they think.",
     "Small experiments are cheap, and cheap experiments are the ones you actually run."
   ];
-  var chain={},starts=[];
-  function clean(w){return w.toLowerCase().replace(/[.,]/g,'')}
-  corpus.forEach(function(s){
-    var w=s.split(/\s+/);
-    starts.push(w.slice(0,2).join(' '));
-    for(var i=0;i<w.length;i++){
-      var k1=clean(w[i]);
-      var k2=i>0?clean(w[i-1]+' '+w[i]):null;
-      var nxt=w[i+1]||'.END';
-      (chain[k1]=chain[k1]||[]).push(nxt);
-      if(k2)(chain[k2]=chain[k2]||[]).push(nxt);
+  var chain = {}, starts = [];
+  function clean(w) { return w.toLowerCase().replace(/[.,]/g, ''); }
+  corpus.forEach(function(s) {
+    var w = s.split(/\s+/);
+    starts.push(w.slice(0, 2).join(' '));
+    for (var i = 0; i < w.length; i++) {
+      var k1 = clean(w[i]);
+      var k2 = i > 0 ? clean(w[i - 1] + ' ' + w[i]) : null;
+      var nxt = w[i + 1] || '.END';
+      (chain[k1] = chain[k1] || []).push(nxt);
+      if (k2) (chain[k2] = chain[k2] || []).push(nxt);
     }
   });
-  function pick(a){return a[Math.floor(Math.random()*a.length)]}
-  function finish(seed){
-    var words=seed.trim().split(/\s+/).filter(Boolean);
-    if(!words.length){words=pick(starts).split(' ')}
-    var out=[],hist=words.slice();
-    for(var n=0;n<26;n++){
-      var a=hist[hist.length-2],b=hist[hist.length-1];
-      var opts=(a&&chain[clean(a)+' '+clean(b)])||chain[clean(b)];
-      if(!opts)opts=chain[clean(pick(Object.keys(chain)))];
-      var w=pick(opts);
-      if(w==='.END'){if(n>5)break;w=pick(starts).split(' ')[0]}
-      out.push(w);hist.push(w);
-      if(/[.]$/.test(w)&&n>8)break;
+  function pick(a) { return a[Math.floor(Math.random() * a.length)]; }
+  function finish(seed) {
+    var words = seed.trim().split(/\s+/).filter(Boolean);
+    if (!words.length) { words = pick(starts).split(' '); }
+    var out = [], hist = words.slice(), firstTrace = null;
+    for (var n = 0; n < 26; n++) {
+      var a = hist[hist.length - 2], b = hist[hist.length - 1];
+      var key2 = a ? clean(a) + ' ' + clean(b) : null;
+      var key1 = clean(b);
+      var usedKey = (key2 && chain[key2]) ? key2 : key1;
+      var opts = (key2 && chain[key2]) || chain[key1];
+      if (!opts) {
+        usedKey = pick(Object.keys(chain));
+        opts = chain[usedKey];
+      }
+      var w = pick(opts);
+      if (!firstTrace) {
+        var uniq = Array.from(new Set(opts)).slice(0, 5);
+        firstTrace = 'chain["' + usedKey + '"] → [' + uniq.map(function(x){ return '"' + x + '"'; }).join(', ') + '] ➔ picked "' + w + '"';
+      }
+      if (w === '.END') { if (n > 5) break; w = pick(starts).split(' ')[0]; }
+      out.push(w);
+      hist.push(w);
+      if (/[.]$/.test(w) && n > 8) break;
     }
-    return {seed:words.join(' '),gen:out.join(' ')};
+    return { seed: words.join(' '), gen: out.join(' '), trace: firstTrace };
   }
 
-  var form=document.getElementById('babble'),input=document.getElementById('seed'),out=document.getElementById('out'),again=document.getElementById('again');
-  var reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var form = document.getElementById('babble'),
+      input = document.getElementById('seed'),
+      out = document.getElementById('out'),
+      again = document.getElementById('again'),
+      traceEl = document.getElementById('chain-trace');
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   var timer;
-  function run(){
+  function run() {
     clearInterval(timer);
-    var r=finish(input.value);
-    out.innerHTML='';
-    var s=document.createElement('span');s.className='seed';s.textContent=r.seed+' ';
-    var g=document.createElement('span');
-    var c=document.createElement('span');c.className='cursor';c.setAttribute('aria-hidden','true');
-    out.append(s,g,c);
-    if(reduce){g.textContent=r.gen;c.remove();return}
-    var i=0;
-    timer=setInterval(function(){
-      g.textContent=r.gen.slice(0,++i);
-      if(i>=r.gen.length){clearInterval(timer);c.remove()}
-    },28);
+    var r = finish(input.value);
+    out.innerHTML = '';
+    var s = document.createElement('span');
+    s.className = 'seed';
+    s.textContent = r.seed + ' ';
+    var g = document.createElement('span');
+    var c = document.createElement('span');
+    c.className = 'cursor';
+    c.setAttribute('aria-hidden', 'true');
+    out.append(s, g, c);
+    if (traceEl && r.trace) traceEl.textContent = r.trace;
+    if (reduce) { g.textContent = r.gen; c.remove(); return; }
+    var i = 0;
+    timer = setInterval(function() {
+      g.textContent = r.gen.slice(0, ++i);
+      if (i >= r.gen.length) { clearInterval(timer); c.remove(); }
+    }, 28);
   }
-  form.addEventListener('submit',function(e){e.preventDefault();run()});
-  again.addEventListener('click',run);
-  input.value='The model I trained last night';
+  form.addEventListener('submit', function(e) { e.preventDefault(); run(); });
+  again.addEventListener('click', run);
+  document.querySelectorAll('.chip[data-seed]').forEach(function(chip) {
+    chip.addEventListener('click', function() {
+      input.value = chip.dataset.seed;
+      run();
+    });
+  });
+  input.value = 'The model I trained last night';
   run();
 })();
 </script>
