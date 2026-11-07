@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "tsx --test Tallyback/tests/*.test.ts Reviewscout/tests/*.test.ts Auth/tests/*.test.ts"
+    "test": "tsx --test Tallyback/tests/*.test.ts Reviewscout/tests/*.test.ts Auth/tests/*.test.ts Fairshare/tests/*.test.ts"
   },
   "dependencies": {
     "@google/genai": "^1.52.0",

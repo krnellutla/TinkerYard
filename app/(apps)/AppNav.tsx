@@ -8,6 +8,7 @@ import { Account } from "@signin/ui/Account";
 const APPS = [
   { href: "/tallyback", label: "TallyBack" },
   { href: "/reviewscout", label: "Review Scout" },
+  { href: "/fairshare", label: "Fairshare" },
 ];
 
 export function AppNav() {
@@ -24,7 +25,7 @@ export function AppNav() {
             key={a.href}
             href={a.href}
             aria-current={active ? "page" : undefined}
-            className={`rounded-full px-3 py-1 ${active ? "bg-ink text-white" : "text-muted hover:text-ink"}`}
+            className={`whitespace-nowrap rounded-full px-2.5 py-1 sm:px-3 ${active ? "bg-ink text-white" : "text-muted hover:text-ink"}`}
           >
             {a.label}
           </Link>

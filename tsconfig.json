@@ -31,6 +31,9 @@
       ],
       "@signin/*": [
         "./Auth/src/*"
+      ],
+      "@fairshare/*": [
+        "./Fairshare/src/*"
       ]
     }
   },
