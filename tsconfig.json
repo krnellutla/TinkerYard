@@ -32,8 +32,8 @@
       "@signin/*": [
         "./Auth/src/*"
       ],
-      "@fairshare/*": [
-        "./Fairshare/src/*"
+      "@splitbill/*": [
+        "./Splitbill/src/*"
       ]
     }
   },

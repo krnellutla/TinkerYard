@@ -8,7 +8,7 @@ import { Account } from "@signin/ui/Account";
 const APPS = [
   { href: "/tallyback", label: "TallyBack" },
   { href: "/reviewscout", label: "Review Scout" },
-  { href: "/fairshare", label: "Fairshare" },
+  { href: "/splitbill", label: "SplitBill" },
 ];
 
 export function AppNav() {
