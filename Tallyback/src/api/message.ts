@@ -5,14 +5,14 @@ import { llmEnabled, writeMessage } from "@tallyback/lib/llm";
 import { messagePrompt } from "@tallyback/lib/prompts";
 import { buildFacts, fill, templateMessage, verify, type Tone } from "@tallyback/lib/message";
 import { findBill, saveDraft } from "@tallyback/lib/store";
-import { ownerOf, signedInUser, signInRequired } from "@signin/session";
+import { appUser, ownerOf } from "@signin/session";
 import type { Extraction, Promise } from "@tallyback/lib/types";
 
 
 // Writing the message calls the AI: signed-in, invited people only.
 export const POST = jsonRoute(async (req: Request) => {
-  const user = await signedInUser(req);
-  if (!user) return signInRequired("write the message");
+  const user = await appUser(req, "tallyback");
+  if (user instanceof Response) return user;
   const body = (await req.json()) as {
     billId: string;
     lineIds: string[];

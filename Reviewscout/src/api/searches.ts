@@ -1,13 +1,15 @@
 import { NextResponse } from "next/server";
 import { bestEffort, jsonRoute } from "@reviewscout/lib/route";
 import { claimDevice, listSearches, saveSearch } from "@reviewscout/lib/store";
-import { ownerOf, signedInUser, signInRequired } from "@signin/session";
+import { appUser, ownerOf } from "@signin/session";
 import { gather, RATE_LIMITED } from "@reviewscout/lib/youtube";
 
 
-// Past searches, newest first: the account's, or a guest's on this device.
+// Past searches, newest first: the account's (plus this device's searches from before sign-in was required).
 export const GET = jsonRoute(async (req: Request) => {
-  const owner = ownerOf(await signedInUser(req), new URL(req.url).searchParams.get("deviceId"));
+  const user = await appUser(req, "reviewscout");
+  if (user instanceof Response) return user;
+  const owner = ownerOf(user, new URL(req.url).searchParams.get("deviceId"));
   if (!owner) return NextResponse.json({ searches: [] });
   await bestEffort("claim device", () => claimDevice(owner), undefined);
   const searches = (await listSearches(owner)).map((s) => ({ id: s.id, topic: s.topic, createdAt: s.createdAt, videos: s.found.filter((f) => !f.skipped).length }));
@@ -18,8 +20,8 @@ export const GET = jsonRoute(async (req: Request) => {
 // so the page can show what was found while the summary is written.
 // A search reads YouTube and then calls the AI: signed-in, invited people only.
 export const POST = jsonRoute(async (req: Request) => {
-  const user = await signedInUser(req);
-  if (!user) return signInRequired("search reviews");
+  const user = await appUser(req, "reviewscout");
+  if (user instanceof Response) return user;
   const body = (await req.json()) as { deviceId?: string; topic?: string; nVideos?: number; withComments?: boolean };
   const owner = ownerOf(user, body.deviceId)!;
   const topic = String(body.topic ?? "").trim().slice(0, 300);

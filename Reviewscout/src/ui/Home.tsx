@@ -340,7 +340,7 @@ export default function ReviewScout() {
                 e.preventDefault();
                 sendFollowUp();
               }}
-              className="fixed inset-x-0 bottom-0 border-t border-line bg-paper/95 px-4 py-3 backdrop-blur"
+              className="fixed inset-x-0 bottom-[var(--tabbar-h)] z-30 border-t border-line bg-paper/95 px-4 py-3 backdrop-blur"
             >
               <div className="mx-auto flex max-w-xl gap-2">
                 <input

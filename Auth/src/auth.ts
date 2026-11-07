@@ -5,24 +5,43 @@ import { memoryAdapter } from "better-auth/adapters/memory";
 import { getMigrations } from "better-auth/db/migration";
 import { emailOTP } from "better-auth/plugins/email-otp";
 import { magicLink } from "better-auth/plugins/magic-link";
+import { passkey } from "@better-auth/passkey";
 import { Pool } from "pg";
-import { isAllowed, NOT_INVITED, parseAllowList } from "./allowlist";
+import { accessFor } from "./access";
+import { can } from "./policy";
 import { sendCode, sendLink } from "./email";
 
-// Passwordless sign-in for every app on tinkeryard.dev: a 6-digit code or a link, sent by email,
-// to allow-listed addresses only. Sessions live in Postgres (Neon) and last 30 days.
+// Passwordless sign-in for every app on tinkeryard.dev, invited people only (who may use what: policy.ts):
+// register once with a 6-digit email code, add a passkey, and sign in with the passkey from then on.
+// The email code (or link) stays as the way back in on a new device. Sessions live in Postgres (Neon) and last 30 days.
 // BETTER_AUTH_SECRET and BETTER_AUTH_URL are read from the environment by Better Auth itself.
 
 const dbUrl = (process.env.DATABASE_URL || process.env.POSTGRES_URL || "").trim().replace(/^["']|["']$/g, "");
 
 // The endpoints that start a sign-in. Strangers are stopped here, before a code is made or an email sent.
 const SIGN_IN_PATHS = new Set(["/email-otp/send-verification-otp", "/sign-in/email-otp", "/sign-in/magic-link"]);
-const allowList = () => parseAllowList(process.env.ALLOWED_EMAILS);
+const NOT_INVITED = "This yard is invite-only, and that email isn't on the list.";
+
+// Invited and not suspended: the admin dashboard's list, ADMIN_EMAILS and ALLOWED_EMAILS (see policy.ts).
+const mayEnter = async (email: unknown) => can(await accessFor(email), { type: "sign-in" });
+
+// Passkeys belong to one site: tinkeryard.dev in production, localhost in development.
+// Both come from BETTER_AUTH_URL, so a passkey made on one can never be used on the other.
+function site() {
+  try {
+    const url = new URL(process.env.BETTER_AUTH_URL || "http://localhost:3000");
+    return { rpID: url.hostname, origin: url.origin };
+  } catch {
+    return { rpID: "localhost", origin: "http://localhost:3000" };
+  }
+}
 
 function buildOptions() {
   return {
     // Without a database (local development), accounts and sessions live in memory until the server restarts.
-    database: dbUrl ? new Pool({ connectionString: dbUrl, max: 3 }) : memoryAdapter({ user: [], session: [], account: [], verification: [] }),
+    database: dbUrl
+      ? new Pool({ connectionString: dbUrl, max: 3 })
+      : memoryAdapter({ user: [], session: [], account: [], verification: [], passkey: [] }),
     session: {
       expiresIn: 60 * 60 * 24 * 30,
       // Trust the signed session cookie for 5 minutes, so most requests skip the database.
@@ -41,17 +60,34 @@ function buildOptions() {
         storeToken: "hashed",
         sendMagicLink: ({ email, url }) => sendLink(email, url),
       }),
+      // Adding a passkey needs a session (from the email code), so only invited people can register one.
+      passkey({
+        ...site(),
+        rpName: "Tinkeryard",
+        // Discoverable passkeys: the device knows which account it's for, so signing in needs no email.
+        authenticatorSelection: { residentKey: "required", userVerification: "preferred" },
+      }),
     ],
     hooks: {
       before: createAuthMiddleware(async (ctx) => {
-        if (SIGN_IN_PATHS.has(ctx.path) && !isAllowed(ctx.body?.email, allowList())) throw new APIError("FORBIDDEN", { message: NOT_INVITED });
+        if (SIGN_IN_PATHS.has(ctx.path) && !(await mayEnter(ctx.body?.email))) throw new APIError("FORBIDDEN", { message: NOT_INVITED });
       }),
     },
     // Second lock: no account is ever created for an email that isn't on the list.
+    // Third lock: no session is started for anyone who has since been removed or suspended, however
+    // they signed in (a passkey sign-in never sends an email, so the first lock can't see it).
     databaseHooks: {
       user: {
         create: {
-          before: async (user: { email: string }) => (isAllowed(user.email, allowList()) ? undefined : false),
+          before: async (user: { email: string }) => ((await mayEnter(user.email)) ? undefined : false),
+        },
+      },
+      session: {
+        create: {
+          before: async (session, ctx) => {
+            const user = await ctx?.context.internalAdapter.findUserById(session.userId);
+            return user && (await mayEnter(user.email)) ? undefined : false;
+          },
         },
       },
     },
@@ -74,7 +110,7 @@ export function getAuth() {
   return instance;
 }
 
-// Better Auth's tables (user, session, account, verification) are created on first use,
+// Better Auth's tables (user, session, account, verification, passkey) are created on first use,
 // like the apps' own tables. Runs once per server instance; adds only what's missing.
 let tablesReady: Promise<void> | null = null;
 export function ensureAuthTables(): Promise<void> {

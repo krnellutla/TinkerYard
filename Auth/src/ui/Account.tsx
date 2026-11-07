@@ -1,13 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { authClient } from "../client";
+import { useAccess } from "./access";
+import { PasskeyList } from "./Passkeys";
 import { SignIn } from "./SignIn";
 import { onAskToSignIn, sessionChanged } from "./prompt";
 
-// Right side of the app switcher: "Sign in", or who you are and "Sign out".
+// Right side of the app switcher: "Sign in", or who you are, your passkeys and "Sign out".
 export function Account() {
   const { data, isPending, error } = authClient.useSession();
+  const { access } = useAccess();
   const [signingIn, setSigningIn] = useState(false);
   const [menu, setMenu] = useState(false);
   const [linkError, setLinkError] = useState<string | undefined>();
@@ -33,6 +37,20 @@ export function Account() {
     setLinkError(code);
     setSigningIn(true);
   }, []);
+
+  // The open menu closes on a click outside it or on Escape.
+  const menuRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!menu) return;
+    const outside = (e: MouseEvent) => !menuRef.current?.contains(e.target as Node) && setMenu(false);
+    const esc = (e: KeyboardEvent) => e.key === "Escape" && setMenu(false);
+    document.addEventListener("mousedown", outside);
+    document.addEventListener("keydown", esc);
+    return () => {
+      document.removeEventListener("mousedown", outside);
+      document.removeEventListener("keydown", esc);
+    };
+  }, [menu]);
 
   if (isPending) return <span className="ml-auto h-7 w-16" aria-hidden="true" />;
   // Sign-in isn't set up on this server yet (no secret or database): show no button that can't work.
@@ -60,7 +78,7 @@ export function Account() {
 
   const email = data.user.email;
   return (
-    <div className="relative ml-auto">
+    <div ref={menuRef} className="relative ml-auto">
       <button
         onClick={() => setMenu((m) => !m)}
         aria-expanded={menu}
@@ -70,9 +88,16 @@ export function Account() {
         {email[0]}
       </button>
       {menu && (
-        <div className="absolute right-0 top-10 z-40 w-60 rounded-2xl border border-line bg-card p-3 text-sm shadow-lg">
+        <div className="absolute right-0 top-10 z-40 w-72 rounded-2xl border border-line bg-card p-3 text-sm shadow-lg">
           <p className="text-muted">Signed in as</p>
           <p className="truncate font-medium">{email}</p>
+          {access?.role && <p className="text-xs text-muted">{access.role === "admin" ? "Admin" : "Member"}</p>}
+          {access?.admin && (
+            <Link href="/admin" onClick={() => setMenu(false)} className="mt-3 block rounded-xl bg-ink py-2 text-center font-medium text-white">
+              Admin dashboard
+            </Link>
+          )}
+          <PasskeyList />
           <button
             onClick={async () => {
               setMenu(false);

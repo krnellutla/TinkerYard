@@ -12,6 +12,8 @@ const nextConfig: NextConfig = {
   // once those domains point at this project.
   async redirects() {
     return [
+      // SplitBill is now TallyBack's Split tab; ?g=… (an open group) carries over.
+      { source: "/splitbill", destination: "/tallyback?tab=split", permanent: false },
       { source: "/:path*", has: [{ type: "host", value: "tallyback.tinkeryard.dev" }], destination: "https://tinkeryard.dev/tallyback", permanent: false },
       { source: "/:path*", has: [{ type: "host", value: "reviewscout.tinkeryard.dev" }], destination: "https://tinkeryard.dev/reviewscout", permanent: false },
     ];

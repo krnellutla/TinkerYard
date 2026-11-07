@@ -2,13 +2,15 @@ import { NextResponse } from "next/server";
 import { jsonRoute } from "@tallyback/lib/route";
 import { getBill, photoUrl, toExtraction, toPromise } from "@tallyback/lib/store";
 import { historyFor, summarise } from "@tallyback/lib/billView";
-import { ownerOf, signedInUser } from "@signin/session";
+import { appUser, ownerOf } from "@signin/session";
 
 
 export const GET = jsonRoute(async (req: Request, { params }: { params: Promise<{ id: string }> }) => {
+  const user = await appUser(req, "tallyback");
+  if (user instanceof Response) return user;
   const { id } = await params;
   const deviceId = new URL(req.url).searchParams.get("deviceId") ?? "";
-  const owner = ownerOf(await signedInUser(req), deviceId);
+  const owner = ownerOf(user, deviceId);
   const b = owner ? await getBill(id, owner) : null;
   if (!owner || !b) return NextResponse.json({ error: "Bill not found" }, { status: 404 });
   const extraction = toExtraction(b.bill, b.lines);
