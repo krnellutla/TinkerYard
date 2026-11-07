@@ -29,3 +29,46 @@ body {
   50% { box-shadow: 0 0 0 6px rgb(194 65 12 / 0); }
 }
 .box-bad { animation: pulse-box 1.6s ease-in-out infinite; }
+
+/* ---- Feeling like an app on phones ---- */
+html {
+  -webkit-text-size-adjust: 100%;
+}
+/* Taps act at once (no double-tap-to-zoom wait), and long-presses on buttons don't select text. */
+a,
+button,
+label,
+summary,
+[role="tab"] {
+  touch-action: manipulation;
+}
+button,
+[role="tab"] {
+  -webkit-user-select: none;
+  user-select: none;
+}
+/* iPhone zooms the page into any field with text under 16px; at phone width, every field is 16px. */
+@media (max-width: 639px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+/* Room for the bottom tab bar on phones (it sits above the home indicator). */
+:root {
+  --tabbar-h: 0px;
+}
+@media (max-width: 639px) {
+  :root {
+    --tabbar-h: calc(60px + env(safe-area-inset-bottom));
+  }
+  body {
+    padding-bottom: var(--tabbar-h);
+  }
+}
+/* Sheets and dialogs that rise from the bottom keep clear of the home indicator. */
+.pb-safe {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+}
+

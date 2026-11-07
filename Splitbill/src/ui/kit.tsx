@@ -60,7 +60,7 @@ export function Sheet({ title, onClose, children }: { title: string; onClose: ()
             ×
           </button>
         </div>
-        <div className="overflow-y-auto px-5 py-4">{children}</div>
+        <div className="pb-safe overflow-y-auto px-5 pt-4">{children}</div>
       </div>
     </div>
   );

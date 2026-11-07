@@ -3,7 +3,7 @@ import { bestEffort, jsonRoute } from "@tallyback/lib/route";
 import { llmEnabled, readBill } from "@tallyback/lib/llm";
 import { saveBill, uploadImage } from "@tallyback/lib/store";
 import { historyFor } from "@tallyback/lib/billView";
-import { ownerOf, signedInUser, signInRequired } from "@signin/session";
+import { appUser, ownerOf } from "@signin/session";
 import sample from "@tallyback/lib/sample.json";
 import type { Extraction } from "@tallyback/lib/types";
 
@@ -13,19 +13,16 @@ const unsaved = (ex: Extraction) => ({ billId: crypto.randomUUID(), lineIds: ex.
 
 export const POST = jsonRoute(async (req: Request) => {
   const form = await req.formData();
-  const user = await signedInUser(req);
-  const owner = ownerOf(user, form.get("deviceId"));
+  // Every TallyBack action needs an account, even the free sample receipt.
+  const user = await appUser(req, "tallyback");
+  if (user instanceof Response) return user;
+  const owner = ownerOf(user, form.get("deviceId"))!;
 
-  // The sample receipt costs nothing, so it works for guests too.
   if (form.get("sample") === "1") {
     const ex = sample as unknown as Extraction;
-    const save = () => (owner ? saveBill(owner, ex, null, "sample") : Promise.resolve(unsaved(ex)));
-    const { billId, lineIds } = await bestEffort("save sample", save, unsaved(ex));
+    const { billId, lineIds } = await bestEffort("save sample", () => saveBill(owner, ex, null, "sample"), unsaved(ex));
     return NextResponse.json({ billId, lineIds, extraction: ex });
   }
-
-  // Reading a real bill calls the AI: signed-in, invited people only.
-  if (!user || !owner) return signInRequired("check a real bill");
 
   const file = form.get("file");
   if (!(file instanceof File)) return NextResponse.json({ error: "No file uploaded" }, { status: 400 });

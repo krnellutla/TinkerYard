@@ -56,11 +56,11 @@ const expenseIn = z.object({
   amount: cents,
   category: enumOf(CATEGORIES.map((c) => c.id)),
   date: day,
-  paid: z.record(z.number().int()),
+  paid: z.record(z.string(), z.number().int()),
   split: z.object({
     method: z.enum(["equal", "exact", "percent", "shares"]),
     members: z.array(z.string()).min(1).max(100),
-    values: z.record(z.number()).optional(),
+    values: z.record(z.string(), z.number()).optional(),
   }),
   notes: z.string().max(1000).default(""),
 });

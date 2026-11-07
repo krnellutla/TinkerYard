@@ -503,7 +503,7 @@ function Settings({ g, onClose, onChanged, onDeleted }: { g: GroupDetail; onClos
                       const n = prompt("Name", m.name);
                       if (n && n.trim() && n.trim() !== m.name) act(() => api(`/groups/${g.id}/members/${m.id}`, "PATCH", { name: n.trim(), email: m.email ?? "" }));
                     }}
-                    className="text-xs text-muted underline"
+                    className="px-1 py-2 text-xs text-muted underline"
                   >
                     Rename
                   </button>
@@ -516,7 +516,7 @@ function Settings({ g, onClose, onChanged, onDeleted }: { g: GroupDetail; onClos
                         if (m.id === g.meId) onDeleted();
                       })
                     }
-                    className="text-xs text-bad underline"
+                    className="px-1 py-2 text-xs text-bad underline"
                   >
                     {m.id === g.meId ? "Leave" : "Remove"}
                   </button>

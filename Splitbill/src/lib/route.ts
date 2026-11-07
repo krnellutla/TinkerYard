@@ -1,15 +1,15 @@
 import "server-only";
 import { NextResponse } from "next/server";
-import { signedInUser, signInRequired } from "@signin/session";
+import { appUser } from "@signin/session";
 import { Problem, type Me } from "./service";
 
-// Every SplitBill route: signed-in people only (groups are shared between real accounts, so a
-// device id isn't enough), and every reply is JSON, even when something unexpected throws.
+// Every SplitBill route: signed-in people with access to SplitBill only (groups are shared between
+// real accounts, so a device id isn't enough), and every reply is JSON, even when something unexpected throws.
 export function route<P extends Record<string, string> = Record<string, never>>(fn: (req: Request, me: Me, params: P) => Promise<Response | object | void>) {
   return async (req: Request, ctx: { params: Promise<P> }): Promise<Response> => {
     try {
-      const me = await signedInUser(req);
-      if (!me) return signInRequired("split expenses");
+      const me = await appUser(req, "splitbill");
+      if (me instanceof Response) return me;
       const out = await fn(req, me, ((await ctx?.params) ?? {}) as P);
       if (out instanceof Response) return out;
       return NextResponse.json(out ?? { ok: true });
