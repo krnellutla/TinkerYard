@@ -4,7 +4,9 @@
 // When the template's ID is set in the environment, Resend renders the template with our variables;
 // without it (local development, or before a template is published) the plain text goes out instead.
 
-export type Variables = Record<string, string | number>;
+// Every value is sent as text: the templates declare their variables as strings, and Resend
+// refuses a number for a string variable ("Variable \"MINUTES\" must be a `string`").
+export type Variables = Record<string, string>;
 
 export interface Message {
   to: string;
@@ -26,7 +28,7 @@ export const TEMPLATE_ENV = {
   notification: "RESEND_TEMPLATE_NOTIFICATION",
 } as const;
 
-const MINUTES = 10;
+const MINUTES = "10";
 
 export const codeMessage = (to: string, code: string): Message => ({
   to,

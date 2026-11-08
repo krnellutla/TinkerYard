@@ -10,7 +10,7 @@ test("email: with a template ID, the code goes out through the Resend template",
     from: FROM,
     to: ["a@b.co"],
     subject: "482913 is your Tinkeryard sign-in code",
-    template: { id: "tmpl_123", variables: { CODE: "482913", MINUTES: 10 } },
+    template: { id: "tmpl_123", variables: { CODE: "482913", MINUTES: "10" } },
   });
   assert.ok(!("text" in body));
 });
@@ -22,6 +22,12 @@ test("email: without a template ID (or when falling back), plain text goes out",
   assert.ok(!("template" in plain));
   const fallback = resendBody(m, FROM, { RESEND_TEMPLATE_SIGN_IN_LINK: "tmpl_9" }, false);
   assert.ok("text" in fallback && !("template" in fallback));
+});
+
+test("email: every template variable is a string (Resend rejects numbers for string variables)", () => {
+  for (const m of [codeMessage("a@b.co", "000123"), linkMessage("a@b.co", "https://x")]) {
+    for (const v of Object.values(m.template!.variables)) assert.equal(typeof v, "string");
+  }
 });
 
 test("email: notifications fill every variable the template declares", () => {

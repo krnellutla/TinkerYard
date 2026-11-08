@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { authClient } from "../client";
 import { deviceHasPasskey, markDevicePasskey, passkeyOffer } from "./device";
 import { KeyIcon, passkeysSupported } from "./SignIn";
+import { afterPendingCleared } from "./webauthn";
 
 // Passkeys after sign-in: the offer to create one, and the list in the account menu.
 
@@ -24,7 +25,7 @@ const MESSAGES: Record<string, string> = {
 // null: created (or this device already had one); "": cancelled; anything else: what went wrong.
 async function createPasskey(): Promise<string | null> {
   try {
-    const r = await authClient.passkey.addPasskey({ name: deviceLabel() });
+    const r = await afterPendingCleared(() => authClient.passkey.addPasskey({ name: deviceLabel() }));
     const err = r?.error as { code?: string; message?: string } | null | undefined;
     if (!err) {
       markDevicePasskey(true);
@@ -106,10 +107,19 @@ export function PasskeyPrompt() {
 }
 
 // In the account menu: your passkeys, add one for this device, remove old ones.
+// Once this browser has a passkey, adding another is switched off and says so instead.
 export function PasskeyList() {
   const { data: keys, isPending } = authClient.useListPasskeys();
+  const [deviceHas, setDeviceHas] = useState(deviceHasPasskey);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // The account has no passkeys left, so neither does this device (e.g. removed on another device).
+  useEffect(() => {
+    if (keys?.length === 0) {
+      markDevicePasskey(false);
+      setDeviceHas(false);
+    }
+  }, [keys]);
 
   return (
     <div className="mt-3 border-t border-line pt-3">
@@ -129,7 +139,10 @@ export function PasskeyList() {
                 if (!confirm(`Remove “${k.name || "Passkey"}”? That device will need email to sign in again.`)) return;
                 setBusy(true);
                 const r = await authClient.passkey.deletePasskey({ id: k.id });
-                if (!r.error && keys.length === 1) markDevicePasskey(false); // that was the last one
+                if (!r.error && keys.length === 1) {
+                  markDevicePasskey(false); // that was the last one
+                  setDeviceHas(false);
+                }
                 setBusy(false);
                 setError(r.error ? (r.error.message ?? "Couldn't remove it.") : null);
               }}
@@ -140,21 +153,31 @@ export function PasskeyList() {
           </li>
         ))}
       </ul>
-      {passkeysSupported() && (
-        <button
-          disabled={busy}
-          onClick={async () => {
-            setBusy(true);
-            const e = await createPasskey();
-            setError(e === null ? null : e || "Cancelled.");
-            setBusy(false);
-          }}
-          className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl border border-line py-2 font-medium disabled:opacity-40"
-        >
-          <KeyIcon className="h-4 w-4" />
-          Add a passkey for this device
-        </button>
-      )}
+      {passkeysSupported() &&
+        (deviceHas ? (
+          <p
+            role="status"
+            className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl bg-good-soft py-2 text-sm font-medium text-good"
+          >
+            <KeyIcon className="h-4 w-4" />
+            This device has a passkey ✓
+          </p>
+        ) : (
+          <button
+            disabled={busy}
+            onClick={async () => {
+              setBusy(true);
+              const e = await createPasskey();
+              if (e === null) setDeviceHas(true);
+              setError(e === null ? null : e || "Cancelled.");
+              setBusy(false);
+            }}
+            className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl border border-line py-2 font-medium disabled:opacity-40"
+          >
+            <KeyIcon className="h-4 w-4" />
+            {busy ? "Waiting for your device…" : "Add a passkey for this device"}
+          </button>
+        ))}
       {error && <p className="mt-2 rounded-lg bg-bad-soft p-2 text-xs text-bad">{error}</p>}
     </div>
   );

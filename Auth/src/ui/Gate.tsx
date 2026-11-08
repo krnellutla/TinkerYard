@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useRef } from "react";
 import { authClient } from "../client";
 import { APPS, appLabel, appOfPath } from "../policy";
 import { useAccess } from "./access";
@@ -16,8 +17,13 @@ export function RequireSignIn({ children }: { children: React.ReactNode }) {
   const { data, isPending, error } = authClient.useSession();
   const { access, loading } = useAccess();
   const path = usePathname();
+  // "Loading…" only for the very first check. The session is checked again whenever the tab comes
+  // back into view (e.g. after fetching the email code from the mail app); swapping the screen for
+  // "Loading…" then would throw away the sign-in step you were on.
+  const checked = useRef(false);
+  if (!isPending) checked.current = true;
 
-  if (isPending || (data && loading)) return <p className="mx-auto max-w-xl px-4 pt-8 text-muted">Loading…</p>;
+  if ((isPending && !checked.current) || (data && loading && !access)) return <p className="mx-auto max-w-xl px-4 pt-8 text-muted">Loading…</p>;
 
   if (error)
     return (

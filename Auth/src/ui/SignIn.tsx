@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { authClient } from "../client";
 import { deviceHasPasskey, markDevicePasskey } from "./device";
 import { sessionChanged } from "./prompt";
+import { afterPendingCleared, cancelPendingPasskey } from "./webauthn";
+import { clearProgress, loadProgress, saveProgress } from "./progress";
 
 // Signing in, with no passwords:
 //   this device has a passkey → "Sign in with a passkey" (face, fingerprint or device PIN)
@@ -27,10 +29,12 @@ export const passkeysSupported = () => typeof window !== "undefined" && "PublicK
 
 // The sign-in steps on their own, so they can sit in a page (the sign-in wall) or in a dialog.
 export function SignInPanel({ onDone, reason, errorCode }: { onDone?: () => void; reason?: string; errorCode?: string }) {
-  // A device known to hold a passkey starts on the passkey; any other device starts on the email code.
-  const [step, setStep] = useState<Step>(() => (deviceHasPasskey() ? "start" : "email"));
+  // Back from the mail app (even after the phone reloaded the tab): pick up at "Enter the code".
+  // Otherwise, a device known to hold a passkey starts on the passkey, and any other on the email code.
+  const [saved] = useState(loadProgress);
+  const [step, setStep] = useState<Step>(() => saved?.step ?? (deviceHasPasskey() ? "start" : "email"));
   const [note, setNote] = useState<string | null>(null);
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(saved?.email ?? "");
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(errorCode ? (MESSAGES[errorCode] ?? "That sign-in didn't work. Please try again.") : null);
@@ -40,10 +44,14 @@ export function SignInPanel({ onDone, reason, errorCode }: { onDone?: () => void
   useEffect(() => setCanPasskey(passkeysSupported()), []);
   useEffect(() => {
     inputRef.current?.focus();
+    // Starting over (another email, or the passkey screen): forget the saved step.
+    if (step === "email" || step === "start") clearProgress();
   }, [step]);
 
   // On the email step, the browser may also offer saved passkeys in the email field's autofill.
   // If one is picked, that's a full sign-in; anything else (not supported, dismissed) is ignored.
+  // Leaving the email step (or this screen) cancels that waiting request, so it can't block the
+  // "Create a passkey" that comes right after signing in.
   useEffect(() => {
     if (step !== "email" || !passkeysSupported()) return;
     authClient.signIn
@@ -55,10 +63,12 @@ export function SignInPanel({ onDone, reason, errorCode }: { onDone?: () => void
         }
       })
       .catch(() => {});
+    return cancelPendingPasskey;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
 
   function done() {
+    clearProgress();
     sessionChanged();
     onDone?.();
   }
@@ -86,7 +96,7 @@ export function SignInPanel({ onDone, reason, errorCode }: { onDone?: () => void
     setError(null);
     setNote(null);
     try {
-      const r = await authClient.signIn.passkey();
+      const r = await afterPendingCleared(() => authClient.signIn.passkey());
       if (!r?.error) {
         markDevicePasskey(true);
         return done();
@@ -106,6 +116,7 @@ export function SignInPanel({ onDone, reason, errorCode }: { onDone?: () => void
       () => authClient.emailOtp.sendVerificationOtp({ email: email.trim(), type: "sign-in" }),
       () => {
         setCode("");
+        saveProgress("code", email.trim());
         setStep("code");
       },
     );
@@ -115,7 +126,10 @@ export function SignInPanel({ onDone, reason, errorCode }: { onDone?: () => void
   const sendLink = () =>
     attempt(
       () => authClient.signIn.magicLink({ email: email.trim(), callbackURL: window.location.pathname }),
-      () => setStep("link-sent"),
+      () => {
+        saveProgress("link-sent", email.trim());
+        setStep("link-sent");
+      },
     );
 
   const link = "text-sm text-muted underline underline-offset-4 disabled:opacity-40";
