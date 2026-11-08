@@ -2,8 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { centsToInput, formatMoney, toCents } from "../lib/money";
-import { SPLIT_METHODS, checkPaid, splitAmount, type SplitMethod } from "../lib/split";
-import type { BillDraft } from "../lib/fromBill";
+import { SPLIT_METHODS, allocateItemized, checkPaid, splitAmount, type SplitMethod } from "../lib/split";
+import type { BillDraft, ClaimableReceiptLine } from "../lib/fromBill";
 import { CATEGORIES, type Category, type Expense, type GroupDetail } from "../lib/types";
 import { ErrorNote, Sheet, api, errorText, field, fieldBase, primary, today } from "./kit";
 
@@ -19,6 +19,12 @@ export function ExpenseForm({ group, expense, draft, onClose, onSaved }: { group
   const s = expense?.split;
   const paidIds = expense ? Object.keys(expense.paid) : [group.meId];
 
+  const hasDisputedDiff =
+    draft?.printedAmountCents != null &&
+    draft?.verifiedAmountCents != null &&
+    draft.verifiedAmountCents < draft.printedAmountCents;
+  const [useVerifiedTotal, setUseVerifiedTotal] = useState(true);
+
   const [description, setDescription] = useState(expense?.description ?? draft?.description ?? "");
   const [amountText, setAmountText] = useState(expense ? centsToInput(expense.amount) : draft?.amount ? centsToInput(draft.amount) : "");
   const [date, setDate] = useState(expense?.date ?? draft?.date ?? today());
@@ -28,6 +34,21 @@ export function ExpenseForm({ group, expense, draft, onClose, onSaved }: { group
     Object.fromEntries(people.map((m) => [m.id, expense?.paid[m.id] && paidIds.length > 1 ? centsToInput(expense.paid[m.id]) : ""])),
   );
   const [method, setMethod] = useState<SplitMethod>(s?.method ?? "equal");
+  const [itemMode, setItemMode] = useState<boolean>(!expense && (draft?.claimableLines?.length ?? 0) > 1);
+  const [itemLines, setItemLines] = useState<ClaimableReceiptLine[]>(() => draft?.claimableLines ?? []);
+  const [itemClaims, setItemClaims] = useState<Record<number, string[]>>(() => {
+    const activeIds = people.filter((m) => !m.removed).map((m) => m.id);
+    return Object.fromEntries(
+      (draft?.claimableLines ?? []).map((line) => [
+        line.lineIndex,
+        // Flagged/unrecognized lines with 0 verified cents start unclaimed; normal items default to everyone
+        line.flagged && line.verifiedCents === 0 ? [] : activeIds,
+      ]),
+    );
+  });
+  const [newItemDesc, setNewItemDesc] = useState("");
+  const [newItemAmt, setNewItemAmt] = useState("");
+
   const [included, setIncluded] = useState<Set<string>>(new Set(s?.members ?? people.filter((m) => !m.removed).map((m) => m.id)));
   const [values, setValues] = useState<Record<string, string>>(() =>
     Object.fromEntries(
@@ -42,16 +63,88 @@ export function ExpenseForm({ group, expense, draft, onClose, onSaved }: { group
   const [error, setError] = useState<string | null>(null);
 
   const amount = toCents(amountText) ?? 0;
+
+  function selectTotalMode(verified: boolean) {
+    setUseVerifiedTotal(verified);
+    if (!draft) return;
+    const targetCents = verified ? draft.verifiedAmountCents : draft.printedAmountCents;
+    if (targetCents != null) setAmountText(centsToInput(targetCents));
+  }
+
+  function toggleClaim(lineIndex: number, memberId: string) {
+    setItemClaims((prev) => {
+      const cur = prev[lineIndex] ?? [];
+      const next = cur.includes(memberId) ? cur.filter((x) => x !== memberId) : [...cur, memberId];
+      return { ...prev, [lineIndex]: next };
+    });
+  }
+
+  function claimAllForLine(lineIndex: number) {
+    const allIds = people.map((m) => m.id);
+    setItemClaims((prev) => {
+      const cur = prev[lineIndex] ?? [];
+      return { ...prev, [lineIndex]: cur.length === allIds.length ? [] : allIds };
+    });
+  }
+
+  function addCustomItem() {
+    const cents = toCents(newItemAmt);
+    if (!newItemDesc.trim() || !cents) return;
+    const nextIdx = itemLines.length ? Math.max(...itemLines.map((l) => l.lineIndex)) + 1 : 0;
+    const allIds = people.map((m) => m.id);
+    setItemLines((prev) => [
+      ...prev,
+      {
+        lineIndex: nextIdx,
+        description: newItemDesc.trim(),
+        qty: 1,
+        printedCents: cents,
+        verifiedCents: cents,
+        flagged: false,
+      },
+    ]);
+    setItemClaims((prev) => ({ ...prev, [nextIdx]: allIds }));
+    setNewItemDesc("");
+    setNewItemAmt("");
+  }
+
+  const itemizedCalc = useMemo(() => {
+    if (!itemMode || !amount) return null;
+    const activeLines = itemLines
+      .map((line) => ({
+        amountCents: useVerifiedTotal ? line.verifiedCents : line.printedCents,
+        members: itemClaims[line.lineIndex] ?? [],
+      }))
+      .filter((l) => l.amountCents > 0);
+    return allocateItemized(
+      amount,
+      activeLines,
+      people.map((m) => m.id),
+    );
+  }, [itemMode, amount, itemLines, itemClaims, useVerifiedTotal, people]);
+
   const paid = useMemo(
     () => (payer === "multiple" ? Object.fromEntries(people.map((m) => [m.id, blankIsZero(multiPaid[m.id] ?? "")])) : { [payer]: amount }),
     [payer, multiPaid, amount, people],
   );
   const split = useMemo(() => {
+    if (itemMode && itemizedCalc?.ok) {
+      const members = people.map((m) => m.id);
+      const nums = Object.fromEntries(members.map((id) => [id, itemizedCalc.owed[id] ?? 0]));
+      return { method: "exact" as SplitMethod, members, values: nums };
+    }
     const members = method === "equal" ? [...included] : people.map((m) => m.id);
     const nums = Object.fromEntries(members.map((id) => [id, method === "exact" ? blankIsZero(values[id] ?? "") : Number(values[id] || 0)]));
     return { method, members, values: method === "equal" ? undefined : nums };
-  }, [method, included, values, people]);
-  const result = amount ? splitAmount(amount, split) : null;
+  }, [itemMode, itemizedCalc, method, included, values, people]);
+
+  const result = amount
+    ? itemMode && itemizedCalc
+      ? itemizedCalc.ok
+        ? { ok: true as const, owed: itemizedCalc.owed }
+        : itemizedCalc
+      : splitAmount(amount, split)
+    : null;
   const paidError = amount ? checkPaid(amount, paid) : null;
   const problem = !description.trim() ? "Describe the expense." : !amount ? "Enter the amount." : paidError ?? (result && !result.ok ? result.error : null);
 
@@ -93,6 +186,42 @@ export function ExpenseForm({ group, expense, draft, onClose, onSaved }: { group
           <input type="date" value={date} onChange={(e) => setDate(e.target.value)} aria-label="Date" className={`${fieldBase} w-auto`} />
         </div>
 
+        {hasDisputedDiff && draft && (
+          <div className="rounded-2xl border border-bad/30 bg-bad-soft p-3.5 text-sm">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-bad">TallyBack Audit Shield</p>
+                <p className="mt-0.5 font-medium text-ink">
+                  {draft.issueTitle ?? "Overcharge flagged"} ({formatMoney(draft.atStakeCents ?? 0, draft.currency ?? group.currency)} disputed)
+                </p>
+              </div>
+              <span className="shrink-0 rounded-full bg-white/80 px-2.5 py-0.5 font-mono text-xs font-semibold text-bad">
+                −{formatMoney(draft.atStakeCents ?? 0, draft.currency ?? group.currency)}
+              </span>
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-1.5 text-xs">
+              <button
+                type="button"
+                onClick={() => selectTotalMode(true)}
+                aria-pressed={useVerifiedTotal}
+                className={`rounded-xl border px-2.5 py-2 text-left font-medium ${useVerifiedTotal ? "border-ink bg-ink text-white" : "border-line bg-card text-ink"}`}
+              >
+                <span className="block text-[11px] opacity-80">Split verified total</span>
+                <span className="font-mono text-sm font-semibold">{formatMoney(draft.verifiedAmountCents!, draft.currency ?? group.currency)}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => selectTotalMode(false)}
+                aria-pressed={!useVerifiedTotal}
+                className={`rounded-xl border px-2.5 py-2 text-left font-medium ${!useVerifiedTotal ? "border-ink bg-ink text-white" : "border-line bg-card text-ink"}`}
+              >
+                <span className="block text-[11px] opacity-80">Split printed total</span>
+                <span className="font-mono text-sm font-semibold">{formatMoney(draft.printedAmountCents!, draft.currency ?? group.currency)}</span>
+              </button>
+            </div>
+          </div>
+        )}
+
         {draft?.currency && draft.currency !== group.currency && (
           <p className="rounded-xl bg-warn-soft p-3 text-sm text-warn">
             The bill is in {draft.currency}, and this group uses {group.currency}. Check the amount before saving.
@@ -121,54 +250,204 @@ export function ExpenseForm({ group, expense, draft, onClose, onSaved }: { group
         <div className="text-sm">
           <span className="mb-1 block font-medium">Split</span>
           <div className="mb-2 flex flex-wrap gap-1.5">
+            <button
+              type="button"
+              onClick={() => setItemMode(true)}
+              aria-pressed={itemMode}
+              className={`rounded-full border px-3 py-1 font-medium ${itemMode ? "border-ink bg-ink text-white" : "border-line bg-card"}`}
+            >
+              🧾 By receipt items{itemLines.length ? ` (${itemLines.length})` : ""}
+            </button>
             {SPLIT_METHODS.map((m) => (
               <button
                 type="button"
                 key={m.id}
-                onClick={() => setMethod(m.id)}
-                aria-pressed={method === m.id}
-                className={`rounded-full border px-3 py-1 ${method === m.id ? "border-ink bg-ink text-white" : "border-line bg-card"}`}
+                onClick={() => {
+                  setItemMode(false);
+                  setMethod(m.id);
+                }}
+                aria-pressed={!itemMode && method === m.id}
+                className={`rounded-full border px-3 py-1 ${!itemMode && method === m.id ? "border-ink bg-ink text-white" : "border-line bg-card"}`}
               >
                 {m.label}
               </button>
             ))}
           </div>
-          <div className="space-y-2 rounded-2xl border border-line bg-card p-3">
-            {people.map((m) => {
-              const share = result?.ok ? (result.owed[m.id] ?? 0) : null;
-              return method === "equal" ? (
-                <label key={m.id} className="flex items-center justify-between gap-3">
-                  <span className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={included.has(m.id)}
-                      onChange={(e) =>
-                        setIncluded((set) => {
-                          const next = new Set(set);
-                          if (e.target.checked) next.add(m.id);
-                          else next.delete(m.id);
-                          return next;
-                        })
-                      }
-                      className="h-4 w-4 accent-ink"
-                    />
-                    {nameOf(m.id)}
-                  </span>
-                  <span className="font-mono text-muted">{share != null && included.has(m.id) ? formatMoney(share, group.currency) : "—"}</span>
-                </label>
+
+          {itemMode ? (
+            <div className="space-y-3 rounded-2xl border border-line bg-card p-3">
+              <div className="flex items-center justify-between text-xs text-muted">
+                <span>Tap who shared each item. Tax &amp; service charge split proportionally.</span>
+              </div>
+              {itemLines.length === 0 ? (
+                <p className="py-2 text-xs text-muted">Add items below to split them with proportional tax/service charge.</p>
               ) : (
-                <AmountRow
-                  key={m.id}
-                  label={nameOf(m.id)}
-                  unit={unit}
-                  value={values[m.id] ?? ""}
-                  onChange={(v) => setValues((p) => ({ ...p, [m.id]: v }))}
-                  hint={method !== "exact" && share != null ? formatMoney(share, group.currency) : undefined}
+                <ul className="divide-y divide-line">
+                  {itemLines.map((line) => {
+                    const lineCents = useVerifiedTotal ? line.verifiedCents : line.printedCents;
+                    const claimants = itemClaims[line.lineIndex] ?? [];
+                    const allSelected = claimants.length === people.length;
+                    return (
+                      <li key={line.lineIndex} className="py-2.5 first:pt-0 last:pb-0">
+                        <div className="flex items-baseline justify-between gap-2">
+                          <span className="min-w-0 flex-1 truncate font-medium">
+                            {line.qty && line.qty > 1 ? `${line.qty}× ` : ""}
+                            {line.description}
+                          </span>
+                          <span className="shrink-0 font-mono text-sm font-semibold">
+                            {formatMoney(lineCents, group.currency)}
+                          </span>
+                        </div>
+                        {line.flagged && (
+                          <p className="mt-0.5 text-[11px] text-bad">
+                            {useVerifiedTotal && line.verifiedCents < line.printedCents
+                              ? `Verified from ${formatMoney(line.printedCents, group.currency)} (${line.flagTitle ?? "disputed"})`
+                              : line.flagTitle ?? "Flagged on bill"}
+                          </p>
+                        )}
+                        <div className="mt-1.5 flex flex-wrap gap-1">
+                          {people.map((m) => {
+                            const active = claimants.includes(m.id);
+                            return (
+                              <button
+                                type="button"
+                                key={m.id}
+                                onClick={() => toggleClaim(line.lineIndex, m.id)}
+                                aria-pressed={active}
+                                className={`rounded-full border px-2.5 py-0.5 text-xs font-medium ${active ? "border-ink bg-ink text-white" : "border-line bg-paper text-muted"}`}
+                              >
+                                {nameOf(m.id)}
+                              </button>
+                            );
+                          })}
+                          <button
+                            type="button"
+                            onClick={() => claimAllForLine(line.lineIndex)}
+                            className={`rounded-full border px-2 py-0.5 text-[11px] ${allSelected ? "border-ink/40 bg-paper text-ink" : "border-dashed border-line text-muted"}`}
+                          >
+                            {allSelected ? "Clear" : "All"}
+                          </button>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+
+              <div className="flex gap-1.5 border-t border-line pt-2.5">
+                <input
+                  value={newItemDesc}
+                  onChange={(e) => setNewItemDesc(e.target.value)}
+                  placeholder="Add item (e.g. Laksa)"
+                  className={`${fieldBase} h-9 min-w-0 flex-1 text-xs`}
                 />
-              );
-            })}
-            {result && !result.ok && <p className="text-xs text-bad">{result.error}</p>}
-          </div>
+                <input
+                  inputMode="decimal"
+                  value={newItemAmt}
+                  onChange={(e) => setNewItemAmt(e.target.value)}
+                  placeholder="0.00"
+                  className={`${fieldBase} h-9 w-24 text-right font-mono text-xs`}
+                />
+                <button
+                  type="button"
+                  onClick={addCustomItem}
+                  disabled={!newItemDesc.trim() || !toCents(newItemAmt)}
+                  className="rounded-xl border border-line bg-paper px-3 text-xs font-medium disabled:opacity-40"
+                >
+                  + Item
+                </button>
+              </div>
+
+              {itemizedCalc && itemizedCalc.ok && (
+                <div className="space-y-1.5 rounded-xl bg-paper p-2.5 text-xs">
+                  <div className="flex justify-between text-muted">
+                    <span>Items subtotal</span>
+                    <span className="font-mono">{formatMoney(itemizedCalc.itemsSumCents, group.currency)}</span>
+                  </div>
+                  <div className="flex justify-between text-muted">
+                    <span>
+                      Proportional tax / service / extras
+                      {draft?.extras && (draft.extras.serviceChargeCents > 0 || draft.extras.taxAddedCents > 0)
+                        ? ` (${[
+                            draft.extras.serviceChargeCents > 0 ? `svc ${formatMoney(draft.extras.serviceChargeCents, group.currency)}` : "",
+                            draft.extras.taxAddedCents > 0 ? `tax ${formatMoney(draft.extras.taxAddedCents, group.currency)}` : "",
+                          ]
+                            .filter(Boolean)
+                            .join(" + ")})`
+                        : ""}
+                    </span>
+                    <span className="font-mono">
+                      {itemizedCalc.extrasCents >= 0 ? "+" : "−"}
+                      {formatMoney(Math.abs(itemizedCalc.extrasCents), group.currency)}
+                    </span>
+                  </div>
+                  <div className="border-t border-line pt-1.5">
+                    {people.map((m) => {
+                      const tot = itemizedCalc.owed[m.id] ?? 0;
+                      const sub = itemizedCalc.itemSubtotals[m.id] ?? 0;
+                      const exShare = itemizedCalc.extrasAllocated[m.id] ?? 0;
+                      return (
+                        <div key={m.id} className="flex items-baseline justify-between py-0.5">
+                          <span className="font-medium">{nameOf(m.id)}</span>
+                          <span className="font-mono">
+                            {tot > 0 ? (
+                              <>
+                                <span className="text-muted">
+                                  {formatMoney(sub, group.currency)}
+                                  {exShare !== 0 ? ` ${exShare > 0 ? "+" : "−"} ${formatMoney(Math.abs(exShare), group.currency)}` : ""} ={" "}
+                                </span>
+                                <b className="text-ink">{formatMoney(tot, group.currency)}</b>
+                              </>
+                            ) : (
+                              <span className="text-muted">—</span>
+                            )}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+              {itemizedCalc && !itemizedCalc.ok && <p className="text-xs text-bad">{itemizedCalc.error}</p>}
+            </div>
+          ) : (
+            <div className="space-y-2 rounded-2xl border border-line bg-card p-3">
+              {people.map((m) => {
+                const share = result?.ok ? (result.owed[m.id] ?? 0) : null;
+                return method === "equal" ? (
+                  <label key={m.id} className="flex items-center justify-between gap-3">
+                    <span className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={included.has(m.id)}
+                        onChange={(e) =>
+                          setIncluded((set) => {
+                            const next = new Set(set);
+                            if (e.target.checked) next.add(m.id);
+                            else next.delete(m.id);
+                            return next;
+                          })
+                        }
+                        className="h-4 w-4 accent-ink"
+                      />
+                      {nameOf(m.id)}
+                    </span>
+                    <span className="font-mono text-muted">{share != null && included.has(m.id) ? formatMoney(share, group.currency) : "—"}</span>
+                  </label>
+                ) : (
+                  <AmountRow
+                    key={m.id}
+                    label={nameOf(m.id)}
+                    unit={unit}
+                    value={values[m.id] ?? ""}
+                    onChange={(v) => setValues((p) => ({ ...p, [m.id]: v }))}
+                    hint={method !== "exact" && share != null ? formatMoney(share, group.currency) : undefined}
+                  />
+                );
+              })}
+              {result && !result.ok && <p className="text-xs text-bad">{result.error}</p>}
+            </div>
+          )}
         </div>
 
         <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder="Notes (optional)" className={`${field} resize-none`} />

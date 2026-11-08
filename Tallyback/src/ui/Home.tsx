@@ -202,7 +202,7 @@ export default function Home() {
 
   function splitThisBill() {
     if (!ex) return;
-    setDraft(billToDraft(ex));
+    setDraft(billToDraft(ex, result, billId || undefined));
     go("split");
   }
 
@@ -578,10 +578,23 @@ function Review(props: {
       {p && <MessagePanel key={p.id} {...props} finding={p} />}
 
       <div className="rounded-2xl border border-line bg-card p-4">
-        <p className="font-medium">Shared this bill?</p>
-        <p className="mt-1 text-sm text-muted">Add it to a group and split it equally, by amounts, percentages or shares.</p>
+        <div className="flex items-baseline justify-between gap-2">
+          <p className="font-medium">Shared this bill?</p>
+          {p && p.diff > 0 && ex.printed_total != null && (
+            <span className="rounded-full bg-bad-soft px-2.5 py-0.5 font-mono text-xs font-medium text-bad">
+              Verified {fmt(Math.max(0, ex.printed_total - p.diff), cur)}
+            </span>
+          )}
+        </div>
+        <p className="mt-1 text-sm text-muted">
+          {p && p.diff > 0
+            ? `Split the verified fair total (excluding ${fmt(p.diff, cur)} disputed), assign individual receipt items with proportional tax/service charge, or split equally.`
+            : "Add it to a group and split by individual receipt items (with proportional tax & service charge), equally, percentages or shares."}
+        </p>
         <button onClick={props.onSplit} className="mt-3 flex h-12 w-full items-center justify-center rounded-2xl bg-ink font-medium text-white active:scale-[.99]">
-          Split this bill
+          {p && p.diff > 0 && ex.printed_total != null
+            ? `Split verified bill (${fmt(Math.max(0, ex.printed_total - p.diff), cur)})`
+            : "Split this bill"}
         </button>
       </div>
     </section>

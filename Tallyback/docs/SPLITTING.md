@@ -7,9 +7,10 @@ Split shared costs with friends in TallyBack's **Split with friends** tab (`/tal
 |---|---|
 | **Groups** | Trip, Home, Couple or Other, with one currency (SGD, INR, USD, EUR, GBP, AUD, MYR). Rename, change type, delete. Currency is fixed once the first expense is in. |
 | **Members** | Added by name, optionally with an email. Someone with an email sees the group the first time they sign in with that address; without one, they're tracked only. A member can leave or be removed only when settled up. |
-| **Expenses** | Description, amount, date, category, notes. Paid by one person or several (amounts must add up). Split **equally** (tick who's in), by **exact amounts**, **percentages** or **shares**, with each person's share shown as you type. |
+| **Expenses** | Description, amount, date, category, notes. Paid by one person or several (amounts must add up). Split **by receipt items** (with proportional tax, service charge & discount allocation via `allocateItemized`), **equally** (tick who's in), by **exact amounts**, **percentages** or **shares**, with each person's share shown as you type. |
+| **Verify First, Split Fairly** | When splitting a checked bill (`fromBill.ts`), TallyBack carries over the **Audit Shield** verified total vs. printed total toggle (excluding disputed overcharges by default) and all claimable receipt items. |
 | **Payments** | "Settle up" records that one person paid another, with suggestions from the current debts. |
-| **Balances** | Each member's balance, plus who should pay whom. **Simplify debts** (on by default) gives the fewest payments that settle the whole group; turned off, debts follow the expenses people actually shared. |
+| **Balances & WhatsApp Tally** | Each member's balance, plus who should pay whom. **Simplify debts** (on by default) gives the fewest payments that settle the whole group; turned off, debts follow the expenses people actually shared. Includes a **1-tap WhatsApp settlement summary** button and copyable ledger card. |
 | **Friends** | Everyone you share a group with, and where you stand with them across all groups (matched by email). |
 | **Totals** | Group spending, your share, what you paid, spending by category. |
 | **Activity & comments** | Every change is logged per group and across groups; each expense has a comment thread. |
@@ -21,7 +22,8 @@ It needs sign-in: groups are shared between real people, so a device id isn't en
 ## Files
 | File | What it does |
 |---|---|
-| `src/split/lib/split.ts` | The four ways to split, exact to the cent; checks payers add up (pure, tested) |
+| `src/split/lib/split.ts` | The five ways to split (`allocateItemized` for receipt items + `equal`/`exact`/`percent`/`shares`), exact to the cent; checks payers add up (pure, tested) |
+| `src/split/lib/fromBill.ts` | Verified-vs-printed bill handoff (`billToDraft`): carries verified total, disputed diff, claimable receipt lines, and service/tax extras into the expense form |
 | `src/split/lib/balances.ts` | Balances, simplified debts, pairwise debts (pure, tested) |
 | `src/split/lib/money.ts` | Typed amount → cents, and cents → "S$1,234.56" |
 | `src/split/lib/types.ts` | Categories, group types, and the shapes the API sends the page |

@@ -1,8 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { allocate, checkPaid, splitAmount } from "../src/split/lib/split";
+import { allocate, allocateItemized, checkPaid, splitAmount } from "../src/split/lib/split";
 import { netBalances, pairwiseDebts, simplifiedDebts, type Entry, type Transfer } from "../src/split/lib/balances";
 import { formatMoney, toCents } from "../src/split/lib/money";
+import { runChecks } from "../src/lib/checks";
 
 const sum = (o: Record<string, number>) => Object.values(o).reduce((a, b) => a + b, 0);
 
@@ -118,4 +119,70 @@ test("split this bill: a checked bill becomes a pre-filled expense", async () =>
   assert.deepEqual(sparse, { description: "Bill", amount: null, date: null, category: "general", currency: "SGD", notes: "" });
   // 0.1 + 0.2 style floats still land on whole cents
   assert.equal(billToDraft({ ...bill, printed_total: 0.1 + 0.2 }).amount, 30);
+});
+
+test("itemized receipt split: distributes tax and service charge proportionally to item subtotals", () => {
+  // Dinner receipt: Alice orders $20 item, Bob orders $40 item, shared appetizer $12 (Alice + Bob).
+  // Items sum = $72.00 (7200c): Alice = 2000 + 600 = 2600c, Bob = 4000 + 600 = 4600c.
+  // Total with 10% service charge ($7.20) + 9% GST ($7.13) = $86.33 (8633c).
+  const res = allocateItemized(
+    8633,
+    [
+      { amountCents: 2000, members: ["alice"] },
+      { amountCents: 4000, members: ["bob"] },
+      { amountCents: 1200, members: ["alice", "bob"] },
+    ],
+    ["alice", "bob", "cara"],
+  );
+  assert.ok(res.ok);
+  assert.equal(res.itemsSumCents, 7200);
+  assert.equal(res.extrasCents, 1433);
+  assert.deepEqual(res.itemSubtotals, { alice: 2600, bob: 4600 });
+  // Total owed must sum to exact receipt total (8633c) and Cara (who had 0 items) owes 0.
+  assert.equal(sum(res.owed), 8633);
+  assert.equal(res.owed.cara, undefined);
+  assert.ok(res.owed.alice! < res.owed.bob!);
+});
+
+test("verify first, split fairly: billToDraft excludes disputed overcharge by default and extracts claimable lines", async () => {
+  const { billToDraft } = await import("../src/split/lib/fromBill");
+  const overchargedReceipt = {
+    is_bill: true,
+    merchant_name: "ion Orchard Bistro",
+    merchant_country: "SG",
+    merchant_whatsapp: null,
+    bill_type: "restaurant receipt",
+    bill_number: "INV-88",
+    bill_date: "2026-10-15",
+    due_date: null,
+    period_start: null,
+    period_end: null,
+    currency: "SGD",
+    tax_mode: "added" as const,
+    printed_subtotal: 68.0,
+    printed_tax_total: 6.12,
+    printed_tax_rate_pct: 9,
+    printed_total: 81.53,
+    lines: [
+      { description: "Truffle Pasta", plain_words: "Main course", qty: 1, unit_price: 28, amount: 28, kind: "item" as const, tax_rate_pct: null, box_2d: null },
+      { description: "Grilled Seabass", plain_words: "Charged 2x instead of 1x", qty: 1, unit_price: 32, amount: 40, kind: "item" as const, tax_rate_pct: null, box_2d: null },
+      { description: "Subtotal", plain_words: "Subtotal", qty: null, unit_price: null, amount: 68, kind: "subtotal" as const, tax_rate_pct: null, box_2d: null },
+      { description: "Service Charge 10%", plain_words: "Service charge", qty: null, unit_price: null, amount: 7.41, kind: "service_charge" as const, tax_rate_pct: null, box_2d: null },
+      { description: "GST 9%", plain_words: "Tax", qty: null, unit_price: null, amount: 6.12, kind: "tax" as const, tax_rate_pct: 9, box_2d: null },
+      { description: "Total", plain_words: "Total", qty: null, unit_price: null, amount: 81.53, kind: "total" as const, tax_rate_pct: null, box_2d: null },
+    ],
+  };
+  const check = runChecks(overchargedReceipt, { expectedTotal: null, pricesIncludeTax: null, paidOn: null, lineExpected: {}, unrecognised: [] });
+  assert.equal(check.outcome, "dispute");
+  assert.equal(check.primary?.diff, 8);
+
+  const draft = billToDraft(overchargedReceipt, check, "bill-123");
+  assert.equal(draft.printedAmountCents, 8153);
+  assert.equal(draft.verifiedAmountCents, 7353);
+  assert.equal(draft.amount, 7353); // defaults to verified fair total!
+  assert.equal(draft.atStakeCents, 800);
+  assert.equal(draft.claimableLines?.length, 2);
+  assert.equal(draft.claimableLines?.[1].flagged, true);
+  assert.equal(draft.claimableLines?.[1].printedCents, 4000);
+  assert.equal(draft.claimableLines?.[1].verifiedCents, 3200);
 });

@@ -77,6 +77,89 @@ export function splitAmount(total: number, split: Split): Result {
   }
 }
 
+export interface ReceiptItemAllocationInput {
+  amountCents: number;
+  members: string[]; // member IDs who shared this line item
+}
+
+export interface ItemizedResult {
+  ok: true;
+  owed: Amounts; // final total owed per member (items + proportional extras)
+  itemSubtotals: Amounts; // pre-tax/service item subtotal per member
+  extrasAllocated: Amounts; // proportional tax/service/discount/rounding per member
+  itemsSumCents: number;
+  extrasCents: number; // totalCents - itemsSumCents
+}
+
+// Split an itemized bill across members with proportional distribution of tax, service charge,
+// discounts, and rounding (`total - sum(items)`), using `allocate()` so every cent is accounted for.
+export function allocateItemized(
+  total: number,
+  items: ReceiptItemAllocationInput[],
+  allMembers: string[],
+): ItemizedResult | { ok: false; error: string } {
+  const ids = [...new Set(allMembers)];
+  if (!Number.isSafeInteger(total) || total <= 0) return { ok: false, error: "Enter an amount above zero." };
+  if (!ids.length) return { ok: false, error: "Choose at least one person to split with." };
+  if (!items.length) return { ok: false, error: "Add at least one item to assign." };
+
+  const itemSubtotals: Amounts = Object.fromEntries(ids.map((id) => [id, 0]));
+  let itemsSumCents = 0;
+
+  for (let idx = 0; idx < items.length; idx++) {
+    const item = items[idx];
+    if (!Number.isInteger(item.amountCents) || item.amountCents < 0) {
+      return { ok: false, error: `Item #${idx + 1} has an invalid amount.` };
+    }
+    if (item.amountCents === 0) continue;
+    const claimants = [...new Set(item.members)].filter((id) => ids.includes(id));
+    if (!claimants.length) {
+      return { ok: false, error: "Assign every item to at least one person." };
+    }
+    const shares = allocate(item.amountCents, claimants.map(() => 1));
+    claimants.forEach((id, i) => {
+      itemSubtotals[id] = (itemSubtotals[id] ?? 0) + shares[i];
+    });
+    itemsSumCents += item.amountCents;
+  }
+
+  if (itemsSumCents <= 0) {
+    return { ok: false, error: "Assigned items must add up to more than zero." };
+  }
+
+  const extrasCents = total - itemsSumCents;
+  const activeIds = ids.filter((id) => (itemSubtotals[id] ?? 0) > 0);
+  const weights = activeIds.map((id) => itemSubtotals[id]);
+
+  // Allocate positive or negative extras (e.g. GST + service charge, or bill-wide discount)
+  // in exact proportion to each active member's item subtotal.
+  const absExtras = Math.abs(extrasCents);
+  const sign = extrasCents >= 0 ? 1 : -1;
+  const rawExtras = absExtras > 0 ? allocate(absExtras, weights) : activeIds.map(() => 0);
+
+  const extrasAllocated: Amounts = {};
+  const owed: Amounts = {};
+  activeIds.forEach((id, i) => {
+    const ex = sign * rawExtras[i];
+    extrasAllocated[id] = ex;
+    const finalCents = itemSubtotals[id] + ex;
+    if (finalCents > 0) owed[id] = finalCents;
+  });
+
+  if (sumOf(owed) !== total) {
+    return { ok: false, error: "Discount exceeds the items total." };
+  }
+
+  return {
+    ok: true,
+    owed,
+    itemSubtotals: Object.fromEntries(Object.entries(itemSubtotals).filter(([, c]) => c > 0)),
+    extrasAllocated,
+    itemsSumCents,
+    extrasCents,
+  };
+}
+
 // Who paid: one person the whole amount, or several people amounts that add up to the total.
 export function checkPaid(total: number, paid: Amounts): string | null {
   const entries = Object.entries(paid).filter(([, c]) => c !== 0);

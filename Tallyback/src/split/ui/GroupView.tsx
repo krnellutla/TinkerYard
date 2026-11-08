@@ -186,6 +186,22 @@ function ExpenseRow({ e, g, nameOf, onClick }: { e: Expense; g: GroupDetail; nam
   );
 }
 
+function formatSettlementWhatsApp(g: GroupDetail, nameOf: (id: string) => string): string {
+  const activeCount = g.expenses.filter((e) => !e.deleted && e.kind === "expense").length;
+  const totalSpent = g.expenses
+    .filter((e) => !e.deleted && e.kind === "expense")
+    .reduce((acc, e) => acc + e.amount, 0);
+  const header = `🧾 *${g.name}* — TallyBack Settlement`;
+  const sub = activeCount
+    ? `${activeCount} shared expense${activeCount === 1 ? "" : "s"} (${formatMoney(totalSpent, g.currency)} total)${g.simplify ? " · simplified to fewest transfers" : ""}`
+    : "Group balance summary";
+  if (g.debts.length === 0) {
+    return `${header}\n${sub}\n\n✅ Everyone is settled up!`;
+  }
+  const lines = g.debts.map((t, i) => `${i + 1}. *${nameOf(t.from)}* → *${nameOf(t.to)}*: ${formatMoney(t.amount, g.currency)}`);
+  return `${header}\n${sub}\n\n*Who pays whom:*\n${lines.join("\n")}\n\n— Verified & split with TallyBack`;
+}
+
 function Balances({
   g,
   nameOf,
@@ -198,13 +214,30 @@ function Balances({
   onChanged: () => void;
 }) {
   const [busy, setBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
   const people = g.members.filter((m) => !m.removed).sort((a, b) => (g.balances[b.id] ?? 0) - (g.balances[a.id] ?? 0));
+  const summaryText = useMemo(() => formatSettlementWhatsApp(g, nameOf), [g, nameOf]);
+
   async function toggle() {
     setBusy(true);
     await api(`/groups/${g.id}`, "PATCH", { simplify: !g.simplify }).catch(() => {});
     await onChanged();
     setBusy(false);
   }
+
+  function shareWhatsApp() {
+    const url = `https://wa.me/?text=${encodeURIComponent(summaryText)}`;
+    window.open(url, "_blank");
+  }
+
+  async function copySummary() {
+    try {
+      await navigator.clipboard.writeText(summaryText);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {}
+  }
+
   return (
     <div className="space-y-5">
       <ul className="space-y-2">
@@ -248,6 +281,30 @@ function Balances({
             : "Each expense is settled between the people who shared it; turn on Simplify debts for fewer payments."}
         </p>
       </div>
+
+      {g.debts.length > 0 && (
+        <div className="rounded-2xl border border-line bg-card p-4">
+          <div className="flex items-baseline justify-between gap-2">
+            <h3 className="font-semibold">Send settlement summary</h3>
+            <span className="text-xs text-muted">1-tap group tally</span>
+          </div>
+          <pre className="mt-2.5 whitespace-pre-wrap rounded-xl border border-line bg-paper p-3 font-mono text-xs leading-relaxed text-ink">
+            {summaryText}
+          </pre>
+          <div className="mt-3 flex gap-2">
+            <button
+              type="button"
+              onClick={shareWhatsApp}
+              className="flex h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-wa text-sm font-medium text-white active:scale-[.99]"
+            >
+              Share tally on WhatsApp
+            </button>
+            <button type="button" onClick={copySummary} className="h-11 rounded-xl border border-line bg-paper px-4 text-sm font-medium">
+              {copied ? "Copied ✓" : "Copy"}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

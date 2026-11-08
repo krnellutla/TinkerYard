@@ -29,10 +29,22 @@ export function Dashboard({ onOpen, draft, onCancelDraft }: { onOpen: (id: strin
     <section className="space-y-5">
       {draft && (
         <div className="rounded-2xl border border-ink bg-card p-4 text-sm">
-          <p className="font-medium">
-            Split “{draft.description}”{draft.amount ? ` (${formatMoney(draft.amount, draft.currency ?? "SGD")})` : ""}
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <p className="font-medium">
+              Split “{draft.description}”{draft.amount ? ` (${formatMoney(draft.amount, draft.currency ?? "SGD")})` : ""}
+            </p>
+            {draft.atStakeCents != null && draft.atStakeCents > 0 && (
+              <span className="rounded-full bg-bad-soft px-2.5 py-0.5 font-mono text-xs font-medium text-bad">
+                −{formatMoney(draft.atStakeCents, draft.currency ?? "SGD")} disputed excluded
+              </span>
+            )}
+          </div>
+          <p className="mt-1 text-muted">
+            Pick the group to add it to, or start a new one.
+            {draft.claimableLines && draft.claimableLines.length > 0
+              ? ` ${draft.claimableLines.length} receipt items ready to assign with proportional tax/service charge.`
+              : " The expense form opens filled in from the bill."}
           </p>
-          <p className="mt-1 text-muted">Pick the group to add it to, or start a new one. The expense form opens filled in from the bill.</p>
           <button onClick={onCancelDraft} className="mt-2 text-muted underline underline-offset-4">
             Cancel
           </button>
