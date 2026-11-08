@@ -1,5 +1,6 @@
 "use client";
 
+import { Loading } from "@ui/ProgressRing";
 import { useCallback, useEffect, useState } from "react";
 import type { AppId, Role, Status } from "../policy";
 import { refreshAccess } from "./access";
@@ -77,7 +78,7 @@ export default function AdminDashboard() {
   const save = (d: Draft, done: string) => act(() => call("POST", "/api/admin/people", d), done);
 
   if (!data)
-    return <main className="mx-auto max-w-3xl px-4 pt-8">{error ? <p className="rounded-xl bg-bad-soft p-3 text-sm text-bad">{error}</p> : <p className="text-muted">Loading…</p>}</main>;
+    return <main className="mx-auto max-w-3xl px-4 pt-8">{error ? <p className="rounded-xl bg-bad-soft p-3 text-sm text-bad">{error}</p> : <Loading label="Loading people" expectedMs={1500} />}</main>;
 
   const appName = (id: AppId) => data.apps.find((a) => a.id === id)?.label ?? id;
   const shown = data.people.filter((p) => !filter || p.email.includes(filter.toLowerCase()));

@@ -1,5 +1,6 @@
 "use client";
 
+import { Loading } from "@ui/ProgressRing";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -43,7 +44,7 @@ export function RequireSignIn({ children }: { children: React.ReactNode }) {
   );
 
   if (sessionLoading && midSignIn) return wall;
-  if (sessionLoading || (data && loading && !access)) return <p className="mx-auto max-w-xl px-4 pt-8 text-muted">Loading…</p>;
+  if (sessionLoading || (data && loading && !access)) return <Loading label="Loading" expectedMs={1200} className="pt-16" />;
 
   if (configError)
     return (

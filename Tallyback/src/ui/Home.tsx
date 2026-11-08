@@ -1,5 +1,7 @@
 "use client";
 
+import { ProgressRing } from "@ui/ProgressRing";
+import { Loading } from "@ui/ProgressRing";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MAX_UPLOAD } from "@tallyback/lib/upload";
 import { shrink } from "./upload";
@@ -305,9 +307,8 @@ export default function Home() {
       {tab === "bills" && stage === "scanning" && (
         <section className="flex flex-col items-center pt-10 text-center">
           {preview && <img src={preview} alt="" className="max-h-72 rounded-xl opacity-60 shadow" />}
-          <div className="mt-6 h-1.5 w-40 overflow-hidden rounded-full bg-line">
-            <div className="h-full w-1/3 animate-[pulse_1s_ease-in-out_infinite] rounded-full bg-ink" />
-          </div>
+          {/* Paced to the usual read (4–7 s on the free models; see docs/FREE_MODELS.md). */}
+          <ProgressRing expectedMs={6000} size={88} label="Reading every line" className="mt-6 text-ink" />
           <p className="mt-4 text-muted">Reading every line…</p>
         </section>
       )}
@@ -622,7 +623,7 @@ function BillsList({ onOpen, onNew, opening, error }: { onOpen: (id: string) => 
         </p>
       )}
       {(error || loadErr) && <p className="mt-4 rounded-xl bg-bad-soft p-3 text-sm text-bad">{error ?? loadErr}</p>}
-      {bills === null && !loadErr && <p className="mt-6 text-muted">Loading…</p>}
+      {bills === null && !loadErr && <Loading label="Loading your bills" expectedMs={1500} />}
       {bills?.length === 0 && (
         <div className="mt-6 rounded-2xl border border-dashed border-line p-6 text-center">
           <p className="font-medium">No bills yet</p>

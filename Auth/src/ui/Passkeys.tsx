@@ -1,5 +1,6 @@
 "use client";
 
+import { ProgressRing } from "@ui/ProgressRing";
 import { useEffect, useState } from "react";
 import { authClient } from "../client";
 import { deviceHasPasskey, markDevicePasskey, passkeyOffer } from "./device";
@@ -146,7 +147,7 @@ export function PasskeyList() {
   return (
     <div className="mt-3 border-t border-line pt-3">
       <p className="font-medium">Passkeys</p>
-      {isPending && <p className="text-muted">Loading…</p>}
+      {isPending && <ProgressRing size={20} expectedMs={800} label="Loading passkeys" className="my-1 text-ink" />}
       {keys?.length === 0 && <p className="text-muted">None yet: you sign in by email.</p>}
       <ul className="mt-1 space-y-1">
         {keys?.map((k) => (

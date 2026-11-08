@@ -1,5 +1,6 @@
 "use client";
 
+import { Loading } from "@ui/ProgressRing";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { myShare } from "../lib/balances";
 import { CURRENCIES, formatMoney } from "../lib/money";
@@ -57,13 +58,7 @@ export function GroupView({ id, onBack, draft, onDraftDone }: { id: string; onBa
         {error ? (
           <ErrorNote text={error} />
         ) : (
-          <div className="space-y-3" aria-label="Loading">
-            <div className="h-36 animate-pulse rounded-3xl bg-line/60" />
-            <div className="h-10 animate-pulse rounded-full bg-line/60" />
-            {[0, 1, 2].map((i) => (
-              <div key={i} className="h-16 animate-pulse rounded-2xl bg-line/40" />
-            ))}
-          </div>
+          <Loading label="Opening the group" expectedMs={1500} className="pt-16" />
         )}
       </section>
     );

@@ -1,5 +1,6 @@
 "use client";
 
+import { Loading } from "@ui/ProgressRing";
 import { useEffect, useState } from "react";
 import { CURRENCIES, formatMoney } from "../lib/money";
 import { GROUP_KINDS, kindOf, type Activity, type Dashboard as DashboardData, type GroupKind } from "../lib/types";
@@ -92,6 +93,7 @@ export function Dashboard({ onOpen, draft, onCancelDraft }: { onOpen: (id: strin
 
       <ErrorNote text={error} />
 
+      {!data && !error && <Loading label="Loading your groups" expectedMs={1500} />}
       {tab === "groups" &&
         (data?.groups.length === 0 ? (
           <Empty text="No groups yet. Start one for a trip, your flat or anything you split." action="Start a group" onAction={() => setCreating(true)} />
@@ -204,7 +206,7 @@ export function Dashboard({ onOpen, draft, onCancelDraft }: { onOpen: (id: strin
 }
 
 export function ActivityList({ items, onOpen, showGroup }: { items: Activity[] | null; onOpen?: (groupId: string) => void; showGroup?: boolean }) {
-  if (!items) return <p className="text-muted">Loading…</p>;
+  if (!items) return <Loading label="Loading activity" expectedMs={1200} />;
   return (
     <ul className="space-y-2">
       {items.map((a) => (

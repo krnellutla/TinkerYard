@@ -1,5 +1,7 @@
 "use client";
 
+import { ProgressRing } from "@ui/ProgressRing";
+import { Loading } from "@ui/ProgressRing";
 import { useEffect, useRef, useState } from "react";
 import { Markdown } from "./Markdown";
 import { askToSignIn, isSignedIn, onSessionChanged } from "@signin/ui/prompt";
@@ -275,7 +277,7 @@ export default function ReviewScout() {
       {stage === "history" && (
         <section>
           <h2 className="mb-3 text-lg font-semibold">Past searches</h2>
-          {past == null && <p className="text-muted">Loading…</p>}
+          {past == null && <Loading label="Loading past searches" expectedMs={1200} />}
           {past?.length === 0 && <p className="text-muted">No searches on this device yet.</p>}
           <ul className="space-y-2">
             {past?.map((s) => (
@@ -325,9 +327,7 @@ export default function ReviewScout() {
 
           {status && (
             <div className="flex items-center gap-3 text-sm text-muted">
-              <div className="h-1.5 w-16 overflow-hidden rounded-full bg-line">
-                <div className="h-full w-1/3 animate-[pulse_1s_ease-in-out_infinite] rounded-full bg-ink" />
-              </div>
+              <ProgressRing key={status} expectedMs={status.startsWith("Searching") ? 40_000 : 12_000} size={40} label={status} className="text-ink" />
               {status}
             </div>
           )}

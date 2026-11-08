@@ -1,5 +1,6 @@
 "use client";
 
+import { ProgressRing } from "@ui/ProgressRing";
 import { useEffect, useRef, useState } from "react";
 import { acceptUpload, MAX_UPLOAD } from "@tallyback/lib/upload";
 import type { Extraction } from "@tallyback/lib/types";
@@ -170,6 +171,7 @@ export function ReceiptTile({
         <span className="block text-sm font-semibold">{text.title}</span>
         <span className="block text-xs text-muted">{text.sub}</span>
       </span>
+      {state.kind === "scanning" && <ProgressRing expectedMs={6000} size={40} label="Reading the receipt" className="text-ink" />}
       {state.kind !== "scanning" && (
         <span className="flex shrink-0 flex-col items-end">
           <button type="button" onClick={onTakePhoto} className="min-h-9 px-2 text-xs font-medium underline underline-offset-4">
