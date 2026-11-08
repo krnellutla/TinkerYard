@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { runChecks } from "@tallyback/lib/checks";
 import { billToDraft } from "../lib/fromBill";
-import { centsToInput, formatMoney, toCents } from "../lib/money";
+import { CURRENCY_NAMES, SPEND_CURRENCIES, centsToInput, convert, formatMoney, formatRate, isSpendCurrency, rateBetween, toCents } from "../lib/money";
+import { ProgressRing } from "@ui/ProgressRing";
 import { SPLIT_METHODS, allocateItemized, checkPaid, splitAmount, type SplitMethod } from "../lib/split";
 import type { BillDraft, ClaimableReceiptLine } from "../lib/fromBill";
 import { REPEATS, type Repeat } from "../lib/repeat";
@@ -49,8 +50,21 @@ export function ExpenseForm({
     draft.verifiedAmountCents < draft.printedAmountCents;
   const [useVerifiedTotal, setUseVerifiedTotal] = useState(true);
 
+  // The currency it was spent in: the group's, or another (pesos on a trip from Singapore). A scanned
+  // bill's own currency is picked up by itself.
+  const billCurrency = (d?: BillDraft | null) => (d?.currency && isSpendCurrency(d.currency) ? d.currency : null);
+  const [spend, setSpend] = useState<string>(expense?.original?.currency ?? billCurrency(draft) ?? group.currency);
+  const foreign = spend !== group.currency;
+  const [rate, setRate] = useState<number | null>(expense?.original?.rate ?? null);
+  const [rateInfo, setRateInfo] = useState<string | null>(expense?.original ? "the rate saved with this expense" : null);
+  const [rateBusy, setRateBusy] = useState(false);
+  const [rateError, setRateError] = useState<string | null>(null);
+  const [editingRate, setEditingRate] = useState(false);
+
   const [description, setDescription] = useState(expense?.description ?? draft?.description ?? "");
-  const [amountText, setAmountText] = useState(expense ? centsToInput(expense.amount) : draft?.amount ? centsToInput(draft.amount) : "");
+  const [amountText, setAmountText] = useState(
+    expense ? (expense.original ? centsToInput(expense.original.amount, expense.original.currency) : centsToInput(expense.amount)) : draft?.amount ? centsToInput(draft.amount) : "",
+  );
   const [date, setDate] = useState(expense?.date ?? draft?.date ?? today());
   const [category, setCategory] = useState<Category>(expense?.category ?? draft?.category ?? "general");
   const [payer, setPayer] = useState<string>(paidIds.length > 1 ? "multiple" : paidIds[0]);
@@ -107,6 +121,8 @@ export function ExpenseForm({
     setDraft(d);
     const free = (k: string) => !typed.current.has(k);
     if (free("description") && d.description) setDescription(d.description);
+    const cur = billCurrency(d);
+    if (free("currency") && cur && cur !== spend) chooseCurrency(cur);
     if (free("amount") && d.amount) setAmountText(centsToInput(d.amount));
     if (free("date") && d.date) setDate(d.date);
     if (free("category")) setCategory(d.category);
@@ -151,7 +167,40 @@ export function ExpenseForm({
   }
   const viewSrc = receipt.kind === "none" || receipt.kind === "scanning" || receipt.kind === "failed" ? null : receipt.preview || (expense?.hasReceipt && receiptBillId === undefined ? receiptUrl(group.id, expense.id) : null);
 
-  const amount = toCents(amountText) ?? 0;
+  // Today's rate for the chosen currency, into the group's (fetched once per group currency per form).
+  const tables = useRef<Record<string, { base: string; date: string; source: string; rates: Record<string, number> }>>({});
+  async function chooseCurrency(c: string) {
+    touch("currency");
+    setSpend(c);
+    setRateError(null);
+    setEditingRate(false);
+    if (c === group.currency) return setRate(null);
+    setRate(null);
+    setRateBusy(true);
+    try {
+      const t = (tables.current[group.currency] ??= await api(`/rates?base=${group.currency}`));
+      const r = rateBetween(t, c, group.currency);
+      if (!r) throw new Error(`There's no rate for ${c} today. Type the rate yourself.`);
+      setRate(r);
+      setRateInfo(`${t.source}, ${t.date}`);
+    } catch (e) {
+      setRateError(errorText(e));
+      setEditingRate(true);
+    } finally {
+      setRateBusy(false);
+    }
+  }
+  // A bill scanned abroad arrives in its own currency: look its rate up straight away.
+  useEffect(() => {
+    if (foreign && rate == null && !rateBusy) chooseCurrency(spend);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // What was typed, in the currency it was spent in; and the amount in the group's currency, which
+  // everything else (who paid, the split) works in.
+  const entered = toCents(amountText) ?? 0;
+  const amount = foreign ? (rate ? convert(entered, rate) : 0) : entered;
+  const inGroup = (c: number) => (foreign && rate ? convert(c, rate) : c);
 
   function selectTotalMode(verified: boolean) {
     setUseVerifiedTotal(verified);
@@ -201,7 +250,7 @@ export function ExpenseForm({
     if (!itemMode || !amount) return null;
     const activeLines = itemLines
       .map((line) => ({
-        amountCents: useVerifiedTotal ? line.verifiedCents : line.printedCents,
+        amountCents: inGroup(useVerifiedTotal ? line.verifiedCents : line.printedCents), // the bill's lines are in the currency it was spent in
         members: itemClaims[line.lineIndex] ?? [],
       }))
       .filter((l) => l.amountCents > 0);
@@ -210,7 +259,8 @@ export function ExpenseForm({
       activeLines,
       people.map((m) => m.id),
     );
-  }, [itemMode, amount, itemLines, itemClaims, useVerifiedTotal, people]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [itemMode, amount, itemLines, itemClaims, useVerifiedTotal, people, rate, foreign]);
 
   const paid = useMemo(
     () => (payer === "multiple" ? Object.fromEntries(people.map((m) => [m.id, blankIsZero(multiPaid[m.id] ?? "")])) : { [payer]: amount }),
@@ -235,7 +285,15 @@ export function ExpenseForm({
       : splitAmount(amount, split)
     : null;
   const paidError = amount ? checkPaid(amount, paid) : null;
-  const problem = !description.trim() ? "Describe the expense." : !amount ? "Enter the amount." : paidError ?? (result && !result.ok ? result.error : null);
+  const problem = !description.trim()
+    ? "Describe the expense."
+    : foreign && !rate
+      ? rateBusy
+        ? "Getting today's rate…"
+        : "Enter the exchange rate."
+      : !amount
+        ? "Enter the amount."
+        : paidError ?? (result && !result.ok ? result.error : null);
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
@@ -243,7 +301,8 @@ export function ExpenseForm({
     setBusy(true);
     setError(null);
     try {
-      const body = { kind: "expense", description, amount, category, date, paid, split, notes, receiptBillId, repeat };
+      const original = foreign && rate ? { currency: spend, amount: entered, rate } : null;
+      const body = { kind: "expense", description, amount, category, date, paid, split, notes, receiptBillId, repeat, original };
       if (receipt.kind === "scanning" && !confirm("The receipt is still being read. Save without it?")) {
         setBusy(false);
         return;
@@ -278,7 +337,23 @@ export function ExpenseForm({
         <ReceiptTile state={receipt} onTakePhoto={pickers.takePhoto} onChooseFile={pickers.chooseFile} onView={viewSrc ? () => setViewing(true) : undefined} onRemove={removeReceipt} />
 
         <label className={`flex items-baseline justify-center gap-2 rounded-2xl border border-line bg-card px-4 py-3 focus-within:border-ink ${scanning && !typed.current.has("amount") ? "animate-pulse" : ""}`}>
-          <span className="text-lg text-muted">{group.currency}</span>
+          {/* Shows just the code; the list underneath names each currency. */}
+          <span className={`relative shrink-0 text-lg ${foreign ? "font-medium text-ink" : "text-muted"}`}>
+            {spend} <span aria-hidden="true" className="text-xs">▾</span>
+            <select
+              value={spend}
+              onChange={(e) => chooseCurrency(e.target.value)}
+              aria-label={`Currency it was spent in: ${spend}`}
+              className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+            >
+              {SPEND_CURRENCIES.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                  {c === group.currency ? " (group)" : ` · ${CURRENCY_NAMES[c]}`}
+                </option>
+              ))}
+            </select>
+          </span>
           <input
             inputMode="decimal"
             enterKeyHint="done"
@@ -292,6 +367,48 @@ export function ExpenseForm({
             className="text-hero min-w-0 max-w-[12ch] flex-1 bg-transparent text-center font-semibold outline-none"
           />
         </label>
+
+        {foreign && (
+          <div className="-mt-2 rounded-2xl bg-card px-4 py-2.5 text-sm" aria-live="polite">
+            {rateBusy ? (
+              <span className="flex items-center gap-2 text-muted">
+                <ProgressRing size={18} expectedMs={1000} label="Getting today's rate" className="text-ink" /> Getting today&apos;s rate…
+              </span>
+            ) : (
+              <>
+                {rate && (
+                  <p className="flex flex-wrap items-baseline justify-between gap-x-3">
+                    <span>
+                      = <b className="tabular-nums">{formatMoney(amount, group.currency)}</b> for the group
+                    </span>
+                    <button type="button" onClick={() => setEditingRate((v) => !v)} className="text-xs text-muted underline underline-offset-4">
+                      {formatRate(rate, spend, group.currency)}
+                    </button>
+                  </p>
+                )}
+                {rate && rateInfo && !editingRate && <p className="text-xs text-muted">Rate from {rateInfo}. Tap it to use your card&apos;s rate instead.</p>}
+                {rateError && <p className="text-xs text-warn">{rateError}</p>}
+                {editingRate && (
+                  <label className="mt-2 flex items-center gap-2 text-xs">
+                    <span className="shrink-0">1 {spend} =</span>
+                    <input
+                      inputMode="decimal"
+                      defaultValue={rate ? String(Number(rate.toPrecision(6))) : ""}
+                      onChange={(e) => {
+                        const r = Number(e.target.value);
+                        setRate(r > 0 && Number.isFinite(r) ? r : null);
+                        setRateInfo("the rate you entered");
+                      }}
+                      aria-label={`Exchange rate, ${group.currency} per ${spend}`}
+                      className={`${fieldBase} h-10 min-w-0 flex-1 text-base`}
+                    />
+                    <span className="shrink-0">{group.currency}</span>
+                  </label>
+                )}
+              </>
+            )}
+          </div>
+        )}
 
         <div className="flex gap-2">
           <select
@@ -376,7 +493,7 @@ export function ExpenseForm({
           </div>
         )}
 
-        {draft?.currency && draft.currency !== group.currency && (
+        {draft?.currency && draft.currency !== group.currency && !isSpendCurrency(draft.currency) && (
           <p className="rounded-xl bg-warn-soft p-3 text-sm text-warn">
             The bill is in {draft.currency}, and this group uses {group.currency}. Check the amount before saving.
           </p>

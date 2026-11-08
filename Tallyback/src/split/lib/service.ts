@@ -2,7 +2,8 @@ import "server-only";
 import { z } from "zod";
 import { insert, select, update, type Row } from "./db";
 import { debts, myShare, netBalances, type Entry } from "./balances";
-import { CURRENCIES, formatMoney } from "./money";
+import { CURRENCIES, formatMoney, isSpendCurrency, matchesConversion } from "./money";
+import { ratesFor } from "./fx";
 import { checkPaid, splitAmount, type Amounts, type Split } from "./split";
 import { findBill, streamBillPhoto } from "@tallyback/lib/store";
 import { receiptActivity, receiptDecision } from "./receipt";
@@ -69,6 +70,15 @@ const expenseIn = z.object({
   // The receipt's bill id, from your own scan; null removes it, absent leaves it as it is.
   receiptBillId: z.string().regex(ID, "That receipt isn't valid.").nullable().optional(),
   repeat: enumOf(REPEATS.map((r) => r.id)).default("never"),
+  // Spent in another currency: `amount` is already converted; this is what was paid, and at what rate.
+  original: z
+    .object({
+      currency: z.string().refine(isSpendCurrency, "That currency isn't supported."),
+      amount: cents,
+      rate: z.number().positive().max(1e6),
+    })
+    .nullable()
+    .optional(),
 });
 const paymentIn = z.object({ kind: z.literal("payment"), from: z.string(), to: z.string(), amount: cents, date: day, notes: z.string().max(1000).default("") });
 const entryIn = z.discriminatedUnion("kind", [expenseIn, paymentIn]);
@@ -93,6 +103,7 @@ const toExpense = (r: Row): Expense => ({
   split: (r.split as Split) ?? null,
   notes: String(r.notes ?? ""),
   hasReceipt: !!r.receipt_bill_id,
+  original: r.original_currency ? { currency: String(r.original_currency), amount: Number(r.original_amount), rate: Number(r.fx_rate) } : null,
   repeat: ((r.repeat_interval as Repeat) || "never") as Repeat,
   nextRepeat: r.next_repeat ? String(r.next_repeat).slice(0, 10) : null,
   createdBy: String(r.created_by_name),
@@ -171,6 +182,7 @@ async function runRepeats(rows: Row[], currency: (groupId: string) => string): P
         await insert("sb_expenses", {
           id, group_id: r.group_id, kind: "expense", description: r.description, amount: r.amount, category: r.category, date,
           paid: r.paid, owed: r.owed, split: r.split, notes: r.notes ?? "", receipt_bill_id: null, repeat_interval: "never", next_repeat: null,
+          original_currency: r.original_currency ?? null, original_amount: r.original_amount ?? null, fx_rate: r.fx_rate ?? null,
           created_by: r.created_by, created_by_name: r.created_by_name, created_at: at, updated_at: at, deleted_at: null,
         });
       } catch {
@@ -418,6 +430,9 @@ export async function saveEntry(groupId: string, me: Me, body: unknown, expenseI
   const allowed = new Set(members.filter((m) => !m.removed_at).map((m) => String(m.id)));
   if (existing) for (const id of [...Object.keys(numbers(existing.paid)), ...Object.keys(numbers(existing.owed))]) allowed.add(id);
   const amounts = toAmounts(input, allowed);
+  const original = input.kind === "expense" && input.original && input.original.currency !== g.currency ? input.original : null;
+  if (original && !matchesConversion(input.amount, original.amount, original.rate))
+    throw new Problem(400, "The converted amount doesn't match the rate. Check the amount and try again.");
   const nameOf = (id: string) => String(members.find((m) => String(m.id) === id)?.name ?? "someone");
   const description = input.kind === "payment" ? `${nameOf(input.from)} paid ${nameOf(input.to)}` : input.description;
   const fields = {
@@ -430,6 +445,9 @@ export async function saveEntry(groupId: string, me: Me, body: unknown, expenseI
     notes: input.notes,
     // The first copy comes after today, whatever the date: a monthly rent entered for last month
     // doesn't add a pile of back-dated copies at once.
+    original_currency: original?.currency ?? null,
+    original_amount: original?.amount ?? null,
+    fx_rate: original?.rate ?? null,
     repeat_interval: input.kind === "expense" ? input.repeat : "never",
     next_repeat: input.kind === "expense" ? nextRepeat(input.date, input.repeat, input.date > todayUtc() ? input.date : todayUtc()) : null,
     updated_at: now(),
@@ -561,13 +579,21 @@ export async function exportCsv(groupId: string, me: Me): Promise<{ filename: st
   const people = d.members;
   const cell = (v: string | number) => (/[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : String(v));
   const amt = (c: number) => (c / 100).toFixed(2);
-  const lines = [["Date", "Description", "Category", "Cost", "Currency", "Receipt", ...people.map((p) => p.name)].map(cell).join(",")];
+  const lines = [["Date", "Description", "Category", "Cost", "Currency", "Spent as", "Receipt", ...people.map((p) => p.name)].map(cell).join(",")];
   for (const e of [...d.expenses].reverse()) {
     if (e.deleted) continue;
     const category = e.kind === "payment" ? "Payment" : (CATEGORIES.find((c) => c.id === e.category)?.label ?? "General");
-    lines.push([e.date, e.description, category, amt(e.amount), d.currency, e.hasReceipt ? "yes" : "", ...people.map((p) => amt(myShare(e, p.id)))].map(cell).join(","));
+    lines.push([e.date, e.description, category, amt(e.amount), d.currency, e.original ? `${amt(e.original.amount)} ${e.original.currency} @ ${e.original.rate}` : "", e.hasReceipt ? "yes" : "", ...people.map((p) => amt(myShare(e, p.id)))].map(cell).join(","));
   }
-  lines.push(["", "Total balance", "", "", d.currency, "", ...people.map((p) => amt(d.balances[p.id] ?? 0))].map(cell).join(","));
+  lines.push(["", "Total balance", "", "", d.currency, "", "", ...people.map((p) => amt(d.balances[p.id] ?? 0))].map(cell).join(","));
   const slug = d.name.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase() || "group";
   return { filename: `${slug}-${new Date().toISOString().slice(0, 10)}.csv`, csv: lines.join("\n") + "\n" };
+}
+
+// ---- exchange rates, for entering an expense in another currency ----
+export async function rates(base: string) {
+  if (!isSpendCurrency(base)) throw new Problem(400, "That currency isn't supported.");
+  const table = await ratesFor(base);
+  if (!table) throw new Problem(503, "Exchange rates aren't available right now. Enter the amount in the group's currency, or type the rate yourself.");
+  return table;
 }

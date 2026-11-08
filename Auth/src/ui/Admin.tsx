@@ -208,6 +208,8 @@ export default function AdminDashboard() {
         )}
       </section>
 
+      <FeedbackInbox />
+
       <section className="mt-8">
         <h2 className="mb-2 font-semibold">Change log</h2>
         {data.log.length === 0 ? (
@@ -312,5 +314,86 @@ function EditPerson({ person, data, busy, onCancel, onSave }: { person: Person; 
         </button>
       </div>
     </form>
+  );
+}
+
+// What people sent from the apps' feedback button. Open ones first; "Done" hides one away.
+interface FeedbackItem {
+  id: string;
+  email: string;
+  app: string;
+  mood: number | null;
+  kind: string;
+  message: string;
+  page: string;
+  createdAt: string;
+  resolvedAt: string | null;
+}
+const FACES = ["", "😞", "🙁", "😐", "🙂", "😍"];
+const KIND_LABEL: Record<string, string> = { idea: "💡 Idea", problem: "🐞 Problem", praise: "👏 Praise" };
+
+function FeedbackInbox() {
+  const [items, setItems] = useState<FeedbackItem[] | null>(null);
+  const [showDone, setShowDone] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const load = useCallback(
+    () =>
+      fetch("/api/feedback")
+        .then((r) => r.json())
+        .then((j) => setItems(j.feedback ?? []), () => setError("Couldn't load feedback.")),
+    [],
+  );
+  useEffect(() => {
+    load();
+  }, [load]);
+  // Arriving from the feedback email (/admin#feedback): jump here once it has loaded.
+  const loaded = !!items;
+  useEffect(() => {
+    if (loaded && window.location.hash === "#feedback") document.getElementById("feedback")?.scrollIntoView();
+  }, [loaded]);
+  if (!items) return error ? <p className="mt-8 text-sm text-bad">{error}</p> : null;
+  const open = items.filter((f) => !f.resolvedAt);
+  const shown = showDone ? items : open;
+  const mark = async (id: string, resolved: boolean) => {
+    await fetch("/api/feedback", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, resolved }) });
+    load();
+  };
+  return (
+    <section id="feedback" className="mt-8 scroll-mt-20">
+      <div className="mb-2 flex items-baseline justify-between gap-2">
+        <h2 className="font-semibold">
+          Feedback {open.length > 0 && <span className="ml-1 rounded-full bg-ink px-2 py-0.5 text-xs text-white">{open.length} new</span>}
+        </h2>
+        {items.length > open.length && (
+          <button onClick={() => setShowDone((v) => !v)} className="text-xs text-muted underline">
+            {showDone ? "Hide done" : `Show done (${items.length - open.length})`}
+          </button>
+        )}
+      </div>
+      {shown.length === 0 ? (
+        <p className="text-sm text-muted">{items.length ? "All caught up." : "No feedback yet. It arrives from the speech-bubble button in the apps."}</p>
+      ) : (
+        <ul className="divide-y divide-line rounded-2xl border border-line bg-card text-sm">
+          {shown.map((f) => (
+            <li key={f.id} className={`px-3 py-2.5 ${f.resolvedAt ? "opacity-60" : ""}`}>
+              <div className="flex items-start justify-between gap-2">
+                <span className="text-xs text-muted">
+                  {f.mood ? `${FACES[f.mood]} ` : ""}
+                  {KIND_LABEL[f.kind] ?? f.kind} · {f.app} · {f.email}
+                </span>
+                <button onClick={() => mark(f.id, !f.resolvedAt)} className="shrink-0 text-xs font-medium underline">
+                  {f.resolvedAt ? "Reopen" : "Done"}
+                </button>
+              </div>
+              <p className="mt-1 whitespace-pre-wrap">{f.message}</p>
+              <span className="block text-xs text-muted">
+                {new Date(f.createdAt).toLocaleString(undefined, { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}
+                {f.page && ` · ${f.page}`}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }

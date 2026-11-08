@@ -2,7 +2,7 @@
 
 import { Loading } from "@ui/ProgressRing";
 import { useEffect, useState } from "react";
-import { CURRENCIES, formatMoney } from "../lib/money";
+import { CURRENCIES, CURRENCY_NAMES, formatMoney } from "../lib/money";
 import { GROUP_KINDS, kindOf, type Activity, type Dashboard as DashboardData, type GroupKind } from "../lib/types";
 import type { BillDraft } from "../lib/fromBill";
 import { Avatar, ErrorNote, Sheet, Standing, Tabs, api, errorText, field, fieldBase, primary, secondary, when } from "./kit";
@@ -290,7 +290,9 @@ function NewGroup({ onClose, onCreated }: { onClose: () => void; onCreated: (id:
             <span className="mb-1 block font-medium">Currency</span>
             <select value={currency} onChange={(e) => setCurrency(e.target.value)} className={field}>
               {CURRENCIES.map((c) => (
-                <option key={c}>{c}</option>
+                <option key={c} value={c}>
+                  {c} · {CURRENCY_NAMES[c]}
+                </option>
               ))}
             </select>
           </label>

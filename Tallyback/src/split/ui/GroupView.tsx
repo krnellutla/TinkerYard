@@ -3,7 +3,7 @@
 import { Loading } from "@ui/ProgressRing";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { myShare } from "../lib/balances";
-import { CURRENCIES, formatMoney } from "../lib/money";
+import { CURRENCIES, CURRENCY_NAMES, formatMoney, formatRate } from "../lib/money";
 import { GROUP_KINDS, categoryOf, kindOf, type Expense, type GroupDetail, type GroupKind } from "../lib/types";
 import { ActivityList } from "./Dashboard";
 import { ExpenseForm, PaymentForm } from "./EntryForms";
@@ -270,6 +270,7 @@ function ExpenseRow({ e, g, nameOf, onClick }: { e: Expense; g: GroupDetail; nam
         </span>
         <span className="block truncate text-xs text-muted">
           {isPayment ? "Payment" : `${payers.length > 1 ? `${payers.length} people` : nameOf(payers[0])} paid`} {formatMoney(e.amount, g.currency)}
+          {e.original && ` · ${formatMoney(e.original.amount, e.original.currency)}`}
         </span>
       </span>
       <span className="shrink-0 text-right text-xs">
@@ -512,6 +513,12 @@ function ExpenseDetail({
             </p>
           </div>
         </div>
+        {e.original && (
+          <p className="rounded-2xl bg-card p-3 text-sm">
+            Spent as <b>{formatMoney(e.original.amount, e.original.currency)}</b>
+            <span className="block text-xs text-muted">{formatRate(e.original.rate, e.original.currency, g.currency)}</span>
+          </p>
+        )}
         {e.deleted && <p className="rounded-xl bg-warn-soft p-3 text-sm text-warn">This was deleted. Restore it to count it again.</p>}
         {receipt && (
           <button onClick={() => setViewing(true)} className="flex w-full items-center gap-3 rounded-2xl border border-line bg-card p-2.5 text-left active:bg-paper">
@@ -676,7 +683,9 @@ function Settings({ g, onClose, onChanged, onDeleted }: { g: GroupDetail; onClos
             <span className="mb-1 block font-medium">Currency</span>
             <select value={currency} disabled={hasExpenses} onChange={(e) => setCurrency(e.target.value)} className={field}>
               {CURRENCIES.map((c) => (
-                <option key={c}>{c}</option>
+                <option key={c} value={c}>
+                  {c} · {CURRENCY_NAMES[c]}
+                </option>
               ))}
             </select>
             {hasExpenses && <span className="mt-1 block text-xs text-muted">Fixed once the group has expenses.</span>}

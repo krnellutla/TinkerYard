@@ -65,6 +65,10 @@ const SCHEMA = [
   // Repeating expenses: how often, and the date the next copy is due (null: doesn't repeat).
   `alter table sb_expenses add column if not exists repeat_interval text not null default 'never'`,
   `alter table sb_expenses add column if not exists next_repeat date`,
+  // Spent in another currency: what was paid there, and the rate used to convert it into the group's.
+  `alter table sb_expenses add column if not exists original_currency text`,
+  `alter table sb_expenses add column if not exists original_amount bigint`,
+  `alter table sb_expenses add column if not exists fx_rate double precision`,
   `create table if not exists sb_comments (
     id uuid primary key,
     group_id uuid not null references sb_groups(id),

@@ -10,6 +10,7 @@ import { APP_IDS, appsFromStored, isRole, normalEmail, parseEmails, resolveAcces
 //   ty_access      one row per person added in the admin dashboard
 //   ty_access_log  every change: who did it, to whom, what changed
 //   ty_invites     invites members sent their friends (rules: invites.ts)
+//   ty_feedback    what people tell us from the apps (feedbackApi.ts), read in /admin
 
 type Row = Record<string, unknown>;
 type Sql = ReturnType<typeof neon>;
@@ -42,6 +43,19 @@ const SCHEMA = [
     revoked_at timestamptz
   )`,
   `create index if not exists ty_invites_inviter_idx on ty_invites (inviter)`,
+  `create table if not exists ty_feedback (
+    id uuid primary key,
+    email text not null,
+    app text not null,
+    mood smallint,
+    kind text not null,
+    message text not null,
+    page text not null default '',
+    device text not null default '',
+    created_at timestamptz not null default now(),
+    resolved_at timestamptz
+  )`,
+  `create index if not exists ty_feedback_time_idx on ty_feedback (created_at desc)`,
 ];
 
 const dbUrl = () => (process.env.DATABASE_URL || process.env.POSTGRES_URL || "").trim().replace(/^["']|["']$/g, "");
@@ -64,13 +78,13 @@ async function db(): Promise<Sql | null> {
 }
 
 const DB_FILE = path.join(process.env.VERCEL ? os.tmpdir() : process.cwd(), ".data", "access.json");
-type Local = { ty_access: Row[]; ty_access_log: Row[]; ty_invites: Row[] };
+type Local = { ty_access: Row[]; ty_access_log: Row[]; ty_invites: Row[]; ty_feedback: Row[] };
 async function local(): Promise<Local> {
   try {
     const d = JSON.parse(await fs.readFile(DB_FILE, "utf8"));
-    return { ty_access: d.ty_access ?? [], ty_access_log: d.ty_access_log ?? [], ty_invites: d.ty_invites ?? [] };
+    return { ty_access: d.ty_access ?? [], ty_access_log: d.ty_access_log ?? [], ty_invites: d.ty_invites ?? [], ty_feedback: d.ty_feedback ?? [] };
   } catch {
-    return { ty_access: [], ty_access_log: [], ty_invites: [] };
+    return { ty_access: [], ty_access_log: [], ty_invites: [], ty_feedback: [] };
   }
 }
 async function localWrite(d: Local) {
@@ -244,4 +258,71 @@ export async function revokeInvite(inv: InviteRecord) {
   }
   const record = await readRecord(inv.email);
   if (record && record.createdBy === inv.inviter && record.note === `Invited by ${inv.inviter}`) await deleteRecord(inv.inviter, inv.email);
+}
+
+// ---- feedback from the apps ----
+export interface FeedbackRecord {
+  id: string;
+  email: string;
+  app: string;
+  mood: number | null; // 1 (unhappy) – 5 (love it)
+  kind: string;
+  message: string;
+  page: string;
+  device: string;
+  createdAt: string;
+  resolvedAt: string | null;
+}
+const toFeedback = (r: Row): FeedbackRecord => ({
+  id: String(r.id),
+  email: String(r.email),
+  app: String(r.app),
+  mood: r.mood == null ? null : Number(r.mood),
+  kind: String(r.kind),
+  message: String(r.message),
+  page: String(r.page ?? ""),
+  device: String(r.device ?? ""),
+  createdAt: String(r.created_at),
+  resolvedAt: r.resolved_at ? String(r.resolved_at) : null,
+});
+
+export async function addFeedback(f: Omit<FeedbackRecord, "id" | "createdAt" | "resolvedAt">): Promise<FeedbackRecord> {
+  const rec: FeedbackRecord = { ...f, id: crypto.randomUUID(), createdAt: new Date().toISOString(), resolvedAt: null };
+  const sql = await db();
+  if (!sql) {
+    const d = await local();
+    d.ty_feedback.push({ id: rec.id, email: f.email, app: f.app, mood: f.mood, kind: f.kind, message: f.message, page: f.page, device: f.device, created_at: rec.createdAt, resolved_at: null });
+    await localWrite(d);
+  } else {
+    await sql.query(`insert into ty_feedback (id, email, app, mood, kind, message, page, device) values ($1, $2, $3, $4, $5, $6, $7, $8)`, [
+      rec.id, f.email, f.app, f.mood, f.kind, f.message, f.page, f.device,
+    ]);
+  }
+  return rec;
+}
+
+export async function listFeedback(limit = 200): Promise<FeedbackRecord[]> {
+  const sql = await db();
+  const rows = sql
+    ? await selectJson(sql, `select * from ty_feedback order by created_at desc limit ${Math.floor(limit)}`, [])
+    : (await local()).ty_feedback.sort((a, b) => String(b.created_at).localeCompare(String(a.created_at))).slice(0, limit);
+  return rows.map(toFeedback);
+}
+
+// How many someone sent since `since`: a daily cap keeps a stuck button (or a script) from flooding the inbox.
+export async function feedbackCountSince(email: string, since: string): Promise<number> {
+  const sql = await db();
+  if (!sql) return (await local()).ty_feedback.filter((r) => r.email === email && String(r.created_at) > since).length;
+  const rows = (await sql.query(`select count(*)::int as n from ty_feedback where email = $1 and created_at > $2`, [email, since])) as { n: number }[];
+  return rows[0]?.n ?? 0;
+}
+
+export async function setFeedbackResolved(id: string, resolved: boolean) {
+  const sql = await db();
+  if (!sql) {
+    const d = await local();
+    d.ty_feedback = d.ty_feedback.map((r) => (r.id === id ? { ...r, resolved_at: resolved ? new Date().toISOString() : null } : r));
+    return localWrite(d);
+  }
+  await sql.query(`update ty_feedback set resolved_at = ${resolved ? "now()" : "null"} where id = $1`, [id]);
 }

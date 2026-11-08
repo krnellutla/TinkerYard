@@ -1,5 +1,6 @@
 "use client";
 
+import { FeedbackButton } from "@signin/ui/Feedback";
 import { ProgressRing } from "@ui/ProgressRing";
 import { Loading } from "@ui/ProgressRing";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -239,15 +240,18 @@ export default function Home() {
             <span className="text-xs text-muted">Check every bill. Split it with friends.</span>
           </span>
         </button>
-        {tab === "split" ? null : stage === "bills" ? (
-          <button onClick={reset} className="shrink-0 rounded-full bg-ink px-3 py-1.5 text-sm font-medium text-white">
-            + New bill
-          </button>
-        ) : (
-          <button onClick={() => setStage("bills")} className="shrink-0 rounded-full border border-line bg-card px-3 py-1.5 text-sm font-medium">
-            My bills
-          </button>
-        )}
+        <span className="flex shrink-0 items-center gap-2">
+          {tab === "split" ? null : stage === "bills" ? (
+            <button onClick={reset} className="shrink-0 rounded-full bg-ink px-3 py-1.5 text-sm font-medium text-white">
+              + New bill
+            </button>
+          ) : (
+            <button onClick={() => setStage("bills")} className="shrink-0 rounded-full border border-line bg-card px-3 py-1.5 text-sm font-medium">
+              My bills
+            </button>
+          )}
+          <FeedbackButton app="tallyback" appName="TallyBack" />
+        </span>
       </header>
 
       <div role="tablist" aria-label="TallyBack" className="mb-6 flex gap-1 rounded-full border border-line bg-card p-1 text-sm">

@@ -50,6 +50,9 @@ export interface Expense {
   // A receipt photo is attached. Only the group's current members can open it (through the group's receipt
   // route); the photo's own id stays on the server, so it can't be used anywhere else.
   hasReceipt: boolean;
+  // Spent in another currency (e.g. pesos on a trip from Singapore): the amount there, in its cents,
+  // and the rate used. `amount` is always in the group's currency.
+  original: { currency: string; amount: number; rate: number } | null;
   repeat: Repeat; // "never", or how often a copy is added
   nextRepeat: string | null; // YYYY-MM-DD
   createdBy: string; // display name
