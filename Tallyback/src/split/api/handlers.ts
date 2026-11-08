@@ -21,13 +21,27 @@ export const patchMember = route<GM>(async (req, me, p) => fs.updateMember(p.id,
 export const removeMember = route<GM>(async (_req, me, p) => fs.removeMember(p.id, p.memberId, me));
 
 // /api/tallyback/groups/[id]/expenses(/[expenseId]) — expenses and payments alike
-export const addExpense = route<G>(async (req, me, p) => ({ id: await fs.saveEntry(p.id, me, await body(req)) }));
+export const addExpense = route<G>(async (req, me, p) => fs.saveEntry(p.id, me, await body(req)));
 export const patchExpense = route<GE>(async (req, me, p) => {
   const b = (await body(req)) as { restore?: boolean };
   if (b?.restore) return fs.setDeleted(p.id, p.expenseId, me, false);
-  return { id: await fs.saveEntry(p.id, me, b, p.expenseId) };
+  return fs.saveEntry(p.id, me, b, p.expenseId);
 });
 export const deleteExpense = route<GE>(async (_req, me, p) => fs.setDeleted(p.id, p.expenseId, me, true));
+// /api/tallyback/groups/[id]/expenses/[expenseId]/receipt — the receipt photo, for anyone in the group.
+// Served so it can only ever display: no type sniffing, sandboxed, private cache.
+export const receipt = route<GE>(async (_req, me, p) => {
+  const photo = await fs.receiptFor(p.id, p.expenseId, me);
+  return new Response(photo.stream, {
+    headers: {
+      "Content-Type": photo.type,
+      "Content-Disposition": "inline",
+      "X-Content-Type-Options": "nosniff",
+      "Content-Security-Policy": "sandbox; default-src 'none'; img-src 'self'; style-src 'unsafe-inline'",
+      "Cache-Control": "private, max-age=3600",
+    },
+  });
+});
 export const addComment = route<GE>(async (req, me, p) => fs.addComment(p.id, p.expenseId, me, await body(req)));
 
 // /api/tallyback/groups/[id]/export — a CSV download

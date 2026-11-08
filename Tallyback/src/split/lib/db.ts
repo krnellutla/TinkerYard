@@ -59,6 +59,9 @@ const SCHEMA = [
     deleted_at timestamptz
   )`,
   `create index if not exists sb_expenses_group_idx on sb_expenses (group_id, date desc)`,
+  // The receipt photo: a TallyBack bill (scanned, or kept as a plain photo). Added after launch, so it's
+  // an "add column if not exists"; rows in the local JSON file simply don't have it (read as null).
+  `alter table sb_expenses add column if not exists receipt_bill_id uuid`,
   `create table if not exists sb_comments (
     id uuid primary key,
     group_id uuid not null references sb_groups(id),

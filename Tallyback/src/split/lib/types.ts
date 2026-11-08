@@ -46,6 +46,7 @@ export interface Expense {
   owed: Amounts;
   split: Split | null; // null for payments
   notes: string;
+  receiptBillId: string | null; // the receipt photo, viewable by everyone in the group
   createdBy: string; // display name
   createdAt: string;
   deleted: boolean;

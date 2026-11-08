@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { MAX_UPLOAD } from "@tallyback/lib/upload";
+import { shrink } from "./upload";
 import { runChecks } from "@tallyback/lib/checks";
 import { allClearSummary } from "@tallyback/lib/message";
 import { fmt } from "@tallyback/lib/money";
@@ -60,25 +62,6 @@ async function readJson(r: Response): Promise<any> {
     if (r.status === 504 || /timeout/i.test(text)) return { error: "Reading the bill took too long. Please try again." };
     return { error: `Something went wrong (${r.status}). Please try again.` };
   }
-}
-
-const MAX_UPLOAD = 4 * 1024 * 1024; // Vercel rejects request bodies over ~4.5 MB
-
-// Phone photos are 3–8 MB; shrink before upload so serverless limits and the free tier are happy.
-async function shrink(file: File): Promise<Blob> {
-  if (!file.type.startsWith("image/")) return file;
-  let img: ImageBitmap;
-  try {
-    img = await createImageBitmap(file);
-  } catch {
-    return file; // e.g. HEIC on some browsers: send as-is, the server can still read it
-  }
-  const scale = Math.min(1, 1600 / Math.max(img.width, img.height));
-  const c = document.createElement("canvas");
-  c.width = Math.round(img.width * scale);
-  c.height = Math.round(img.height * scale);
-  c.getContext("2d")!.drawImage(img, 0, 0, c.width, c.height);
-  return new Promise((res) => c.toBlob((b) => res(b ?? file), "image/jpeg", 0.85));
 }
 
 export default function Home() {

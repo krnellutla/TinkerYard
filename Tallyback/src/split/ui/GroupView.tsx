@@ -7,12 +7,13 @@ import { GROUP_KINDS, categoryOf, kindOf, type Expense, type GroupDetail, type G
 import { ActivityList } from "./Dashboard";
 import { ExpenseForm, PaymentForm } from "./EntryForms";
 import type { BillDraft } from "../lib/fromBill";
-import { Avatar, ErrorNote, Sheet, Standing, Tabs, api, errorText, field, fieldBase, primary, secondary, shortDate, when } from "./kit";
+import { Avatar, ErrorNote, Sheet, Standing, Tabs, api, errorText, field, fieldBase, iconButton, primary, secondary, when } from "./kit";
+import { ReceiptViewer, receiptUrl, useReceiptPickers } from "./receipt";
 
 // One group: its expenses, who owes whom, spending totals and what happened, plus its settings.
 type Tab = "expenses" | "balances" | "totals" | "activity";
 type Open =
-  | { kind: "add" }
+  | { kind: "add"; file?: File }
   | { kind: "edit"; expense: Expense }
   | { kind: "pay"; preset?: { from: string; to: string; amount: number } }
   | { kind: "detail"; id: string }
@@ -40,13 +41,26 @@ export function GroupView({ id, onBack, draft, onDraftDone }: { id: string; onBa
     reload();
   };
 
+  // The Scan button opens the camera straight away; the photo then opens the form, already being read.
+  const scan = useReceiptPickers((file) => setOpen({ kind: "add", file }));
+
   if (!g)
     return (
       <section className="space-y-4">
-        <button onClick={onBack} className="text-sm text-muted">
+        <button onClick={onBack} className={`${iconButton} -ml-3 w-auto px-3 text-sm text-muted`}>
           ← All groups
         </button>
-        {error ? <ErrorNote text={error} /> : <p className="text-muted">Loading…</p>}
+        {error ? (
+          <ErrorNote text={error} />
+        ) : (
+          <div className="space-y-3" aria-label="Loading">
+            <div className="h-36 animate-pulse rounded-3xl bg-line/60" />
+            <div className="h-10 animate-pulse rounded-full bg-line/60" />
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="h-16 animate-pulse rounded-2xl bg-line/40" />
+            ))}
+          </div>
+        )}
       </section>
     );
 
@@ -55,37 +69,56 @@ export function GroupView({ id, onBack, draft, onDraftDone }: { id: string; onBa
   const deleted = g.expenses.filter((e) => e.deleted).length;
   const shown = g.expenses.filter((e) => showDeleted || !e.deleted);
   const detail = open?.kind === "detail" ? g.expenses.find((e) => e.id === open.id) : undefined;
+  const active = g.members.filter((m) => !m.removed);
+  // The one thing to do next: pay who you owe, nudge who owes you, or nothing at all.
+  const iOwe = g.debts.filter((t) => t.from === g.meId).sort((a, b) => b.amount - a.amount)[0];
+  const owesMe = g.debts.filter((t) => t.to === g.meId);
+  const remind = () => window.open(`https://wa.me/?text=${encodeURIComponent(formatSettlementWhatsApp(g, nameOf))}`, "_blank");
 
   return (
-    <section className="space-y-5">
-      <div className="flex items-center justify-between">
-        <button onClick={onBack} className="text-sm text-muted hover:text-ink">
-          ← All groups
+    <section className="space-y-4 pb-24">
+      <div className="-mx-1 flex items-center justify-between">
+        <button onClick={onBack} aria-label="All groups" className={`${iconButton} text-xl text-muted`}>
+          ←
         </button>
-        <button onClick={() => setOpen({ kind: "settings" })} className={secondary}>
-          Settings
+        <h1 className="flex min-w-0 items-center gap-2 truncate text-lg font-semibold">
+          <span aria-hidden="true">{kindOf(g.kind).icon}</span>
+          <span className="truncate">{g.name}</span>
+        </h1>
+        <button onClick={() => setOpen({ kind: "settings" })} aria-label="Group settings" className={`${iconButton} text-xl text-muted`}>
+          ⋯
         </button>
       </div>
 
-      <div className="flex items-center gap-3">
-        <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-line bg-card text-2xl" aria-hidden="true">
-          {kindOf(g.kind).icon}
-        </span>
-        <div className="min-w-0">
-          <h1 className="truncate text-2xl font-semibold tracking-tight">{g.name}</h1>
-          <p className="text-sm">
-            <Standing cents={mine} currency={g.currency} /> <span className="text-muted">· {g.members.filter((m) => !m.removed).length} people</span>
-          </p>
+      <div className="rounded-3xl bg-ink p-5 text-white">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[13px] text-white/70">{mine > 0 ? "You are owed" : mine < 0 ? "You owe" : "You're all square"}</p>
+            <p className="mt-1 text-[40px] font-semibold leading-[44px] tracking-tight tabular-nums">{formatMoney(Math.abs(mine), g.currency)}</p>
+          </div>
+          <span className="flex shrink-0 -space-x-2 pt-1" aria-label={`${active.length} people`}>
+            {active.slice(0, 4).map((m) => (
+              <span key={m.id} className="rounded-full ring-2 ring-ink">
+                <Avatar name={m.name} size={28} />
+              </span>
+            ))}
+            {active.length > 4 && <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/20 text-[11px] ring-2 ring-ink">+{active.length - 4}</span>}
+          </span>
         </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-2">
-        <button onClick={() => setOpen({ kind: "add" })} className="h-12 rounded-2xl bg-ink font-medium text-white active:scale-[.99]">
-          + Add expense
-        </button>
-        <button onClick={() => setOpen({ kind: "pay" })} className="h-12 rounded-2xl border border-line bg-card font-medium active:scale-[.99]">
-          Settle up
-        </button>
+        <div className="mt-4 flex gap-2">
+          {iOwe ? (
+            <button onClick={() => setOpen({ kind: "pay", preset: iOwe })} className="min-h-11 rounded-full bg-white px-5 text-sm font-semibold text-ink active:scale-[.98]">
+              Pay {nameOf(iOwe.to)} {formatMoney(iOwe.amount, g.currency)}
+            </button>
+          ) : owesMe.length ? (
+            <button onClick={remind} className="min-h-11 rounded-full bg-white px-5 text-sm font-semibold text-ink active:scale-[.98]">
+              Remind on WhatsApp
+            </button>
+          ) : null}
+          <button onClick={() => setOpen({ kind: "pay" })} className="min-h-11 rounded-full border border-white/30 px-5 text-sm font-medium active:scale-[.98]">
+            Settle up
+          </button>
+        </div>
       </div>
 
       <Tabs
@@ -101,14 +134,29 @@ export function GroupView({ id, onBack, draft, onDraftDone }: { id: string; onBa
       <ErrorNote text={error} />
 
       {tab === "expenses" && (
-        <div className="space-y-2">
-          {shown.length === 0 && <p className="rounded-2xl border border-dashed border-line p-6 text-center text-sm text-muted">No expenses yet. Add the first one.</p>}
-          {months(shown).map(([month, items]) => (
-            <div key={month} className="space-y-2">
-              <p className="pt-2 text-xs font-medium uppercase tracking-wide text-muted">{month}</p>
-              {items.map((e) => (
-                <ExpenseRow key={e.id} e={e} g={g} nameOf={nameOf} onClick={() => setOpen({ kind: "detail", id: e.id })} />
-              ))}
+        <div className="space-y-3">
+          {shown.length === 0 && (
+            <div className="rounded-3xl border border-dashed border-line p-6 text-center">
+              <p className="font-semibold">No expenses yet</p>
+              <p className="mt-1 text-sm text-muted">Snap the receipt and TallyBack fills in the amount and items, then checks the maths.</p>
+              <button onClick={scan.takePhoto} className={`${primary} mt-4`}>
+                Scan your first receipt
+              </button>
+              <button onClick={() => setOpen({ kind: "add" })} className="mt-2 min-h-11 text-sm text-muted underline underline-offset-4">
+                or type it in
+              </button>
+            </div>
+          )}
+          {days(shown).map(([day, items]) => (
+            <div key={day}>
+              <p className="sticky top-0 z-10 -mx-4 bg-paper/95 px-5 py-2 text-xs font-semibold uppercase tracking-wide text-muted backdrop-blur">{dayLabel(day)}</p>
+              <ul className="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-card">
+                {items.map((e) => (
+                  <li key={e.id}>
+                    <ExpenseRow e={e} g={g} nameOf={nameOf} onClick={() => setOpen({ kind: "detail", id: e.id })} />
+                  </li>
+                ))}
+              </ul>
             </div>
           ))}
           {deleted > 0 && (
@@ -123,9 +171,27 @@ export function GroupView({ id, onBack, draft, onDraftDone }: { id: string; onBa
       {tab === "totals" && <Totals g={g} />}
       {tab === "activity" && <ActivityList items={g.activity} />}
 
+      {/* Thumb-reach actions above the tab bar: Scan opens the camera, + types one in. */}
+      {scan.inputs}
+      {!open && shown.length > 0 && (
+        <div className="fixed right-4 z-30 flex items-center gap-2" style={{ bottom: "calc(var(--tabbar-h) + 16px)" }}>
+          <button onClick={() => setOpen({ kind: "add" })} aria-label="Add an expense by hand" className="flex h-14 w-14 items-center justify-center rounded-full border border-line bg-card text-2xl shadow-lg active:scale-95">
+            +
+          </button>
+          <button onClick={scan.takePhoto} className="flex h-14 items-center gap-2 rounded-full bg-ink pl-5 pr-6 font-semibold text-white shadow-lg active:scale-95">
+            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z" />
+              <circle cx="12" cy="13" r="3.5" />
+            </svg>
+            Scan receipt
+          </button>
+        </div>
+      )}
+
       {open?.kind === "add" && (
         <ExpenseForm
           group={g}
+          initialFile={open.file}
           draft={draft}
           onClose={() => {
             onDraftDone?.();
@@ -147,13 +213,20 @@ export function GroupView({ id, onBack, draft, onDraftDone }: { id: string; onBa
   );
 }
 
-function months(items: Expense[]): [string, Expense[]][] {
+// Newest first, one block per day: "Today", "Yesterday", "Sat 8 Nov", and the year once it isn't this one.
+function days(items: Expense[]): [string, Expense[]][] {
   const out = new Map<string, Expense[]>();
-  for (const e of items) {
-    const m = new Date(`${e.date}T00:00:00`).toLocaleDateString(undefined, { month: "long", year: "numeric" });
-    out.set(m, [...(out.get(m) ?? []), e]);
-  }
+  for (const e of items) out.set(e.date, [...(out.get(e.date) ?? []), e]);
   return [...out];
+}
+function dayLabel(iso: string) {
+  const d = new Date(`${iso}T00:00:00`);
+  const t = new Date();
+  const start = new Date(t.getFullYear(), t.getMonth(), t.getDate()).getTime();
+  const diff = Math.round((start - d.getTime()) / 86_400_000);
+  if (diff === 0) return "Today";
+  if (diff === 1) return "Yesterday";
+  return d.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short", ...(d.getFullYear() !== t.getFullYear() ? { year: "numeric" } : {}) });
 }
 
 function ExpenseRow({ e, g, nameOf, onClick }: { e: Expense; g: GroupDetail; nameOf: (id: string) => string; onClick: () => void }) {
@@ -161,13 +234,19 @@ function ExpenseRow({ e, g, nameOf, onClick }: { e: Expense; g: GroupDetail; nam
   const payers = Object.keys(e.paid);
   const isPayment = e.kind === "payment";
   return (
-    <button onClick={onClick} className={`flex w-full items-center gap-3 rounded-2xl border border-line bg-card p-3 text-left active:scale-[.99] ${e.deleted ? "opacity-50" : ""}`}>
-      <span className="w-8 shrink-0 whitespace-pre-line text-center text-xs leading-tight text-muted">{shortDate(e.date).replace(" ", "\n")}</span>
+    <button onClick={onClick} className={`flex min-h-16 w-full items-center gap-3 px-3 py-2.5 text-left active:bg-paper ${e.deleted ? "opacity-50" : ""}`}>
       <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-paper text-lg" aria-hidden="true">
         {isPayment ? "💸" : categoryOf(e.category).icon}
       </span>
       <span className="min-w-0 flex-1">
-        <span className={`block truncate font-medium ${e.deleted ? "line-through" : ""}`}>{isPayment ? `${nameOf(payers[0])} paid ${nameOf(Object.keys(e.owed)[0])}` : e.description}</span>
+        <span className={`flex items-center gap-1.5 font-medium ${e.deleted ? "line-through" : ""}`}>
+          <span className="truncate">{isPayment ? `${nameOf(payers[0])} paid ${nameOf(Object.keys(e.owed)[0])}` : e.description}</span>
+          {e.receiptBillId && (
+            <span className="shrink-0 text-xs" role="img" aria-label="Has a receipt">
+              🧾
+            </span>
+          )}
+        </span>
         <span className="block truncate text-xs text-muted">
           {isPayment ? "Payment" : `${payers.length > 1 ? `${payers.length} people` : nameOf(payers[0])} paid`} {formatMoney(e.amount, g.currency)}
         </span>
@@ -380,6 +459,8 @@ function ExpenseDetail({
   const [error, setError] = useState<string | null>(null);
   const comments = g.comments.filter((c) => c.expenseId === e.id);
   const isPayment = e.kind === "payment";
+  const [viewing, setViewing] = useState(false);
+  const receipt = e.receiptBillId ? receiptUrl(g.id, e.id) : null;
 
   async function act(fn: () => Promise<unknown>) {
     setBusy(true);
@@ -411,6 +492,20 @@ function ExpenseDetail({
           </div>
         </div>
         {e.deleted && <p className="rounded-xl bg-warn-soft p-3 text-sm text-warn">This was deleted. Restore it to count it again.</p>}
+        {receipt && (
+          <button onClick={() => setViewing(true)} className="flex w-full items-center gap-3 rounded-2xl border border-line bg-card p-2.5 text-left active:bg-paper">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={receipt} alt="" className="h-14 w-14 shrink-0 rounded-xl border border-line bg-paper object-cover" onError={(ev) => (ev.currentTarget.style.visibility = "hidden")} />
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-semibold">Receipt</span>
+              <span className="block text-xs text-muted">Tap to see it full size</span>
+            </span>
+            <span className="pr-2 text-muted" aria-hidden="true">
+              ›
+            </span>
+          </button>
+        )}
+        {viewing && receipt && <ReceiptViewer src={receipt} title={e.description} onClose={() => setViewing(false)} />}
 
         <ul className="space-y-1.5 rounded-2xl border border-line bg-card p-3 text-sm">
           {Object.entries(e.paid).map(([id, c]) => (

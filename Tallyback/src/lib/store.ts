@@ -8,6 +8,7 @@ import type { CheckResult, Extraction, ExtractedLine, Promise as BillPromise } f
 import { maskDigits } from "./mask";
 import { SCHEMA, TABLES, type Table } from "./db/schema";
 import type { Owner } from "@signin/owner";
+import { ATTACHMENT_MODEL } from "./upload";
 
 // Postgres (Neon) when DATABASE_URL is set; otherwise a local JSON file so the app runs with zero setup.
 // Photos go to private Vercel Blob when BLOB_READ_WRITE_TOKEN is set.
@@ -115,7 +116,22 @@ export async function uploadImage(billId: string, bytes: Buffer, mime: string): 
 // Stream a private photo back, only to whoever owns the bill.
 export async function readImage(billId: string, owner: Owner): Promise<{ stream: ReadableStream; type: string } | null> {
   const b = await findBill(billId, owner);
-  const p = b?.image_path;
+  return b ? streamPhoto(b) : null;
+}
+
+// A bill's photo with NO owner check: for a receipt on a group expense, which every member may see.
+// The caller must have checked access first (the split service checks group membership).
+export async function streamBillPhoto(billId: string): Promise<{ stream: ReadableStream; type: string } | null> {
+  if (!/^[0-9a-f-]{36}$/i.test(billId)) return null;
+  const sql = await db();
+  const b = sql
+    ? ((await selectJson(sql, `select * from bills where id = $1`, [billId]))[0] ?? null)
+    : (((await localAll()).bills ?? []).find((r) => r.id === billId) ?? null);
+  return b ? streamPhoto(b) : null;
+}
+
+async function streamPhoto(b: Row): Promise<{ stream: ReadableStream; type: string } | null> {
+  const p = b.image_path;
   if (typeof p !== "string") return null;
   if (p.startsWith(DB_PHOTO)) {
     const sql = await db();
@@ -333,7 +349,7 @@ export async function listBills(owner: Owner, limit = 50): Promise<StoredBill[]>
   const sql = await db();
   if (!sql) {
     const data = await localAll();
-    return newest((data.bills ?? []).filter((b) => ownsRow(b, owner)))
+    return newest((data.bills ?? []).filter((b) => ownsRow(b, owner) && b.model !== ATTACHMENT_MODEL))
       .slice(0, limit)
       .map((b) => ({
         bill: b,
@@ -343,7 +359,7 @@ export async function listBills(owner: Owner, limit = 50): Promise<StoredBill[]>
       }));
   }
   const o = ownerSql(owner, 1);
-  const bills = await selectJson(sql, `select * from bills where ${o.where} order by created_at desc limit $2`, [o.param, limit]);
+  const bills = await selectJson(sql, `select * from bills where ${o.where} and model is distinct from '${ATTACHMENT_MODEL}' order by created_at desc limit $2`, [o.param, limit]);
   if (!bills.length) return [];
   const ids = bills.map((b) => b.id);
   const [lines, promises, messages] = await Promise.all(

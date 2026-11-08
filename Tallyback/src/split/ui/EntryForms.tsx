@@ -1,19 +1,42 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { runChecks } from "@tallyback/lib/checks";
+import { billToDraft } from "../lib/fromBill";
 import { centsToInput, formatMoney, toCents } from "../lib/money";
 import { SPLIT_METHODS, allocateItemized, checkPaid, splitAmount, type SplitMethod } from "../lib/split";
 import type { BillDraft, ClaimableReceiptLine } from "../lib/fromBill";
 import { CATEGORIES, type Category, type Expense, type GroupDetail } from "../lib/types";
 import { ErrorNote, Sheet, api, errorText, field, fieldBase, primary, today } from "./kit";
+import { ReceiptTile, ReceiptViewer, receiptUrl, scanReceipt, useReceiptPickers, type ReceiptState } from "./receipt";
+
+// Nothing promised: the checks then look only at the bill's own arithmetic and tax.
+const NO_PROMISE = { expectedTotal: null, pricesIncludeTax: null, paidOn: null, lineExpected: {}, unrecognised: [] };
 
 // Adding or editing an expense, and recording a payment. The page runs the same split maths as the
 // server (lib/split.ts), so it can show each person's share as you type; the server checks again.
 
 const blankIsZero = (t: string) => (t.trim() === "" ? 0 : (toCents(t) ?? (Number(t) === 0 ? 0 : NaN)));
 
-// `draft` pre-fills a new expense from a checked bill ("Split this bill").
-export function ExpenseForm({ group, expense, draft, onClose, onSaved }: { group: GroupDetail; expense?: Expense; draft?: BillDraft | null; onClose: () => void; onSaved: () => void }) {
+// `draft` pre-fills a new expense from a checked bill ("Split this bill"); `initialFile` is a receipt photo
+// taken from the group's Scan button, read as soon as the form opens. A receipt added here is read the
+// same way and fills in whatever the person hasn't typed themselves.
+export function ExpenseForm({
+  group,
+  expense,
+  draft: draftIn,
+  initialFile,
+  onClose,
+  onSaved,
+}: {
+  group: GroupDetail;
+  expense?: Expense;
+  draft?: BillDraft | null;
+  initialFile?: File | null;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [draft, setDraft] = useState<BillDraft | null | undefined>(draftIn);
   const people = group.members.filter((m) => !m.removed || (expense && (expense.paid[m.id] || expense.owed[m.id])));
   const nameOf = (id: string) => (id === group.meId ? "You" : (people.find((m) => m.id === id)?.name ?? "?"));
   const s = expense?.split;
@@ -61,6 +84,68 @@ export function ExpenseForm({ group, expense, draft, onClose, onSaved }: { group
   const [notes, setNotes] = useState(expense?.notes ?? draft?.notes ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // ---- the receipt ----
+  const [receiptBillId, setReceiptBillId] = useState<string | null>(expense?.receiptBillId ?? draftIn?.billId ?? null);
+  const [receipt, setReceipt] = useState<ReceiptState>(() =>
+    expense?.receiptBillId
+      ? { kind: "attached", preview: receiptUrl(group.id, expense.id) }
+      : draftIn?.billId
+        ? { kind: "attached", preview: `/api/tallyback/bills/${draftIn.billId}/photo` }
+        : { kind: "none" },
+  );
+  const [viewing, setViewing] = useState(false);
+  // Fields the person typed themselves; a receipt read afterwards never overwrites them.
+  const typed = useRef<Set<string>>(new Set(expense ? ["description", "amount", "date", "category", "notes"] : []));
+  const touch = (k: string) => typed.current.add(k);
+
+  function applyDraft(d: BillDraft) {
+    setDraft(d);
+    const free = (k: string) => !typed.current.has(k);
+    if (free("description") && d.description) setDescription(d.description);
+    if (free("amount") && d.amount) setAmountText(centsToInput(d.amount));
+    if (free("date") && d.date) setDate(d.date);
+    if (free("category")) setCategory(d.category);
+    if (free("notes") && d.notes) setNotes(d.notes);
+    setUseVerifiedTotal(true);
+    const lines = d.claimableLines ?? [];
+    const activeIds = people.filter((m) => !m.removed).map((m) => m.id);
+    setItemLines(lines);
+    setItemClaims(Object.fromEntries(lines.map((line) => [line.lineIndex, line.flagged && line.verifiedCents === 0 ? [] : activeIds])));
+    if (lines.length > 1) setItemMode(true);
+  }
+
+  async function readReceipt(file: File) {
+    const preview = file.type.startsWith("image/") ? URL.createObjectURL(file) : null;
+    setReceipt({ kind: "scanning", preview });
+    const out = await scanReceipt(file);
+    if (out.kind === "read") {
+      const checked = runChecks(out.extraction, NO_PROMISE);
+      applyDraft(billToDraft(out.extraction, checked, out.billId));
+      setReceiptBillId(out.billId);
+      setReceipt({ kind: "read", preview, items: out.extraction.lines.filter((l) => l.kind === "item").length || out.extraction.lines.length });
+    } else if (out.kind === "kept") {
+      setReceiptBillId(out.billId);
+      setReceipt({ kind: "kept", preview, note: out.error });
+    } else {
+      setReceipt({ kind: "failed", preview, note: out.error });
+    }
+  }
+  const pickers = useReceiptPickers(readReceipt);
+  // A photo taken from the group's Scan button: read it straight away (once).
+  const started = useRef(false);
+  useEffect(() => {
+    if (initialFile && !started.current) {
+      started.current = true;
+      readReceipt(initialFile);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialFile]);
+  function removeReceipt() {
+    setReceiptBillId(null);
+    setReceipt({ kind: "none" });
+  }
+  const viewSrc = receipt.kind === "none" || receipt.kind === "scanning" || receipt.kind === "failed" ? null : receipt.preview || (receiptBillId && expense ? receiptUrl(group.id, expense.id) : null);
 
   const amount = toCents(amountText) ?? 0;
 
@@ -154,7 +239,11 @@ export function ExpenseForm({ group, expense, draft, onClose, onSaved }: { group
     setBusy(true);
     setError(null);
     try {
-      const body = { kind: "expense", description, amount, category, date, paid, split, notes };
+      const body = { kind: "expense", description, amount, category, date, paid, split, notes, receiptBillId };
+      if (receipt.kind === "scanning" && !confirm("The receipt is still being read. Save without it?")) {
+        setBusy(false);
+        return;
+      }
       if (expense) await api(`/groups/${group.id}/expenses/${expense.id}`, "PATCH", body);
       else await api(`/groups/${group.id}/expenses`, "POST", body);
       onSaved();
@@ -165,26 +254,78 @@ export function ExpenseForm({ group, expense, draft, onClose, onSaved }: { group
   }
 
   const unit = { exact: group.currency, percent: "%", shares: "shares", equal: "" }[method];
+  const scanning = receipt.kind === "scanning";
+  const saveLabel = busy ? "Saving…" : problem && amount && description.trim() ? problem : amount ? `Save · ${formatMoney(amount, group.currency)}` : "Save";
   return (
-    <Sheet title={expense ? "Edit expense" : draft ? "Split this bill" : "Add an expense"} onClose={onClose}>
-      <form onSubmit={save} className="space-y-4">
+    <Sheet
+      title={expense ? "Edit expense" : draftIn ? "Split this bill" : "Add an expense"}
+      onClose={onClose}
+      footer={
+        <>
+          <ErrorNote text={error} />
+          <button type="submit" form="expense-form" disabled={busy || !!problem} className={`${primary} ${error ? "mt-2" : ""}`}>
+            {saveLabel}
+          </button>
+        </>
+      }
+    >
+      {pickers.inputs}
+      <form id="expense-form" onSubmit={save} className="space-y-4">
+        <ReceiptTile state={receipt} onTakePhoto={pickers.takePhoto} onChooseFile={pickers.chooseFile} onView={viewSrc ? () => setViewing(true) : undefined} onRemove={removeReceipt} />
+
+        <label className={`flex items-baseline justify-center gap-2 rounded-2xl border border-line bg-card px-4 py-3 focus-within:border-ink ${scanning && !typed.current.has("amount") ? "animate-pulse" : ""}`}>
+          <span className="text-lg text-muted">{group.currency}</span>
+          <input
+            inputMode="decimal"
+            enterKeyHint="done"
+            value={amountText}
+            onChange={(e) => {
+              touch("amount");
+              setAmountText(e.target.value);
+            }}
+            placeholder="0.00"
+            aria-label="Amount"
+            className="text-hero min-w-0 max-w-[12ch] flex-1 bg-transparent text-center font-semibold outline-none"
+          />
+        </label>
+
         <div className="flex gap-2">
-          <select value={category} onChange={(e) => setCategory(e.target.value as Category)} aria-label="Category" className={`${fieldBase} w-auto text-xl`}>
+          <select
+            value={category}
+            onChange={(e) => {
+              touch("category");
+              setCategory(e.target.value as Category);
+            }}
+            aria-label="Category"
+            className={`${fieldBase} h-12 w-14 shrink-0 px-2 text-center text-xl`}
+          >
             {CATEGORIES.map((c) => (
               <option key={c.id} value={c.id} title={c.label}>
                 {c.icon} {c.label}
               </option>
             ))}
           </select>
-          <input autoFocus={!expense} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description" className={`${fieldBase} min-w-0 flex-1`} />
+          <input
+            value={description}
+            onChange={(e) => {
+              touch("description");
+              setDescription(e.target.value);
+            }}
+            placeholder={scanning ? "Reading the receipt…" : "What was it for?"}
+            enterKeyHint="next"
+            className={`${fieldBase} h-12 min-w-0 flex-1`}
+          />
         </div>
-        <div className="flex gap-2">
-          <label className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-line bg-card px-3 focus-within:border-ink">
-            <span className="text-sm text-muted">{group.currency}</span>
-            <input inputMode="decimal" value={amountText} onChange={(e) => setAmountText(e.target.value)} placeholder="0.00" aria-label="Amount" className="h-12 min-w-0 flex-1 bg-transparent text-2xl font-semibold outline-none" />
-          </label>
-          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} aria-label="Date" className={`${fieldBase} w-auto`} />
-        </div>
+        <input
+          type="date"
+          value={date}
+          onChange={(e) => {
+            touch("date");
+            setDate(e.target.value);
+          }}
+          aria-label="Date"
+          className={`${field} h-12`}
+        />
 
         {hasDisputedDiff && draft && (
           <div className="rounded-2xl border border-bad/30 bg-bad-soft p-3.5 text-sm">
@@ -249,12 +390,12 @@ export function ExpenseForm({ group, expense, draft, onClose, onSaved }: { group
 
         <div className="text-sm">
           <span className="mb-1 block font-medium">Split</span>
-          <div className="mb-2 flex flex-wrap gap-1.5">
+          <div className="-mx-5 mb-2 flex snap-x gap-1.5 overflow-x-auto px-5 pb-1">
             <button
               type="button"
               onClick={() => setItemMode(true)}
               aria-pressed={itemMode}
-              className={`rounded-full border px-3 py-1 font-medium ${itemMode ? "border-ink bg-ink text-white" : "border-line bg-card"}`}
+              className={`min-h-11 shrink-0 snap-start whitespace-nowrap rounded-full border px-4 font-medium ${itemMode ? "border-ink bg-ink text-white" : "border-line bg-card"}`}
             >
               🧾 By receipt items{itemLines.length ? ` (${itemLines.length})` : ""}
             </button>
@@ -267,7 +408,7 @@ export function ExpenseForm({ group, expense, draft, onClose, onSaved }: { group
                   setMethod(m.id);
                 }}
                 aria-pressed={!itemMode && method === m.id}
-                className={`rounded-full border px-3 py-1 ${!itemMode && method === m.id ? "border-ink bg-ink text-white" : "border-line bg-card"}`}
+                className={`min-h-11 shrink-0 snap-start whitespace-nowrap rounded-full border px-4 ${!itemMode && method === m.id ? "border-ink bg-ink text-white" : "border-line bg-card"}`}
               >
                 {m.label}
               </button>
@@ -305,7 +446,7 @@ export function ExpenseForm({ group, expense, draft, onClose, onSaved }: { group
                               : line.flagTitle ?? "Flagged on bill"}
                           </p>
                         )}
-                        <div className="mt-1.5 flex flex-wrap gap-1">
+                        <div className="mt-2 flex flex-wrap gap-1.5">
                           {people.map((m) => {
                             const active = claimants.includes(m.id);
                             return (
@@ -314,7 +455,7 @@ export function ExpenseForm({ group, expense, draft, onClose, onSaved }: { group
                                 key={m.id}
                                 onClick={() => toggleClaim(line.lineIndex, m.id)}
                                 aria-pressed={active}
-                                className={`rounded-full border px-2.5 py-0.5 text-xs font-medium ${active ? "border-ink bg-ink text-white" : "border-line bg-paper text-muted"}`}
+                                className={`min-h-10 rounded-full border px-3.5 text-sm font-medium ${active ? "border-ink bg-ink text-white" : "border-line bg-paper text-muted"}`}
                               >
                                 {nameOf(m.id)}
                               </button>
@@ -323,7 +464,7 @@ export function ExpenseForm({ group, expense, draft, onClose, onSaved }: { group
                           <button
                             type="button"
                             onClick={() => claimAllForLine(line.lineIndex)}
-                            className={`rounded-full border px-2 py-0.5 text-[11px] ${allSelected ? "border-ink/40 bg-paper text-ink" : "border-dashed border-line text-muted"}`}
+                            className={`min-h-10 rounded-full border px-3 text-sm ${allSelected ? "border-ink/40 bg-paper text-ink" : "border-dashed border-line text-muted"}`}
                           >
                             {allSelected ? "Clear" : "All"}
                           </button>
@@ -415,7 +556,7 @@ export function ExpenseForm({ group, expense, draft, onClose, onSaved }: { group
               {people.map((m) => {
                 const share = result?.ok ? (result.owed[m.id] ?? 0) : null;
                 return method === "equal" ? (
-                  <label key={m.id} className="flex items-center justify-between gap-3">
+                  <label key={m.id} className="flex min-h-11 items-center justify-between gap-3">
                     <span className="flex items-center gap-2">
                       <input
                         type="checkbox"
@@ -428,7 +569,7 @@ export function ExpenseForm({ group, expense, draft, onClose, onSaved }: { group
                             return next;
                           })
                         }
-                        className="h-4 w-4 accent-ink"
+                        className="h-6 w-6 accent-ink"
                       />
                       {nameOf(m.id)}
                     </span>
@@ -450,12 +591,18 @@ export function ExpenseForm({ group, expense, draft, onClose, onSaved }: { group
           )}
         </div>
 
-        <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder="Notes (optional)" className={`${field} resize-none`} />
-        <ErrorNote text={error} />
-        <button type="submit" disabled={busy || !!problem} className={primary}>
-          {busy ? "Saving…" : problem && amount && description.trim() ? problem : "Save"}
-        </button>
+        <textarea
+          value={notes}
+          onChange={(e) => {
+            touch("notes");
+            setNotes(e.target.value);
+          }}
+          rows={2}
+          placeholder="Notes (optional)"
+          className={`${field} resize-none`}
+        />
       </form>
+      {viewing && viewSrc && <ReceiptViewer src={viewSrc} title={description || "Receipt"} onClose={() => setViewing(false)} />}
     </Sheet>
   );
 }

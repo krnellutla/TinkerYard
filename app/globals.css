@@ -54,6 +54,31 @@ button,
   textarea {
     font-size: 16px !important;
   }
+  /* …except fields meant to be bigger, like the amount you're entering (the class wins: more specific). */
+  input.text-hero {
+    font-size: 2.75rem !important;
+  }
+}
+/* The amount you're entering, as the hero of the form: large, with digits that don't jiggle. */
+.text-hero {
+  font-size: 2.75rem;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+/* A 1.6 s sweep down a receipt while it's being read; a still bar for people who prefer less motion. */
+@keyframes receipt-scan {
+  0% { transform: translateY(0); }
+  50% { transform: translateY(52px); }
+  100% { transform: translateY(0); }
+}
+.animate-receipt-scan {
+  animation: receipt-scan 1.6s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-receipt-scan {
+    animation: none;
+    transform: translateY(26px);
+  }
 }
 /* Room for the bottom tab bar on phones (it sits above the home indicator). */
 :root {

@@ -4,6 +4,8 @@ import { insert, select, update, type Row } from "./db";
 import { debts, myShare, netBalances, type Entry } from "./balances";
 import { CURRENCIES, formatMoney } from "./money";
 import { checkPaid, splitAmount, type Amounts, type Split } from "./split";
+import { findBill, streamBillPhoto } from "@tallyback/lib/store";
+import { receiptActivity, receiptDecision } from "./receipt";
 import { CATEGORIES, GROUP_KINDS, type Activity, type Comment, type Dashboard, type Expense, type Friend, type GroupDetail, type GroupKind, type Member } from "./types";
 
 // Everything the Split tab does, with the rules in one place. Identity always comes from the session (Me),
@@ -63,6 +65,8 @@ const expenseIn = z.object({
     values: z.record(z.string(), z.number()).optional(),
   }),
   notes: z.string().max(1000).default(""),
+  // The receipt's bill id, from your own scan; null removes it, absent leaves it as it is.
+  receiptBillId: z.string().regex(ID, "That receipt isn't valid.").nullable().optional(),
 });
 const paymentIn = z.object({ kind: z.literal("payment"), from: z.string(), to: z.string(), amount: cents, date: day, notes: z.string().max(1000).default("") });
 const entryIn = z.discriminatedUnion("kind", [expenseIn, paymentIn]);
@@ -86,6 +90,7 @@ const toExpense = (r: Row): Expense => ({
   owed: numbers(r.owed),
   split: (r.split as Split) ?? null,
   notes: String(r.notes ?? ""),
+  receiptBillId: (r.receipt_bill_id as string) || null,
   createdBy: String(r.created_by_name),
   createdAt: String(r.created_at),
   deleted: !!r.deleted_at,
@@ -324,9 +329,14 @@ function toAmounts(input: z.infer<typeof entryIn>, allowed: Set<string>) {
   return { paid, owed: s.owed, split: input.split };
 }
 
+const sameAmounts = (x: Amounts, y: Amounts) => {
+  const keys = new Set([...Object.keys(x), ...Object.keys(y)]);
+  return [...keys].every((k) => (x[k] ?? 0) === (y[k] ?? 0));
+};
+
 const label = (r: { kind: string; description: string }) => (r.kind === "payment" ? "a payment" : `“${r.description}”`);
 
-export async function saveEntry(groupId: string, me: Me, body: unknown, expenseId?: string): Promise<string> {
+export async function saveEntry(groupId: string, me: Me, body: unknown, expenseId?: string): Promise<{ id: string; receiptDropped?: boolean }> {
   const { g, members, name } = await load(groupId, me);
   const input = parse(entryIn, body);
   let existing: Row | undefined;
@@ -351,15 +361,53 @@ export async function saveEntry(groupId: string, me: Me, body: unknown, expenseI
     updated_at: now(),
   };
   const money = formatMoney(input.amount, String(g.currency));
+
+  // The receipt: only your own scans can be attached (see receipt.ts).
+  const had = existing ? (existing.receipt_bill_id as string) || null : null;
+  const incoming = input.kind === "expense" ? input.receiptBillId : undefined;
+  const owned = typeof incoming === "string" && incoming !== had ? !!(await findBill(incoming, { userId: me.id, deviceId: "" })) : false;
+  const receipt = receiptDecision(had, incoming, owned);
+  const receiptField = receipt.action === "set" ? { receipt_bill_id: receipt.billId } : receipt.action === "clear" ? { receipt_bill_id: null } : {};
+  const receiptDropped = receipt.action === "drop" || undefined;
+
   if (existing) {
-    await update("sb_expenses", { id: String(existing.id) }, fields);
-    await log(groupId, me, name, `updated ${label(fields)}`, String(existing.id));
-    return String(existing.id);
+    const id = String(existing.id);
+    const before = existing as Row;
+    // Log "attached a receipt" rather than "updated" when nothing else changed.
+    const onlyReceipt =
+      String(before.description) === fields.description &&
+      Number(before.amount) === fields.amount &&
+      String(before.category) === fields.category &&
+      String(before.date).slice(0, 10) === fields.date &&
+      String(before.notes ?? "") === fields.notes &&
+      sameAmounts(numbers(before.paid), amounts.paid) &&
+      sameAmounts(numbers(before.owed), amounts.owed);
+    await update("sb_expenses", { id }, { ...fields, ...receiptField });
+    const receiptText = receiptActivity(receipt, label(fields));
+    await log(groupId, me, name, onlyReceipt && receiptText ? receiptText : `updated ${label(fields)}`, id);
+    return { id, receiptDropped };
   }
   const id = uuid();
-  await insert("sb_expenses", { id, group_id: groupId, ...fields, created_by: me.id, created_by_name: name, created_at: now(), deleted_at: null });
-  await log(groupId, me, name, input.kind === "payment" ? `recorded a payment: ${description} ${money}` : `added “${description}” (${money})`, id);
-  return id;
+  const withReceipt = receipt.action === "set";
+  await insert("sb_expenses", { id, group_id: groupId, ...fields, receipt_bill_id: withReceipt ? receipt.billId : null, created_by: me.id, created_by_name: name, created_at: now(), deleted_at: null });
+  await log(
+    groupId,
+    me,
+    name,
+    input.kind === "payment" ? `recorded a payment: ${description} ${money}` : `added “${description}” (${money})${withReceipt ? " with a receipt" : ""}`,
+    id,
+  );
+  return { id, receiptDropped };
+}
+
+// An expense's receipt photo, for anyone in the group (deleted expenses too, so they can be restored).
+export async function receiptFor(groupId: string, expenseId: string, me: Me) {
+  await load(groupId, me);
+  const [e] = ID.test(expenseId) ? await select("sb_expenses", { id: expenseId, group_id: groupId }) : [];
+  const billId = (e?.receipt_bill_id as string) || null;
+  const photo = billId ? await streamBillPhoto(billId) : null;
+  if (!photo) throw new Problem(404, "No receipt for this expense.");
+  return photo;
 }
 
 export async function setDeleted(groupId: string, expenseId: string, me: Me, deleted: boolean) {
@@ -394,13 +442,13 @@ export async function exportCsv(groupId: string, me: Me): Promise<{ filename: st
   const people = d.members;
   const cell = (v: string | number) => (/[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : String(v));
   const amt = (c: number) => (c / 100).toFixed(2);
-  const lines = [["Date", "Description", "Category", "Cost", "Currency", ...people.map((p) => p.name)].map(cell).join(",")];
+  const lines = [["Date", "Description", "Category", "Cost", "Currency", "Receipt", ...people.map((p) => p.name)].map(cell).join(",")];
   for (const e of [...d.expenses].reverse()) {
     if (e.deleted) continue;
     const category = e.kind === "payment" ? "Payment" : (CATEGORIES.find((c) => c.id === e.category)?.label ?? "General");
-    lines.push([e.date, e.description, category, amt(e.amount), d.currency, ...people.map((p) => amt(myShare(e, p.id)))].map(cell).join(","));
+    lines.push([e.date, e.description, category, amt(e.amount), d.currency, e.receiptBillId ? "yes" : "", ...people.map((p) => amt(myShare(e, p.id)))].map(cell).join(","));
   }
-  lines.push(["", "Total balance", "", "", d.currency, ...people.map((p) => amt(d.balances[p.id] ?? 0))].map(cell).join(","));
+  lines.push(["", "Total balance", "", "", d.currency, "", ...people.map((p) => amt(d.balances[p.id] ?? 0))].map(cell).join(","));
   const slug = d.name.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase() || "group";
   return { filename: `${slug}-${new Date().toISOString().slice(0, 10)}.csv`, csv: lines.join("\n") + "\n" };
 }
