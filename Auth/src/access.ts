@@ -9,6 +9,7 @@ import { APP_IDS, appsFromStored, isRole, normalEmail, parseEmails, resolveAcces
 // local JSON file otherwise. The rules themselves live in policy.ts; this file only stores and looks up.
 //   ty_access      one row per person added in the admin dashboard
 //   ty_access_log  every change: who did it, to whom, what changed
+//   ty_invites     invites members sent their friends (rules: invites.ts)
 
 type Row = Record<string, unknown>;
 type Sql = ReturnType<typeof neon>;
@@ -32,6 +33,15 @@ const SCHEMA = [
     created_at timestamptz not null default now()
   )`,
   `create index if not exists ty_access_log_time_idx on ty_access_log (created_at desc)`,
+  `create table if not exists ty_invites (
+    id uuid primary key,
+    inviter text not null,
+    email text not null,
+    token_hash text not null unique,
+    created_at timestamptz not null default now(),
+    revoked_at timestamptz
+  )`,
+  `create index if not exists ty_invites_inviter_idx on ty_invites (inviter)`,
 ];
 
 const dbUrl = () => (process.env.DATABASE_URL || process.env.POSTGRES_URL || "").trim().replace(/^["']|["']$/g, "");
@@ -54,15 +64,16 @@ async function db(): Promise<Sql | null> {
 }
 
 const DB_FILE = path.join(process.env.VERCEL ? os.tmpdir() : process.cwd(), ".data", "access.json");
-async function local(): Promise<{ ty_access: Row[]; ty_access_log: Row[] }> {
+type Local = { ty_access: Row[]; ty_access_log: Row[]; ty_invites: Row[] };
+async function local(): Promise<Local> {
   try {
     const d = JSON.parse(await fs.readFile(DB_FILE, "utf8"));
-    return { ty_access: d.ty_access ?? [], ty_access_log: d.ty_access_log ?? [] };
+    return { ty_access: d.ty_access ?? [], ty_access_log: d.ty_access_log ?? [], ty_invites: d.ty_invites ?? [] };
   } catch {
-    return { ty_access: [], ty_access_log: [] };
+    return { ty_access: [], ty_access_log: [], ty_invites: [] };
   }
 }
-async function localWrite(d: { ty_access: Row[]; ty_access_log: Row[] }) {
+async function localWrite(d: Local) {
   await fs.mkdir(path.dirname(DB_FILE), { recursive: true });
   await fs.writeFile(DB_FILE, JSON.stringify(d, null, 2));
 }
@@ -173,4 +184,64 @@ export async function deleteRecord(actor: string, email: string) {
     await sql.query(`insert into ty_access_log (id, actor, email, change) values ($1, $2, $3, $4)`, [crypto.randomUUID(), actor, email, "removed from the list"]);
   }
   cache.delete(email);
+}
+
+// ---- invites members send (the API checks the rules in invites.ts first) ----
+export interface InviteRecord {
+  id: string;
+  inviter: string;
+  email: string;
+  createdAt: string;
+  revokedAt: string | null;
+}
+const toInvite = (r: Row): InviteRecord => ({
+  id: String(r.id),
+  inviter: String(r.inviter),
+  email: String(r.email),
+  createdAt: String(r.created_at),
+  revokedAt: r.revoked_at ? String(r.revoked_at) : null,
+});
+
+export async function invitesBy(inviter: string): Promise<InviteRecord[]> {
+  const sql = await db();
+  const rows = sql
+    ? await selectJson(sql, `select * from ty_invites where inviter = $1 order by created_at desc`, [inviter])
+    : (await local()).ty_invites.filter((r) => r.inviter === inviter).sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
+  return rows.map(toInvite);
+}
+
+export async function inviteByToken(tokenHash: string): Promise<InviteRecord | null> {
+  const sql = await db();
+  const row = sql ? (await selectJson(sql, `select * from ty_invites where token_hash = $1`, [tokenHash]))[0] : (await local()).ty_invites.find((r) => r.token_hash === tokenHash);
+  return row ? toInvite(row) : null;
+}
+
+// One step: the invite, the friend's place on the list (as a member with the inviter's apps) and the log line.
+export async function createInvite(inviter: string, email: string, apps: AppId[], tokenHash: string): Promise<InviteRecord> {
+  const id = crypto.randomUUID();
+  const now = new Date().toISOString();
+  await saveRecord(inviter, { email, role: "member", apps, status: "active", note: `Invited by ${inviter}` }, `invited by ${inviter}`);
+  const sql = await db();
+  if (!sql) {
+    const d = await local();
+    d.ty_invites.push({ id, inviter, email, token_hash: tokenHash, created_at: now, revoked_at: null });
+    await localWrite(d);
+  } else {
+    await sql.query(`insert into ty_invites (id, inviter, email, token_hash) values ($1, $2, $3, $4)`, [id, inviter, email, tokenHash]);
+  }
+  return { id, inviter, email, createdAt: now, revokedAt: null };
+}
+
+// Taking an invite back also takes the email off the list, unless an admin has changed it since.
+export async function revokeInvite(inv: InviteRecord) {
+  const sql = await db();
+  if (!sql) {
+    const d = await local();
+    d.ty_invites = d.ty_invites.map((r) => (r.id === inv.id ? { ...r, revoked_at: new Date().toISOString() } : r));
+    await localWrite(d);
+  } else {
+    await sql.query(`update ty_invites set revoked_at = now() where id = $1`, [inv.id]);
+  }
+  const record = await readRecord(inv.email);
+  if (record && record.createdBy === inv.inviter && record.note === `Invited by ${inv.inviter}`) await deleteRecord(inv.inviter, inv.email);
 }

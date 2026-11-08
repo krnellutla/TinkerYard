@@ -77,3 +77,14 @@ export const debts = (entries: Entry[], simplify: boolean) => (simplify ? simpli
 
 // One person's side of an expense: what they lent (+) or borrowed (−).
 export const myShare = (e: Entry, member: string) => (e.paid[member] ?? 0) - (e.owed[member] ?? 0);
+
+// The settle-up screen, the way Splitwise lays it out: the people you owe, then the people who owe you,
+// biggest first; payments between other people come last (anyone may record those too).
+export function settleOptions(all: Transfer[], me: string) {
+  const big = (a: Transfer, b: Transfer) => b.amount - a.amount || a.from.localeCompare(b.from) || a.to.localeCompare(b.to);
+  return {
+    iOwe: all.filter((t) => t.from === me).sort(big),
+    owedToMe: all.filter((t) => t.to === me).sort(big),
+    others: all.filter((t) => t.from !== me && t.to !== me).sort(big),
+  };
+}

@@ -77,6 +77,27 @@ export function SignInPanel({ onDone, reason, errorCode }: { onDone?: () => void
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Arrived from an invite email (?invite=…): fill in the invited email and go to the email step.
+  // The link is then taken out of the address bar. A sign-in already in progress wins.
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const t = url.searchParams.get("invite");
+    if (!t) return;
+    url.searchParams.delete("invite");
+    history.replaceState(history.state, "", url.pathname + url.search + url.hash);
+    if (saved) return;
+    fetch(`/api/invites/lookup?t=${encodeURIComponent(t)}`)
+      .then(async (r) => {
+        const d = (await r.json().catch(() => ({}))) as { email?: string; inviter?: string; error?: string };
+        if (!r.ok || !d.email) return setError(d.error ?? "That invite link isn't valid.");
+        setEmail(d.email);
+        setStep("email");
+        setNote(`${d.inviter} invited you. Send yourself a code to join, then add a passkey.`);
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // The saved step is cleared only by signing in, "Start over", or the code running out, never by a
   // screen passing through another step. Coming back to the tab (or Safari restoring the page from
   // its cache) re-reads it, so the code step wins even if this screen was showing something else.

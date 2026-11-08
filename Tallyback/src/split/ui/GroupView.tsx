@@ -6,6 +6,8 @@ import { CURRENCIES, formatMoney } from "../lib/money";
 import { GROUP_KINDS, categoryOf, kindOf, type Expense, type GroupDetail, type GroupKind } from "../lib/types";
 import { ActivityList } from "./Dashboard";
 import { ExpenseForm, PaymentForm } from "./EntryForms";
+import { SettleUp } from "./SettleUp";
+import { REPEATS } from "../lib/repeat";
 import type { BillDraft } from "../lib/fromBill";
 import { Avatar, ErrorNote, Sheet, Standing, Tabs, api, errorText, field, fieldBase, iconButton, primary, secondary, when } from "./kit";
 import { ReceiptViewer, receiptUrl, useReceiptPickers } from "./receipt";
@@ -16,6 +18,7 @@ type Open =
   | { kind: "add"; file?: File }
   | { kind: "edit"; expense: Expense }
   | { kind: "pay"; preset?: { from: string; to: string; amount: number } }
+  | { kind: "settle"; preset?: { from: string; to: string; amount: number } }
   | { kind: "detail"; id: string }
   | { kind: "settings" }
   | null;
@@ -26,6 +29,7 @@ export function GroupView({ id, onBack, draft, onDraftDone }: { id: string; onBa
   const [tab, setTab] = useState<Tab>("expenses");
   const [open, setOpen] = useState<Open>(null);
   const [showDeleted, setShowDeleted] = useState(false);
+  const [query, setQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const reload = useCallback(() => api<GroupDetail>(`/groups/${id}`).then(setG, (e) => setError(errorText(e))), [id]);
@@ -67,7 +71,12 @@ export function GroupView({ id, onBack, draft, onDraftDone }: { id: string; onBa
   const nameOf = (mid: string) => (mid === g.meId ? "You" : (g.members.find((m) => m.id === mid)?.name ?? "Someone"));
   const mine = g.balances[g.meId] ?? 0;
   const deleted = g.expenses.filter((e) => e.deleted).length;
-  const shown = g.expenses.filter((e) => showDeleted || !e.deleted);
+  // Search, like Splitwise's expense filters: what it was for, the notes, who paid, or the amount.
+  const q = query.trim().toLowerCase();
+  const matches = (e: Expense) =>
+    !q ||
+    [e.description, e.notes, categoryOf(e.category).label, ...Object.keys(e.paid).map(nameOf), (e.amount / 100).toFixed(2)].some((t) => t.toLowerCase().includes(q));
+  const shown = g.expenses.filter((e) => (showDeleted || !e.deleted) && matches(e));
   const detail = open?.kind === "detail" ? g.expenses.find((e) => e.id === open.id) : undefined;
   const active = g.members.filter((m) => !m.removed);
   // The one thing to do next: pay who you owe, nudge who owes you, or nothing at all.
@@ -107,7 +116,7 @@ export function GroupView({ id, onBack, draft, onDraftDone }: { id: string; onBa
         </div>
         <div className="mt-4 flex gap-2">
           {iOwe ? (
-            <button onClick={() => setOpen({ kind: "pay", preset: iOwe })} className="min-h-11 rounded-full bg-white px-5 text-sm font-semibold text-ink active:scale-[.98]">
+            <button onClick={() => setOpen({ kind: "settle", preset: iOwe })} className="min-h-11 rounded-full bg-white px-5 text-sm font-semibold text-ink active:scale-[.98]">
               Pay {nameOf(iOwe.to)} {formatMoney(iOwe.amount, g.currency)}
             </button>
           ) : owesMe.length ? (
@@ -115,7 +124,7 @@ export function GroupView({ id, onBack, draft, onDraftDone }: { id: string; onBa
               Remind on WhatsApp
             </button>
           ) : null}
-          <button onClick={() => setOpen({ kind: "pay" })} className="min-h-11 rounded-full border border-white/30 px-5 text-sm font-medium active:scale-[.98]">
+          <button onClick={() => setOpen({ kind: "settle" })} className="min-h-11 rounded-full border border-white/30 px-5 text-sm font-medium active:scale-[.98]">
             Settle up
           </button>
         </div>
@@ -135,7 +144,18 @@ export function GroupView({ id, onBack, draft, onDraftDone }: { id: string; onBa
 
       {tab === "expenses" && (
         <div className="space-y-3">
-          {shown.length === 0 && (
+          {g.expenses.length > 5 && (
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search expenses"
+              aria-label="Search expenses"
+              className={`${fieldBase} h-11 w-full text-base`}
+            />
+          )}
+          {q && shown.length === 0 && <p className="py-6 text-center text-sm text-muted">Nothing matches “{query.trim()}”.</p>}
+          {!q && shown.length === 0 && (
             <div className="rounded-3xl border border-dashed border-line p-6 text-center">
               <p className="font-semibold">No expenses yet</p>
               <p className="mt-1 text-sm text-muted">Snap the receipt and TallyBack fills in the amount and items, then checks the maths.</p>
@@ -167,13 +187,13 @@ export function GroupView({ id, onBack, draft, onDraftDone }: { id: string; onBa
         </div>
       )}
 
-      {tab === "balances" && <Balances g={g} nameOf={nameOf} onPay={(preset) => setOpen({ kind: "pay", preset })} onChanged={reload} />}
+      {tab === "balances" && <Balances g={g} nameOf={nameOf} onPay={(preset) => setOpen({ kind: "settle", preset })} onChanged={reload} />}
       {tab === "totals" && <Totals g={g} />}
       {tab === "activity" && <ActivityList items={g.activity} />}
 
       {/* Thumb-reach actions above the tab bar: Scan opens the camera, + types one in. */}
       {scan.inputs}
-      {!open && shown.length > 0 && (
+      {!open && g.expenses.length > 0 && (
         <div className="fixed right-4 z-30 flex items-center gap-2" style={{ bottom: "calc(var(--tabbar-h) + 16px)" }}>
           <button onClick={() => setOpen({ kind: "add" })} aria-label="Add an expense by hand" className="flex h-14 w-14 items-center justify-center rounded-full border border-line bg-card text-2xl shadow-lg active:scale-95">
             +
@@ -206,6 +226,7 @@ export function GroupView({ id, onBack, draft, onDraftDone }: { id: string; onBa
         ) : (
           <ExpenseForm group={g} expense={open.expense} onClose={() => setOpen(null)} onSaved={saved} />
         ))}
+      {open?.kind === "settle" && <SettleUp group={g} initial={open.preset} onClose={() => setOpen(null)} onSaved={saved} onOther={() => setOpen({ kind: "pay" })} />}
       {open?.kind === "pay" && <PaymentForm group={g} preset={open.preset} onClose={() => setOpen(null)} onSaved={saved} />}
       {detail && <ExpenseDetail g={g} e={detail} nameOf={nameOf} onClose={() => setOpen(null)} onEdit={() => setOpen({ kind: "edit", expense: detail })} onChanged={reload} />}
       {open?.kind === "settings" && <Settings g={g} onClose={() => setOpen(null)} onChanged={reload} onDeleted={onBack} />}
@@ -241,9 +262,14 @@ function ExpenseRow({ e, g, nameOf, onClick }: { e: Expense; g: GroupDetail; nam
       <span className="min-w-0 flex-1">
         <span className={`flex items-center gap-1.5 font-medium ${e.deleted ? "line-through" : ""}`}>
           <span className="truncate">{isPayment ? `${nameOf(payers[0])} paid ${nameOf(Object.keys(e.owed)[0])}` : e.description}</span>
-          {e.receiptBillId && (
+          {e.hasReceipt && (
             <span className="shrink-0 text-xs" role="img" aria-label="Has a receipt">
               🧾
+            </span>
+          )}
+          {e.repeat !== "never" && !e.deleted && (
+            <span className="shrink-0 text-xs" role="img" aria-label="Repeats">
+              🔁
             </span>
           )}
         </span>
@@ -460,7 +486,7 @@ function ExpenseDetail({
   const comments = g.comments.filter((c) => c.expenseId === e.id);
   const isPayment = e.kind === "payment";
   const [viewing, setViewing] = useState(false);
-  const receipt = e.receiptBillId ? receiptUrl(g.id, e.id) : null;
+  const receipt = e.hasReceipt ? receiptUrl(g.id, e.id) : null;
 
   async function act(fn: () => Promise<unknown>) {
     setBusy(true);
@@ -526,6 +552,12 @@ function ExpenseDetail({
           ))}
         </ul>
         {e.split && e.split.method !== "equal" && <p className="text-xs text-muted">Split by {e.split.method === "exact" ? "exact amounts" : e.split.method === "percent" ? "percentages" : "shares"}.</p>}
+        {e.repeat !== "never" && !e.deleted && (
+          <p className="rounded-2xl bg-card p-3 text-sm">
+            🔁 {REPEATS.find((r) => r.id === e.repeat)?.label}
+            {e.nextRepeat && <span className="text-muted"> · next copy {new Date(`${e.nextRepeat}T00:00:00`).toLocaleDateString(undefined, { day: "numeric", month: "short" })}</span>}
+          </p>
+        )}
         {e.notes && <p className="whitespace-pre-wrap rounded-2xl bg-card p-3 text-sm">{e.notes}</p>}
         <p className="text-xs text-muted">
           Added by {e.createdBy} on {when(e.createdAt)}
@@ -555,9 +587,18 @@ function ExpenseDetail({
             {comments.map((c) => (
               <li key={c.id} className="flex gap-2 text-sm">
                 <Avatar name={c.author} size={26} />
-                <span className="rounded-2xl bg-card px-3 py-2">
+                <span className="min-w-0 rounded-2xl bg-card px-3 py-2">
                   <b className="font-medium">{c.author}</b> <span className="text-xs text-muted">{when(c.createdAt)}</span>
                   <span className="block whitespace-pre-wrap">{c.body}</span>
+                  {c.mine && (
+                    <button
+                      disabled={busy}
+                      onClick={() => confirm("Delete your comment?") && act(() => api(`${url}/comments?commentId=${c.id}`, "DELETE"))}
+                      className="mt-1 text-xs text-muted underline"
+                    >
+                      Delete
+                    </button>
+                  )}
                 </span>
               </li>
             ))}

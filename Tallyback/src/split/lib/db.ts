@@ -62,6 +62,9 @@ const SCHEMA = [
   // The receipt photo: a TallyBack bill (scanned, or kept as a plain photo). Added after launch, so it's
   // an "add column if not exists"; rows in the local JSON file simply don't have it (read as null).
   `alter table sb_expenses add column if not exists receipt_bill_id uuid`,
+  // Repeating expenses: how often, and the date the next copy is due (null: doesn't repeat).
+  `alter table sb_expenses add column if not exists repeat_interval text not null default 'never'`,
+  `alter table sb_expenses add column if not exists next_repeat date`,
   `create table if not exists sb_comments (
     id uuid primary key,
     group_id uuid not null references sb_groups(id),
@@ -72,6 +75,7 @@ const SCHEMA = [
     created_at timestamptz not null default now()
   )`,
   `create index if not exists sb_comments_group_idx on sb_comments (group_id)`,
+  `alter table sb_comments add column if not exists deleted_at timestamptz`,
   `create table if not exists sb_activity (
     id uuid primary key,
     group_id uuid not null references sb_groups(id),

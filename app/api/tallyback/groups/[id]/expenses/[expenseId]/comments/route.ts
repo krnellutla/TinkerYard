@@ -1,2 +1,2 @@
-export { addComment as POST } from "@tallyback/split/api/handlers";
+export { addComment as POST, deleteComment as DELETE } from "@tallyback/split/api/handlers";
 export const runtime = "nodejs";

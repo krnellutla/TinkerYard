@@ -5,6 +5,7 @@ import { authClient } from "../client";
 import { deviceHasPasskey, markDevicePasskey, passkeyOffer } from "./device";
 import { KeyIcon, passkeysSupported } from "./SignIn";
 import { afterPendingCleared } from "./webauthn";
+import { InviteFriends } from "./Invites";
 
 // Passkeys after sign-in: the offer to create one, and the list in the account menu.
 
@@ -58,6 +59,25 @@ export function PasskeyPrompt() {
   });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [created, setCreated] = useState(false);
+
+  // Right after creating one: you're set, and now you can invite friends.
+  if (created)
+    return (
+      <div className="pb-safe fixed inset-0 z-50 flex items-end justify-center bg-ink/40 p-4 sm:items-center">
+        <div role="dialog" aria-modal="true" aria-labelledby="pk-done" className="w-full max-w-sm rounded-2xl bg-card p-5 text-ink shadow-xl">
+          <span className="flex h-11 w-11 items-center justify-center rounded-full bg-good text-white">✓</span>
+          <h2 id="pk-done" className="mt-3 text-lg font-semibold">
+            Passkey added
+          </h2>
+          <p className="mt-1 text-sm text-muted">Next time, this device signs in with your face, fingerprint or PIN.</p>
+          <InviteFriends hasPasskey compact />
+          <button onClick={() => setCreated(false)} className="mt-4 flex h-12 w-full items-center justify-center rounded-xl border border-line font-medium">
+            Done
+          </button>
+        </div>
+      </div>
+    );
 
   const offer = passkeyOffer({ supported: passkeysSupported(), deviceHas, dismissed: hidden, accountPasskeys: isPending || !keys ? null : keys.length });
   if (offer === "none") return null;
@@ -89,8 +109,10 @@ export function PasskeyPrompt() {
             setError(null);
             const e = await createPasskey();
             setBusy(false);
-            if (e === null) setDeviceHas(true);
-            else if (e) setError(e);
+            if (e === null) {
+              setDeviceHas(true);
+              setCreated(true);
+            } else if (e) setError(e);
             else setError("Cancelled. You can create one any time from the account menu.");
           }}
           className="mt-4 flex h-12 w-full items-center justify-center rounded-xl bg-ink font-medium text-white disabled:opacity-40"
@@ -179,6 +201,7 @@ export function PasskeyList() {
           </button>
         ))}
       {error && <p className="mt-2 rounded-lg bg-bad-soft p-2 text-xs text-bad">{error}</p>}
+      <InviteFriends hasPasskey={(keys?.length ?? 0) > 0} />
     </div>
   );
 }

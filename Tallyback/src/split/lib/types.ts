@@ -1,5 +1,6 @@
 import type { Amounts, Split } from "./split";
 import type { Transfer } from "./balances";
+import type { Repeat } from "./repeat";
 
 // What the API sends the page. Shared by both, so they can't drift apart.
 
@@ -46,7 +47,11 @@ export interface Expense {
   owed: Amounts;
   split: Split | null; // null for payments
   notes: string;
-  receiptBillId: string | null; // the receipt photo, viewable by everyone in the group
+  // A receipt photo is attached. Only the group's current members can open it (through the group's receipt
+  // route); the photo's own id stays on the server, so it can't be used anywhere else.
+  hasReceipt: boolean;
+  repeat: Repeat; // "never", or how often a copy is added
+  nextRepeat: string | null; // YYYY-MM-DD
   createdBy: string; // display name
   createdAt: string;
   deleted: boolean;
@@ -58,6 +63,7 @@ export interface Comment {
   author: string;
   body: string;
   createdAt: string;
+  mine: boolean; // you wrote it, so you can delete it
 }
 
 export interface Activity {
@@ -97,6 +103,8 @@ export interface Dashboard {
   friends: Friend[];
   // per currency
   totals: Record<string, { owe: number; owed: number }>;
+  // Groups deleted in the last 30 days, which any member can restore.
+  deleted: { id: string; name: string; deletedAt: string }[];
 }
 
 export interface GroupDetail {

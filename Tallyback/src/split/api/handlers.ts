@@ -14,6 +14,10 @@ export const createGroup = route(async (req, me) => ({ id: await fs.createGroup(
 export const getGroup = route<G>(async (_req, me, p) => fs.groupDetail(p.id, me));
 export const patchGroup = route<G>(async (req, me, p) => fs.updateGroup(p.id, me, await body(req)));
 export const deleteGroup = route<G>(async (_req, me, p) => fs.deleteGroup(p.id, me));
+// /api/tallyback/groups/[id]/restore — bring back a deleted group
+export const restoreGroup = route<G>(async (_req, me, p) => fs.restoreGroup(p.id, me));
+// /api/tallyback/friends/settle — settle up with one friend across every group
+export const settleFriend = route(async (req, me) => fs.settleFriend(me, await body(req)));
 
 // /api/tallyback/groups/[id]/members(/[memberId])
 export const addMember = route<G>(async (req, me, p) => fs.addMember(p.id, me, await body(req)));
@@ -28,8 +32,9 @@ export const patchExpense = route<GE>(async (req, me, p) => {
   return fs.saveEntry(p.id, me, b, p.expenseId);
 });
 export const deleteExpense = route<GE>(async (_req, me, p) => fs.setDeleted(p.id, p.expenseId, me, true));
-// /api/tallyback/groups/[id]/expenses/[expenseId]/receipt — the receipt photo, for anyone in the group.
-// Served so it can only ever display: no type sniffing, sandboxed, private cache.
+// /api/tallyback/groups/[id]/expenses/[expenseId]/receipt — the receipt photo, only for the group's current members.
+// Served so it can only ever display (no type sniffing, sandboxed), and never stored: someone who leaves
+// or is removed from the group loses it at once, with no copy left in a cache.
 export const receipt = route<GE>(async (_req, me, p) => {
   const photo = await fs.receiptFor(p.id, p.expenseId, me);
   return new Response(photo.stream, {
@@ -38,11 +43,13 @@ export const receipt = route<GE>(async (_req, me, p) => {
       "Content-Disposition": "inline",
       "X-Content-Type-Options": "nosniff",
       "Content-Security-Policy": "sandbox; default-src 'none'; img-src 'self'; style-src 'unsafe-inline'",
-      "Cache-Control": "private, max-age=3600",
+      "Cache-Control": "private, no-store",
+      "Referrer-Policy": "no-referrer",
     },
   });
 });
 export const addComment = route<GE>(async (req, me, p) => fs.addComment(p.id, p.expenseId, me, await body(req)));
+export const deleteComment = route<GE>(async (req, me, p) => fs.deleteComment(p.id, p.expenseId, new URL(req.url).searchParams.get("commentId") ?? "", me));
 
 // /api/tallyback/groups/[id]/export — a CSV download
 export const exportGroup = route<G>(async (_req, me, p) => {

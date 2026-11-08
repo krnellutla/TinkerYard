@@ -6,6 +6,7 @@ import { CURRENCIES, formatMoney } from "./money";
 import { checkPaid, splitAmount, type Amounts, type Split } from "./split";
 import { findBill, streamBillPhoto } from "@tallyback/lib/store";
 import { receiptActivity, receiptDecision } from "./receipt";
+import { dueRepeats, nextRepeat, REPEATS, type Repeat } from "./repeat";
 import { CATEGORIES, GROUP_KINDS, type Activity, type Comment, type Dashboard, type Expense, type Friend, type GroupDetail, type GroupKind, type Member } from "./types";
 
 // Everything the Split tab does, with the rules in one place. Identity always comes from the session (Me),
@@ -67,6 +68,7 @@ const expenseIn = z.object({
   notes: z.string().max(1000).default(""),
   // The receipt's bill id, from your own scan; null removes it, absent leaves it as it is.
   receiptBillId: z.string().regex(ID, "That receipt isn't valid.").nullable().optional(),
+  repeat: enumOf(REPEATS.map((r) => r.id)).default("never"),
 });
 const paymentIn = z.object({ kind: z.literal("payment"), from: z.string(), to: z.string(), amount: cents, date: day, notes: z.string().max(1000).default("") });
 const entryIn = z.discriminatedUnion("kind", [expenseIn, paymentIn]);
@@ -90,7 +92,9 @@ const toExpense = (r: Row): Expense => ({
   owed: numbers(r.owed),
   split: (r.split as Split) ?? null,
   notes: String(r.notes ?? ""),
-  receiptBillId: (r.receipt_bill_id as string) || null,
+  hasReceipt: !!r.receipt_bill_id,
+  repeat: ((r.repeat_interval as Repeat) || "never") as Repeat,
+  nextRepeat: r.next_repeat ? String(r.next_repeat).slice(0, 10) : null,
   createdBy: String(r.created_by_name),
   createdAt: String(r.created_at),
   deleted: !!r.deleted_at,
@@ -139,19 +143,75 @@ async function log(groupId: string, me: Me, actor: string, text: string, expense
   await update("sb_groups", { id: groupId }, { updated_at: now() });
 }
 
+// ---- repeating expenses: copies are added when the group is next opened, so there's no scheduler ----
+const todayUtc = () => new Date().toISOString().slice(0, 10);
+
+// The same id for the same expense and date, so two people opening the group at once can't add a copy twice.
+async function repeatId(expenseId: string, date: string) {
+  const h = [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`${expenseId}:${date}`)))]
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-5${h.slice(13, 16)}-a${h.slice(17, 20)}-${h.slice(20, 32)}`;
+}
+
+// Adds every copy that's due among these rows. True when something was added (so the caller reloads).
+async function runRepeats(rows: Row[], currency: (groupId: string) => string): Promise<boolean> {
+  const today = todayUtc();
+  let added = false;
+  for (const r of rows) {
+    const every = (r.repeat_interval as Repeat) || "never";
+    const next = r.next_repeat ? String(r.next_repeat).slice(0, 10) : null;
+    if (r.deleted_at || r.kind !== "expense" || every === "never" || !next || next > today) continue;
+    const due = dueRepeats(String(r.date).slice(0, 10), every, next, today);
+    for (const date of due.dates) {
+      const id = await repeatId(String(r.id), date);
+      if ((await select("sb_expenses", { id })).length) continue;
+      const at = now();
+      try {
+        await insert("sb_expenses", {
+          id, group_id: r.group_id, kind: "expense", description: r.description, amount: r.amount, category: r.category, date,
+          paid: r.paid, owed: r.owed, split: r.split, notes: r.notes ?? "", receipt_bill_id: null, repeat_interval: "never", next_repeat: null,
+          created_by: r.created_by, created_by_name: r.created_by_name, created_at: at, updated_at: at, deleted_at: null,
+        });
+      } catch {
+        continue; // someone else added this copy a moment ago
+      }
+      const label = REPEATS.find((x) => x.id === every)!.label.toLowerCase();
+      await insert("sb_activity", {
+        id: uuid(), group_id: r.group_id, user_id: r.created_by, actor: r.created_by_name,
+        text: `added “${r.description}” (${formatMoney(Number(r.amount), currency(String(r.group_id)))}), repeating ${label}`, expense_id: id, created_at: at,
+      });
+      added = true;
+    }
+    await update("sb_expenses", { id: String(r.id) }, { next_repeat: due.next });
+  }
+  return added;
+}
+
 const liveEntries = (rows: Row[]): Entry[] => rows.filter((r) => !r.deleted_at).map((r) => ({ paid: numbers(r.paid), owed: numbers(r.owed) }));
 
 // ---- dashboard: every group, every friend, overall totals ----
 export async function dashboard(me: Me): Promise<Dashboard> {
   const memberships = await myMemberships(me);
   const ids = [...new Set(memberships.map((m) => String(m.group_id)))];
-  const out: Dashboard = { me: { email: me.email }, groups: [], friends: [], totals: {} };
+  const out: Dashboard = { me: { email: me.email }, groups: [], friends: [], totals: {}, deleted: [] };
   if (!ids.length) return out;
-  const [groups, members, expenses] = await Promise.all([
-    select("sb_groups", { id: ids, deleted_at: null }),
+  const [all, members, firstExpenses] = await Promise.all([
+    select("sb_groups", { id: ids }),
     select("sb_members", { group_id: ids }),
     select("sb_expenses", { group_id: ids, deleted_at: null }),
   ]);
+  const groups = all.filter((g) => !g.deleted_at);
+  const monthAgo = new Date(Date.now() - 30 * 864e5).toISOString();
+  out.deleted = all
+    .filter((g) => g.deleted_at && String(g.deleted_at) > monthAgo)
+    .map((g) => ({ id: String(g.id), name: String(g.name), deletedAt: String(g.deleted_at) }))
+    .sort((a, b) => b.deletedAt.localeCompare(a.deletedAt));
+  const currencyOf = (gid: string) => String(all.find((g) => String(g.id) === gid)?.currency ?? "");
+  const live = new Set(groups.map((g) => String(g.id)));
+  const expenses = (await runRepeats(firstExpenses.filter((e) => live.has(String(e.group_id))), currencyOf))
+    ? await select("sb_expenses", { group_id: ids, deleted_at: null })
+    : firstExpenses;
 
   const friends = new Map<string, Friend>();
   for (const g of groups) {
@@ -204,6 +264,7 @@ export async function dashboard(me: Me): Promise<Dashboard> {
 // ---- one group ----
 export async function groupDetail(groupId: string, me: Me): Promise<GroupDetail> {
   const { g, members, mine } = await load(groupId, me);
+  if (await runRepeats(await select("sb_expenses", { group_id: groupId, deleted_at: null }), () => String(g.currency))) await update("sb_groups", { id: groupId }, { updated_at: now() });
   const [rows, comments, activity] = await Promise.all([
     select("sb_expenses", { group_id: groupId }),
     select("sb_comments", { group_id: groupId }, { by: "created_at" }),
@@ -220,9 +281,18 @@ export async function groupDetail(groupId: string, me: Me): Promise<GroupDetail>
     meId: String(mine.id),
     members: members.map(toMember),
     expenses: rows.map(toExpense).sort(newestFirst),
-    comments: comments.map(
-      (c): Comment => ({ id: String(c.id), expenseId: String(c.expense_id), author: String(c.author), body: String(c.body), createdAt: String(c.created_at) }),
-    ),
+    comments: comments
+      .filter((c) => !c.deleted_at)
+      .map(
+        (c): Comment => ({
+          id: String(c.id),
+          expenseId: String(c.expense_id),
+          author: String(c.author),
+          body: String(c.body),
+          createdAt: String(c.created_at),
+          mine: c.user_id === me.id,
+        }),
+      ),
     activity: activity.map((a) => toActivity(a, String(g.name), me)),
     balances: netBalances(entries, active),
     debts: debts(entries, !!g.simplify),
@@ -358,6 +428,10 @@ export async function saveEntry(groupId: string, me: Me, body: unknown, expenseI
     date: input.date,
     ...amounts,
     notes: input.notes,
+    // The first copy comes after today, whatever the date: a monthly rent entered for last month
+    // doesn't add a pile of back-dated copies at once.
+    repeat_interval: input.kind === "expense" ? input.repeat : "never",
+    next_repeat: input.kind === "expense" ? nextRepeat(input.date, input.repeat, input.date > todayUtc() ? input.date : todayUtc()) : null,
     updated_at: now(),
   };
   const money = formatMoney(input.amount, String(g.currency));
@@ -398,6 +472,51 @@ export async function saveEntry(groupId: string, me: Me, body: unknown, expenseI
     id,
   );
   return { id, receiptDropped };
+}
+
+// Settle up with a friend everywhere at once (Splitwise's "settle all balances"): a payment in each
+// group of that currency where the two of you have a debt, for exactly that debt.
+export async function settleFriend(me: Me, body: unknown): Promise<{ payments: number; total: number }> {
+  const { key, currency } = parse(z.object({ key: z.string().min(3).max(300), currency: z.string().max(10) }), body);
+  const friend = (await dashboard(me)).friends.find((f) => f.key === key);
+  if (!friend) throw new Problem(404, "Friend not found.");
+  const isThem = (m: Member) => !m.removed && (key.startsWith("e:") ? m.email === key.slice(2) : m.id === key.slice(2));
+  let payments = 0;
+  let total = 0;
+  for (const groupId of new Set(friend.groups.filter((x) => x.currency === currency && x.amount).map((x) => x.groupId))) {
+    const g = await groupDetail(groupId, me);
+    const them = new Set(g.members.filter(isThem).map((m) => m.id));
+    for (const t of g.debts) {
+      const mine = (t.from === g.meId && them.has(t.to)) || (t.to === g.meId && them.has(t.from));
+      if (!mine) continue;
+      await saveEntry(groupId, me, { kind: "payment", from: t.from, to: t.to, amount: t.amount, date: todayUtc(), notes: "Settled up across groups" });
+      payments++;
+      total += t.amount;
+    }
+  }
+  if (!payments) throw new Problem(409, "You're already settled up.");
+  return { payments, total };
+}
+
+// Splitwise's undelete_group: any member can bring a deleted group back.
+export async function restoreGroup(groupId: string, me: Me) {
+  const missing = new Problem(404, "Group not found.");
+  if (!ID.test(groupId)) throw missing;
+  const [g] = await select("sb_groups", { id: groupId });
+  if (!g || !g.deleted_at) throw missing;
+  const mine = (await select("sb_members", { group_id: groupId, user_id: me.id, removed_at: null }))[0];
+  if (!mine) throw missing;
+  await update("sb_groups", { id: groupId }, { deleted_at: null, updated_at: now() });
+  await log(groupId, me, String(mine.name), "restored the group");
+}
+
+// Your own comments only.
+export async function deleteComment(groupId: string, expenseId: string, commentId: string, me: Me) {
+  await load(groupId, me);
+  const [c] = ID.test(commentId) ? await select("sb_comments", { id: commentId, group_id: groupId, expense_id: expenseId }) : [];
+  if (!c || c.deleted_at) throw new Problem(404, "Comment not found.");
+  if (c.user_id !== me.id) throw new Problem(403, "You can only delete your own comments.");
+  await update("sb_comments", { id: commentId }, { deleted_at: now() });
 }
 
 // An expense's receipt photo, for anyone in the group (deleted expenses too, so they can be restored).
@@ -446,7 +565,7 @@ export async function exportCsv(groupId: string, me: Me): Promise<{ filename: st
   for (const e of [...d.expenses].reverse()) {
     if (e.deleted) continue;
     const category = e.kind === "payment" ? "Payment" : (CATEGORIES.find((c) => c.id === e.category)?.label ?? "General");
-    lines.push([e.date, e.description, category, amt(e.amount), d.currency, e.receiptBillId ? "yes" : "", ...people.map((p) => amt(myShare(e, p.id)))].map(cell).join(","));
+    lines.push([e.date, e.description, category, amt(e.amount), d.currency, e.hasReceipt ? "yes" : "", ...people.map((p) => amt(myShare(e, p.id)))].map(cell).join(","));
   }
   lines.push(["", "Total balance", "", "", d.currency, "", ...people.map((p) => amt(d.balances[p.id] ?? 0))].map(cell).join(","));
   const slug = d.name.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase() || "group";

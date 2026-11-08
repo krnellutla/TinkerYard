@@ -6,6 +6,7 @@ import { billToDraft } from "../lib/fromBill";
 import { centsToInput, formatMoney, toCents } from "../lib/money";
 import { SPLIT_METHODS, allocateItemized, checkPaid, splitAmount, type SplitMethod } from "../lib/split";
 import type { BillDraft, ClaimableReceiptLine } from "../lib/fromBill";
+import { REPEATS, type Repeat } from "../lib/repeat";
 import { CATEGORIES, type Category, type Expense, type GroupDetail } from "../lib/types";
 import { ErrorNote, Sheet, api, errorText, field, fieldBase, primary, today } from "./kit";
 import { ReceiptTile, ReceiptViewer, receiptUrl, scanReceipt, useReceiptPickers, type ReceiptState } from "./receipt";
@@ -82,13 +83,16 @@ export function ExpenseForm({
     ),
   );
   const [notes, setNotes] = useState(expense?.notes ?? draft?.notes ?? "");
+  const [repeat, setRepeat] = useState<Repeat>(expense?.repeat ?? "never");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // ---- the receipt ----
-  const [receiptBillId, setReceiptBillId] = useState<string | null>(expense?.receiptBillId ?? draftIn?.billId ?? null);
+  // The receipt to save: a bill id from your own scan, null to remove it, undefined to leave it as it is
+  // (the server never tells the page which photo an expense has, only that it has one).
+  const [receiptBillId, setReceiptBillId] = useState<string | null | undefined>(draftIn?.billId ?? undefined);
   const [receipt, setReceipt] = useState<ReceiptState>(() =>
-    expense?.receiptBillId
+    expense?.hasReceipt
       ? { kind: "attached", preview: receiptUrl(group.id, expense.id) }
       : draftIn?.billId
         ? { kind: "attached", preview: `/api/tallyback/bills/${draftIn.billId}/photo` }
@@ -145,7 +149,7 @@ export function ExpenseForm({
     setReceiptBillId(null);
     setReceipt({ kind: "none" });
   }
-  const viewSrc = receipt.kind === "none" || receipt.kind === "scanning" || receipt.kind === "failed" ? null : receipt.preview || (receiptBillId && expense ? receiptUrl(group.id, expense.id) : null);
+  const viewSrc = receipt.kind === "none" || receipt.kind === "scanning" || receipt.kind === "failed" ? null : receipt.preview || (expense?.hasReceipt && receiptBillId === undefined ? receiptUrl(group.id, expense.id) : null);
 
   const amount = toCents(amountText) ?? 0;
 
@@ -239,7 +243,7 @@ export function ExpenseForm({
     setBusy(true);
     setError(null);
     try {
-      const body = { kind: "expense", description, amount, category, date, paid, split, notes, receiptBillId };
+      const body = { kind: "expense", description, amount, category, date, paid, split, notes, receiptBillId, repeat };
       if (receipt.kind === "scanning" && !confirm("The receipt is still being read. Save without it?")) {
         setBusy(false);
         return;
@@ -316,6 +320,7 @@ export function ExpenseForm({
             className={`${fieldBase} h-12 min-w-0 flex-1`}
           />
         </div>
+        <div className="flex gap-2">
         <input
           type="date"
           value={date}
@@ -324,8 +329,16 @@ export function ExpenseForm({
             setDate(e.target.value);
           }}
           aria-label="Date"
-          className={`${field} h-12`}
+          className={`${fieldBase} h-12 min-w-0 flex-1`}
         />
+        <select value={repeat} onChange={(e) => setRepeat(e.target.value as Repeat)} aria-label="Repeats" className={`${fieldBase} h-12 w-auto shrink-0`}>
+          {REPEATS.map((r) => (
+            <option key={r.id} value={r.id}>
+              {r.id === "never" ? "No repeat" : `🔁 ${r.label}`}
+            </option>
+          ))}
+        </select>
+        </div>
 
         {hasDisputedDiff && draft && (
           <div className="rounded-2xl border border-bad/30 bg-bad-soft p-3.5 text-sm">

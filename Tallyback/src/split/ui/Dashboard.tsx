@@ -16,8 +16,10 @@ export function Dashboard({ onOpen, draft, onCancelDraft }: { onOpen: (id: strin
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [settling, setSettling] = useState<{ key: string; name: string; currency: string; amount: number; groups: number } | null>(null);
+  const reload = () => api<DashboardData>("/groups").then(setData, (e) => setError(errorText(e)));
   useEffect(() => {
-    api<DashboardData>("/groups").then(setData, (e) => setError(errorText(e)));
+    reload();
   }, []);
   useEffect(() => {
     if (tab === "activity" && !activity) api<{ activity: Activity[] }>("/activity").then((j) => setActivity(j.activity), (e) => setError(errorText(e)));
@@ -142,6 +144,17 @@ export function Dashboard({ onOpen, draft, onCancelDraft }: { onOpen: (id: strin
                       )}
                     </span>
                   </div>
+                  {owing.map(([cur, c]) => (
+                    <button
+                      key={cur}
+                      onClick={() =>
+                        setSettling({ key: f.key, name: f.name, currency: cur, amount: c, groups: new Set(f.groups.filter((x) => x.currency === cur && x.amount).map((x) => x.groupId)).size })
+                      }
+                      className="mt-2 min-h-11 w-full rounded-xl border border-line text-sm font-medium active:scale-[.99]"
+                    >
+                      Settle up{owing.length > 1 ? ` in ${cur}` : ""}
+                    </button>
+                  ))}
                   {f.groups.length > 0 && (
                     <ul className="mt-2 space-y-1 border-t border-line pt-2 text-xs text-muted">
                       {f.groups.map((g) => (
@@ -165,7 +178,27 @@ export function Dashboard({ onOpen, draft, onCancelDraft }: { onOpen: (id: strin
 
       {tab === "activity" && (activity?.length === 0 ? <Empty text="Nothing has happened yet." /> : <ActivityList items={activity} onOpen={onOpen} showGroup />)}
 
+      {tab === "groups" && (data?.deleted.length ?? 0) > 0 && (
+        <div className="rounded-2xl border border-dashed border-line p-3 text-sm">
+          <p className="font-medium">Recently deleted</p>
+          <ul className="mt-1 space-y-1">
+            {data!.deleted.map((g) => (
+              <li key={g.id} className="flex items-center justify-between gap-2">
+                <span className="min-w-0 truncate text-muted">{g.name}</span>
+                <button
+                  onClick={() => api(`/groups/${g.id}/restore`, "POST").then(reload, (e) => setError(errorText(e)))}
+                  className="min-h-11 shrink-0 px-2 font-medium underline underline-offset-4"
+                >
+                  Restore
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {creating && <NewGroup onClose={() => setCreating(false)} onCreated={onOpen} />}
+      {settling && <SettleFriend s={settling} onClose={() => setSettling(null)} onDone={() => { setSettling(null); reload(); }} />}
     </section>
   );
 }
@@ -287,6 +320,54 @@ function NewGroup({ onClose, onCreated }: { onClose: () => void; onCreated: (id:
           {busy ? "Creating…" : "Create group"}
         </button>
       </form>
+    </Sheet>
+  );
+}
+
+// Settle up with one friend everywhere at once: one payment per group, each for exactly what's owed there.
+function SettleFriend({
+  s,
+  onClose,
+  onDone,
+}: {
+  s: { key: string; name: string; currency: string; amount: number; groups: number };
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const theyOwe = s.amount > 0;
+  return (
+    <Sheet title={`Settle up with ${s.name}`} onClose={onClose}>
+      <div className="space-y-4 text-center">
+        <div className="flex justify-center">
+          <Avatar name={s.name} size={64} />
+        </div>
+        <p className="text-lg">{theyOwe ? `${s.name} pays you` : `You pay ${s.name}`}</p>
+        <p className="text-4xl font-semibold tabular-nums">{formatMoney(Math.abs(s.amount), s.currency)}</p>
+        <p className="text-sm text-muted">
+          {s.groups > 1 ? `This records a payment in each of the ${s.groups} groups you share, so every one of them is settled.` : "This records the payment in the group you share."}{" "}
+          Send the money however you normally do.
+        </p>
+        <ErrorNote text={error} />
+        <button
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            setError(null);
+            try {
+              await api("/friends/settle", "POST", { key: s.key, currency: s.currency });
+              onDone();
+            } catch (e) {
+              setError(errorText(e));
+              setBusy(false);
+            }
+          }}
+          className={primary}
+        >
+          {busy ? "Recording…" : `Record ${formatMoney(Math.abs(s.amount), s.currency)} payment`}
+        </button>
+      </div>
     </Sheet>
   );
 }
