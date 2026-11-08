@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="x-apple-disable-message-reformatting">
+  <meta name="color-scheme" content="light only">
+  <meta name="supported-color-schemes" content="light only">
+  <title>Your Tinkeryard sign-in link</title>
+  <style>
+    @media (max-width: 520px) {
+      .card { padding: 28px 22px !important; }
+    }
+  </style>
+</head>
+<body style="margin:0; padding:0; background-color:#f6f4ef; -webkit-text-size-adjust:100%;">
+  <div style="display:none; max-height:0; overflow:hidden; mso-hide:all; font-size:1px; line-height:1px; color:#f6f4ef;">
+    Tap to sign in to Tinkeryard. The link works once, for {{{MINUTES}}} minutes.&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;
+  </div>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f6f4ef;">
+    <tr>
+      <td align="center" style="padding:40px 16px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:480px;">
+
+          <tr>
+            <td style="padding:0 4px 20px 4px; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size:17px; font-weight:700; letter-spacing:-0.2px; color:#1c1b19;">
+              Tinkeryard
+            </td>
+          </tr>
+
+          <tr>
+            <td class="card" style="background-color:#ffffff; border:1px solid #e4e0d6; border-radius:16px; padding:36px 32px; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color:#1c1b19;">
+              <h1 style="margin:0 0 8px 0; font-size:22px; line-height:28px; font-weight:600;">Sign in to Tinkeryard</h1>
+              <p style="margin:0 0 24px 0; font-size:15px; line-height:22px; color:#6b675f;">
+                Open this link on the device you want to sign in on. It works once, for {{{MINUTES}}} minutes.
+              </p>
+
+              <!-- Button (bulletproof: a padded table cell, so it renders in Outlook too) -->
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td align="center" bgcolor="#1c1b19" style="border-radius:12px;">
+                    <a href="{{{SIGN_IN_URL}}}" target="_blank" style="display:inline-block; padding:14px 28px; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size:16px; font-weight:600; line-height:20px; color:#ffffff; text-decoration:none; border-radius:12px;">Sign in</a>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:24px 0 6px 0; font-size:13px; line-height:19px; color:#6b675f;">
+                Button not working? Paste this address into your browser:
+              </p>
+              <p style="margin:0; font-size:13px; line-height:19px; word-break:break-all;">
+                <a href="{{{SIGN_IN_URL}}}" target="_blank" style="color:#1c1b19; text-decoration:underline;">{{{SIGN_IN_URL}}}</a>
+              </p>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:20px 4px 0 4px; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size:12px; line-height:18px; color:#6b675f;">
+              Didn't try to sign in? You can ignore this email; nobody can get in without the link.<br>
+              Never forward this email. Anyone with the link can sign in as you until it expires.<br><br>
+              <a href="https://www.tinkeryard.dev" style="color:#6b675f; text-decoration:underline;">tinkeryard.dev</a>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
