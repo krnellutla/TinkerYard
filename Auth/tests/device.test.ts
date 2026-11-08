@@ -19,3 +19,22 @@ test("passkey offer: never on a device that has one, after 'Not now', without su
   assert.equal(passkeyOffer({ ...base, supported: false }), "none");
   assert.equal(passkeyOffer({ ...base, accountPasskeys: null }), "none");
 });
+
+import { shouldAutoPasskey } from "../src/ui/device";
+
+const back = { supported: true, deviceHas: true, onStartStep: true, signedOutHere: false, alreadyTried: false };
+
+test("auto passkey: back on a device that holds one, the passkey prompt opens by itself", () => {
+  assert.equal(shouldAutoPasskey(back), true);
+});
+
+test("auto passkey: not on a new device, not without passkey support, not mid email code", () => {
+  assert.equal(shouldAutoPasskey({ ...back, deviceHas: false }), false);
+  assert.equal(shouldAutoPasskey({ ...back, supported: false }), false);
+  assert.equal(shouldAutoPasskey({ ...back, onStartStep: false }), false);
+});
+
+test("auto passkey: not right after signing out here, and only once per page load", () => {
+  assert.equal(shouldAutoPasskey({ ...back, signedOutHere: true }), false);
+  assert.equal(shouldAutoPasskey({ ...back, alreadyTried: true }), false);
+});

@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { useStableSession } from "./useStableSession";
 import { takeLinkError, WALL_ID } from "./wall";
 import { clearProgress, loadProgress } from "./progress";
+import { noteSignedOut } from "./device";
 import { authClient } from "../client";
 import { APPS, appLabel, appOfPath } from "../policy";
 import { useAccess } from "./access";
@@ -59,7 +60,12 @@ export function RequireSignIn({ children }: { children: React.ReactNode }) {
     return (
       <Wall title={access?.status === "suspended" ? "Your access is paused" : "You're not on the list any more"}>
         <p className="text-sm text-muted">An admin has {access?.status === "suspended" ? "suspended" : "removed"} access for {data.user.email}. Ask them if you think that&apos;s a mistake.</p>
-        <button onClick={() => authClient.signOut()} className="mt-4 h-11 w-full rounded-xl border border-line bg-paper font-medium">
+        <button
+          onClick={() => {
+            noteSignedOut(true);
+            authClient.signOut();
+          }}
+          className="mt-4 h-11 w-full rounded-xl border border-line bg-paper font-medium">
           Sign out
         </button>
       </Wall>

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { authClient } from "../client";
-import { deviceHasPasskey, markDevicePasskey } from "./device";
+import { deviceHasPasskey, markDevicePasskey, noteSignedOut, shouldAutoPasskey, signedOutHere } from "./device";
 import { sessionChanged } from "./prompt";
 import { afterPendingCleared, cancelPendingPasskey } from "./webauthn";
 import { clearProgress, loadProgress, PROGRESS_TTL_MS, saveProgress } from "./progress";
@@ -27,6 +27,9 @@ const MESSAGES: Record<string, string> = {
 
 export const passkeysSupported = () => typeof window !== "undefined" && "PublicKeyCredential" in window;
 
+// The automatic passkey prompt runs once per page load, however many times the panel mounts.
+let autoTried = false;
+
 // The sign-in steps on their own, so they can sit in a page (the sign-in wall) or in a dialog.
 export function SignInPanel({ onDone, reason, errorCode }: { onDone?: () => void; reason?: string; errorCode?: string }) {
   // Back from the mail app (even after the phone reloaded the tab): pick up at "Enter the code".
@@ -47,6 +50,32 @@ export function SignInPanel({ onDone, reason, errorCode }: { onDone?: () => void
   useEffect(() => {
     inputRef.current?.focus();
   }, [step]);
+
+  // Back on a device that holds a passkey: open the passkey prompt without waiting for a tap. If it's
+  // cancelled, or the browser wants a tap first (Safari can), the button below is still there; unlike
+  // a tap on it, a failed automatic try doesn't conclude this device has no passkey.
+  useEffect(() => {
+    const go = shouldAutoPasskey({
+      supported: passkeysSupported(),
+      deviceHas: deviceHasPasskey(),
+      onStartStep: step === "start",
+      signedOutHere: signedOutHere(),
+      alreadyTried: autoTried,
+    });
+    if (!go) return;
+    autoTried = true;
+    setBusy(true);
+    afterPendingCleared(() => authClient.signIn.passkey())
+      .then((r) => {
+        if (r && !r.error) {
+          markDevicePasskey(true);
+          done();
+        }
+      })
+      .catch(() => {})
+      .finally(() => setBusy(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // The saved step is cleared only by signing in, "Start over", or the code running out, never by a
   // screen passing through another step. Coming back to the tab (or Safari restoring the page from
@@ -108,6 +137,7 @@ export function SignInPanel({ onDone, reason, errorCode }: { onDone?: () => void
 
   function done() {
     clearProgress();
+    noteSignedOut(false);
     sessionChanged();
     onDone?.();
   }

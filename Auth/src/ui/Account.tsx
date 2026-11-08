@@ -9,6 +9,7 @@ import { SignIn } from "./SignIn";
 import { onAskToSignIn, sessionChanged } from "./prompt";
 import { useStableSession } from "./useStableSession";
 import { focusSignInWall } from "./wall";
+import { noteSignedOut } from "./device";
 
 // Right side of the app switcher: "Sign in", or who you are, your passkeys and "Sign out".
 export function Account() {
@@ -92,6 +93,7 @@ export function Account() {
           <button
             onClick={async () => {
               setMenu(false);
+              noteSignedOut(true); // so the sign-in screen doesn't pop the passkey prompt straight back up
               await authClient.signOut();
               sessionChanged();
             }}

@@ -28,3 +28,28 @@ export function passkeyOffer(s: { supported: boolean; deviceHas: boolean; dismis
   if (!s.supported || s.dismissed || s.deviceHas || s.accountPasskeys == null) return "none";
   return s.accountPasskeys === 0 ? "first" : "this-device";
 }
+
+// Coming back on a device that holds a passkey: open the passkey prompt straight away, so signing in is
+// just a face or fingerprint. Not right after you signed out here (you chose to leave), not mid-way
+// through an email code, and once per page load. Pure, so it's easy to test.
+export function shouldAutoPasskey(s: { supported: boolean; deviceHas: boolean; onStartStep: boolean; signedOutHere: boolean; alreadyTried: boolean }): boolean {
+  return s.supported && s.deviceHas && s.onStartStep && !s.signedOutHere && !s.alreadyTried;
+}
+
+// "You signed out in this tab": remembered for the tab's session, cleared on the next sign-in.
+const SIGNED_OUT = "ty-signed-out";
+
+export function noteSignedOut(out: boolean) {
+  try {
+    if (out) sessionStorage.setItem(SIGNED_OUT, "1");
+    else sessionStorage.removeItem(SIGNED_OUT);
+  } catch {}
+}
+
+export function signedOutHere(): boolean {
+  try {
+    return sessionStorage.getItem(SIGNED_OUT) === "1";
+  } catch {
+    return false;
+  }
+}
