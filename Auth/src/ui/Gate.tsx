@@ -2,7 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useRef } from "react";
+import { useEffect, useState } from "react";
+import { useStableSession } from "./useStableSession";
+import { takeLinkError, WALL_ID } from "./wall";
+import { clearProgress, loadProgress } from "./progress";
 import { authClient } from "../client";
 import { APPS, appLabel, appOfPath } from "../policy";
 import { useAccess } from "./access";
@@ -13,32 +16,43 @@ import { SignInPanel } from "./SignIn";
 // policy lets you (policy.ts), and /admin only if you're an admin. The API routes check the same
 // rules on every request, so this is the friendly half of the lock.
 export function RequireSignIn({ children }: { children: React.ReactNode }) {
-  // (A used or expired sign-in link lands with ?error=…; the account menu explains that one.)
-  const { data, isPending, error } = authClient.useSession();
+  // Steady through the re-checks that run when the tab comes back into view (see useStableSession),
+  // so the sign-in step you were on survives a trip to the mail app.
+  const { data, loading: sessionLoading, configError } = useStableSession();
   const { access, loading } = useAccess();
   const path = usePathname();
-  // "Loading…" only for the very first check. The session is checked again whenever the tab comes
-  // back into view (e.g. after fetching the email code from the mail app); swapping the screen for
-  // "Loading…" then would throw away the sign-in step you were on.
-  const checked = useRef(false);
-  if (!isPending) checked.current = true;
+  // A used or expired sign-in link lands with ?error=…; the wall explains it.
+  const [linkError, setLinkError] = useState<string>();
+  useEffect(() => setLinkError(takeLinkError()), []);
+  // Mid sign-in (a code was sent and its 10 minutes aren't up): show the sign-in wall straight away,
+  // without waiting for the session check, so a reloaded tab goes back to "Enter the code" with no
+  // "Loading…" in between. Read after the first render, so it matches the server's HTML.
+  const [midSignIn, setMidSignIn] = useState(false);
+  useEffect(() => setMidSignIn(!!loadProgress()), []);
+  // Signed in after all (e.g. finished in another tab): the saved step is no longer needed.
+  useEffect(() => {
+    if (data) clearProgress();
+  }, [data]);
 
-  if ((isPending && !checked.current) || (data && loading && !access)) return <p className="mx-auto max-w-xl px-4 pt-8 text-muted">Loading…</p>;
+  const wall = (
+    <Wall id={WALL_ID} title="Sign in to the yard" intro="TallyBack and Review Scout use one account. No passwords: a passkey on your device, or a code by email.">
+      <SignInPanel key={linkError ?? "panel"} errorCode={linkError} />
+      <p className="mt-4 text-center text-xs text-muted">Invite-only for now: your email must be on the list.</p>
+    </Wall>
+  );
 
-  if (error)
+  if (sessionLoading && midSignIn) return wall;
+  if (sessionLoading || (data && loading && !access)) return <p className="mx-auto max-w-xl px-4 pt-8 text-muted">Loading…</p>;
+
+  if (configError)
     return (
       <Wall title="Sign in to the yard">
         <p className="rounded-xl bg-warn-soft p-3 text-sm text-warn">Sign-in isn&apos;t set up on this server yet, so the apps are closed. Check the Auth settings in the README.</p>
       </Wall>
     );
 
-  if (!data)
-    return (
-      <Wall title="Sign in to the yard" intro="TallyBack and Review Scout use one account. No passwords: a passkey on your device, or a code by email.">
-        <SignInPanel />
-        <p className="mt-4 text-center text-xs text-muted">Invite-only for now: your email must be on the list.</p>
-      </Wall>
-    );
+  // The same element as above, so the panel (and the step it's on) carries straight on once the check ends.
+  if (!data) return wall;
 
   // Signed in, but suspended or removed since.
   if (!access || access.status !== "active")
@@ -80,9 +94,9 @@ export function RequireSignIn({ children }: { children: React.ReactNode }) {
   );
 }
 
-function Wall({ title, intro, children }: { title: string; intro?: string; children: React.ReactNode }) {
+function Wall({ id, title, intro, children }: { id?: string; title: string; intro?: string; children: React.ReactNode }) {
   return (
-    <main className="mx-auto max-w-sm px-4 pb-16 pt-10">
+    <main id={id} className="mx-auto max-w-sm px-4 pb-16 pt-10">
       <h1 className="text-[1.75rem] font-semibold leading-tight tracking-tight">{title}</h1>
       {intro && <p className="mt-2 text-muted">{intro}</p>}
       <div className="mt-6 rounded-2xl border border-line bg-card p-5">{children}</div>

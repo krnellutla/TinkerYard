@@ -5,7 +5,7 @@ import { authClient } from "../client";
 import { deviceHasPasskey, markDevicePasskey } from "./device";
 import { sessionChanged } from "./prompt";
 import { afterPendingCleared, cancelPendingPasskey } from "./webauthn";
-import { clearProgress, loadProgress, saveProgress } from "./progress";
+import { clearProgress, loadProgress, PROGRESS_TTL_MS, saveProgress } from "./progress";
 
 // Signing in, with no passwords:
 //   this device has a passkey → "Sign in with a passkey" (face, fingerprint or device PIN)
@@ -35,6 +35,8 @@ export function SignInPanel({ onDone, reason, errorCode }: { onDone?: () => void
   const [step, setStep] = useState<Step>(() => saved?.step ?? (deviceHasPasskey() ? "start" : "email"));
   const [note, setNote] = useState<string | null>(null);
   const [email, setEmail] = useState(saved?.email ?? "");
+  const [sentAt, setSentAt] = useState(saved?.at ?? 0); // when the code was sent; 0 if unknown
+  const [now, setNow] = useState(() => Date.now());
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(errorCode ? (MESSAGES[errorCode] ?? "That sign-in didn't work. Please try again.") : null);
@@ -44,9 +46,46 @@ export function SignInPanel({ onDone, reason, errorCode }: { onDone?: () => void
   useEffect(() => setCanPasskey(passkeysSupported()), []);
   useEffect(() => {
     inputRef.current?.focus();
-    // Starting over (another email, or the passkey screen): forget the saved step.
-    if (step === "email" || step === "start") clearProgress();
   }, [step]);
+
+  // The saved step is cleared only by signing in, "Start over", or the code running out, never by a
+  // screen passing through another step. Coming back to the tab (or Safari restoring the page from
+  // its cache) re-reads it, so the code step wins even if this screen was showing something else.
+  useEffect(() => {
+    const resume = () => {
+      if (document.visibilityState !== "visible") return;
+      const p = loadProgress();
+      if (!p) return;
+      setStep((s) => (s === p.step ? s : p.step));
+      if (p.email) setEmail((e) => e || p.email);
+      if (p.at) setSentAt((t) => t || p.at);
+    };
+    document.addEventListener("visibilitychange", resume);
+    window.addEventListener("pageshow", resume);
+    return () => {
+      document.removeEventListener("visibilitychange", resume);
+      window.removeEventListener("pageshow", resume);
+    };
+  }, []);
+
+  // A ticking clock on the code step, for "expires in 8:42".
+  useEffect(() => {
+    if (step !== "code" && step !== "link-sent") return;
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [step]);
+  const left = sentAt ? Math.max(0, PROGRESS_TTL_MS - (now - sentAt)) : null;
+  const expired = left === 0;
+  const clock = left == null ? "" : `${Math.floor(left / 60000)}:${String(Math.floor((left % 60000) / 1000)).padStart(2, "0")}`;
+
+  // The only way out of the code step besides signing in: forget it and pick an email again.
+  function startOver() {
+    clearProgress();
+    setCode("");
+    setSentAt(0);
+    setError(null);
+    setStep("email");
+  }
 
   // On the email step, the browser may also offer saved passkeys in the email field's autofill.
   // If one is picked, that's a full sign-in; anything else (not supported, dismissed) is ignored.
@@ -117,6 +156,8 @@ export function SignInPanel({ onDone, reason, errorCode }: { onDone?: () => void
       () => {
         setCode("");
         saveProgress("code", email.trim());
+        setSentAt(Date.now());
+        setNow(Date.now());
         setStep("code");
       },
     );
@@ -128,6 +169,8 @@ export function SignInPanel({ onDone, reason, errorCode }: { onDone?: () => void
       () => authClient.signIn.magicLink({ email: email.trim(), callbackURL: window.location.pathname }),
       () => {
         saveProgress("link-sent", email.trim());
+        setSentAt(Date.now());
+        setNow(Date.now());
         setStep("link-sent");
       },
     );
@@ -208,9 +251,27 @@ export function SignInPanel({ onDone, reason, errorCode }: { onDone?: () => void
           }}
           className="space-y-3"
         >
-          <p className="text-sm text-muted">
-            Enter the code we sent to <span className="font-medium text-ink">{email.trim()}</span>. It works for 10 minutes.
-          </p>
+          {email.includes("@") ? (
+            <p className="text-sm text-muted">
+              Enter the code we sent to <span className="font-medium text-ink">{email.trim()}</span>.{" "}
+              {expired ? <span className="text-bad">That code has expired: send a new one.</span> : clock ? `It expires in ${clock}.` : "It works for 10 minutes."}
+            </p>
+          ) : (
+            // Only the page address remembered the step (e.g. storage was cleared): ask for the email again.
+            <>
+              <p className="text-sm text-muted">Enter the code from your email, and the address it was sent to.</p>
+              <input
+                type="email"
+                autoComplete="email"
+                aria-label="Email address"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                className="h-12 w-full rounded-xl border border-line bg-paper px-3 outline-none focus:border-ink"
+              />
+            </>
+          )}
           <input
             ref={inputRef}
             inputMode="numeric"
@@ -223,14 +284,14 @@ export function SignInPanel({ onDone, reason, errorCode }: { onDone?: () => void
             aria-label="6-digit code"
             className="h-12 w-full rounded-xl border border-line bg-paper px-3 text-center font-mono text-xl tracking-[0.4em] outline-none focus:border-ink"
           />
-          <button type="submit" disabled={busy || code.length !== 6} className={button}>
+          <button type="submit" disabled={busy || code.length !== 6 || !email.includes("@") || expired} className={button}>
             {busy ? "Checking…" : "Continue"}
           </button>
           <div className="flex justify-between">
-            <button type="button" onClick={() => setStep("email")} className={link}>
-              Use another email
+            <button type="button" onClick={startOver} className={link}>
+              Start over
             </button>
-            <button type="button" onClick={sendCode} disabled={busy} className={link}>
+            <button type="button" onClick={sendCode} disabled={busy || !email.includes("@")} className={link}>
               Send a new code
             </button>
           </div>
@@ -242,7 +303,7 @@ export function SignInPanel({ onDone, reason, errorCode }: { onDone?: () => void
           <p className="text-sm text-muted">
             Open the link we sent to <span className="font-medium text-ink">{email.trim()}</span> on this device. It works once, for 10 minutes.
           </p>
-          <button onClick={() => setStep("email")} className={link}>
+          <button onClick={startOver} className={link}>
             Use a code instead
           </button>
         </div>

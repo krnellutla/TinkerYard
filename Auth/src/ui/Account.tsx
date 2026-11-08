@@ -7,36 +7,29 @@ import { useAccess } from "./access";
 import { PasskeyList } from "./Passkeys";
 import { SignIn } from "./SignIn";
 import { onAskToSignIn, sessionChanged } from "./prompt";
+import { useStableSession } from "./useStableSession";
+import { focusSignInWall } from "./wall";
 
 // Right side of the app switcher: "Sign in", or who you are, your passkeys and "Sign out".
 export function Account() {
-  const { data, isPending, error } = authClient.useSession();
+  // Steady through the re-checks that run when the tab comes back into view (see useStableSession):
+  // reacting to those used to unmount the sign-in box, losing the code step.
+  const { data, loading, configError } = useStableSession();
   const { access } = useAccess();
   const [signingIn, setSigningIn] = useState(false);
   const [menu, setMenu] = useState(false);
-  const [linkError, setLinkError] = useState<string | undefined>();
   const [reason, setReason] = useState<string | undefined>();
 
-  // An app asked for sign-in before a costly action ("Sign in to check a real bill").
-  useEffect(
-    () =>
-      onAskToSignIn((why) => {
-        setReason(why);
-        setSigningIn(true);
-      }),
-    [],
-  );
-
-  // A used or expired sign-in link lands here with ?error=…: explain it and offer a new one.
-  useEffect(() => {
-    const url = new URL(window.location.href);
-    const code = url.searchParams.get("error");
-    if (!code) return;
-    url.searchParams.delete("error");
-    window.history.replaceState(null, "", url.pathname + url.search + url.hash);
-    setLinkError(code);
+  // Signing in happens in one place: the sign-in wall that every app page shows while signed out
+  // (it also keeps your step across a reload). A box of its own opens only where there's no wall.
+  const signIn = (why?: string) => {
+    if (focusSignInWall()) return;
+    setReason(why);
     setSigningIn(true);
-  }, []);
+  };
+
+  // An app asked for sign-in before a costly action ("Sign in to check a real bill").
+  useEffect(() => onAskToSignIn((why) => signIn(why)), []);
 
   // The open menu closes on a click outside it or on Escape.
   const menuRef = useRef<HTMLDivElement>(null);
@@ -52,23 +45,21 @@ export function Account() {
     };
   }, [menu]);
 
-  if (isPending) return <span className="ml-auto h-7 w-16" aria-hidden="true" />;
+  if (loading) return <span className="ml-auto h-7 w-16" aria-hidden="true" />;
   // Sign-in isn't set up on this server yet (no secret or database): show no button that can't work.
-  if (error) return null;
+  if (configError) return null;
 
   if (!data)
     return (
       <>
-        <button onClick={() => setSigningIn(true)} className="ml-auto rounded-full border border-line bg-card px-3 py-1 font-medium">
+        <button onClick={() => signIn()} className="ml-auto rounded-full border border-line bg-card px-3 py-1 font-medium">
           Sign in
         </button>
         {signingIn && (
           <SignIn
-            errorCode={linkError}
             reason={reason}
             onClose={() => {
               setSigningIn(false);
-              setLinkError(undefined);
               setReason(undefined);
             }}
           />
