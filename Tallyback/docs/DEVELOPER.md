@@ -4,7 +4,7 @@ User-facing overview: [../README.md](../README.md). TallyBack is one module of t
 
 ## Run
 ```bash
-cp .env.example .env.local   # GEMINI_API_KEY required; GROQ_API_KEY, DATABASE_URL, BLOB_READ_WRITE_TOKEN optional
+cp .env.example .env.local   # at least one AI key (GEMINI_API_KEY recommended); the rest optional
 npm install
 npm run dev                  # http://localhost:3000/tallyback
 npm test                     # node:test via tsx: checker, verifier, history, real scans (+ Review Scout's)
@@ -15,10 +15,10 @@ Without any AI key, only "Try a sample receipt" works. Without `DATABASE_URL`, r
 ## Environment
 | Variable | Needed | Notes |
 |---|---|---|
-| `GEMINI_API_KEY` | yes | Main reader and writer |
-| `GEMINI_MODEL` | no | Default `gemini-3.8-flash`; falls back to `gemini-3.5-flash`, then `gemini-flash-latest` |
-| `GROQ_API_KEY` | no | Backup when Gemini fails or is busy |
-| `GROQ_MODEL` / `GROQ_TEXT_MODEL` | no | Defaults `qwen/qwen3.8-27b` (vision) / `openai/gpt-oss-20b` (messages) |
+| `GEMINI_API_KEY` | at least one AI key | Gemini Flash-Lite reads receipts (with highlight boxes) and writes messages |
+| `GROQ_API_KEY` | no | Fast free backup for both jobs |
+| `OPENROUTER_API_KEY`, `GITHUB_MODELS_TOKEN`, `MISTRAL_API_KEY`, `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` | no | More free providers; their models join the chain when a key is set |
+| `LLM_VISION_CHAIN` / `LLM_TEXT_CHAIN` | no | Override the model chains, e.g. `gemini:gemini-3.5-flash-lite,groq:qwen/qwen3.8-27b`. See [FREE_MODELS.md](FREE_MODELS.md) |
 | `DATABASE_URL` | no | Neon Postgres connection string. Tables are created on first use. Without it, rows go to `.data/db.json` |
 | `BLOB_READ_WRITE_TOKEN` | no | Vercel Blob (private) for bill photos. Without it, photos go to the `bill_photos` table |
 
@@ -27,7 +27,7 @@ Without any AI key, only "Try a sample receipt" works. Without `DATABASE_URL`, r
 |---|---|---|
 | UI: capture, highlights, promise, verdict, message, My bills | phone browser | `src/ui/Home.tsx`, served by `app/(apps)/tallyback/page.tsx` |
 | API (keys stay here) | Vercel functions | `src/api/{scan,check,message,sent,bills,bill}.ts`, served at `/api/tallyback/*` by `app/api/tallyback/` |
-| AI with fallbacks: Gemini → Groq | Google / Groq | `src/lib/llm.ts`, `gemini.ts`, `groq.ts`, `prompts.ts` |
+| AI on free models: a chain per job, any provider ([FREE_MODELS.md](FREE_MODELS.md)) | Google, Groq, OpenRouter, GitHub, Mistral, Cloudflare | `src/lib/llm.ts`, `models.ts`, `prompts.ts`; benchmark `scripts/bench-models.ts` |
 | Clean-up of model JSON; tax mode decided from numbers | server | `src/lib/normalize.ts` |
 | **Code decides**: all checks and verdicts | server + browser | `src/lib/checks.ts`, `taxRules.ts`, `money.ts` |
 | Message fill, number verifier, words changed | server | `src/lib/message.ts` |
