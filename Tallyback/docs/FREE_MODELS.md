@@ -42,12 +42,26 @@ npx tsx --env-file=.env.local Tallyback/scripts/bench-models.ts vision gemini:ge
 
 On the real scan endpoint, a receipt now takes about 4–7 s instead of about 30 s.
 
+**OpenRouter free models** (key added 8 Nov 2026). These are slower and their availability varies,
+so they sit after Gemini and Groq as the last line of defence:
+
+| Model | Job | Result | Time |
+|---|---|---|---|
+| `openrouter:nvidia/nemotron-3.5-super-vl:free` | reading | pass (13/13, no false alarm) | 18.6 s |
+| `openrouter:nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free`, `openrouter:openrouter/free` | reading | fail (ran out of room while thinking) | ~40 s |
+| `openrouter:google/gemma-4-31b-it:free`, `gemma-4-26b-a4b-it:free` | both | 429 (the shared free pool was busy) | — |
+| `openrouter:nvidia/nemotron-3-ultra-550b-a55b:free` | writing | pass | 4.6 s |
+| `openrouter:nvidia/nemotron-3.5-lightning:free`, `openrouter:openrouter/free` | writing | pass | ~25 s |
+
+Many free OpenRouter models "think" before answering, and that thinking counts against the output limit.
+So TallyBack gives them 6,000 tokens and asks for low-effort reasoning; with a 1,500 cap they came back empty.
+
 ## The default chains
 
 | Job | Order (keyless providers are skipped) |
 |---|---|
-| Reading | Flash-Lite 3.5 → Flash-Lite 3.1 → Groq Qwen → OpenRouter Gemma 4 (free) → GitHub gpt-4.1-mini → Mistral Small → Flash 3.5 → Flash 3.8 |
-| Writing | Groq gpt-oss-20b → Flash-Lite 3.5 → Groq gpt-oss-120b → Flash-Lite 3.1 → OpenRouter Gemma 4 (free) → GitHub gpt-4.1-mini → Mistral Small |
+| Reading | Flash-Lite 3.5 → Flash-Lite 3.1 → Groq Qwen → OpenRouter Nemotron 3.5 Super VL → OpenRouter Gemma 4 → GitHub gpt-4.1-mini → Mistral Small → Flash 3.5 → Flash 3.8 |
+| Writing | Groq gpt-oss-20b → Flash-Lite 3.5 → Groq gpt-oss-120b → Flash-Lite 3.1 → OpenRouter Nemotron 3 Ultra → OpenRouter's free router → GitHub gpt-4.1-mini → Mistral Small |
 
 - Each Gemini model has its own free quota, so chaining several also means more free reads a day.
 - Only Gemini models place highlight boxes on the photo. The others still read the receipt correctly;

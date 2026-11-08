@@ -60,6 +60,7 @@ const DEFAULT_CHAIN: Record<Job, string> = {
     "gemini:gemini-3.5-flash-lite",
     "gemini:gemini-3.1-flash-lite",
     "groq:qwen/qwen3.8-27b",
+    "openrouter:nvidia/nemotron-3.5-super-vl:free",
     "openrouter:google/gemma-4-31b-it:free",
     "github:openai/gpt-4.1-mini",
     "mistral:mistral-small-latest",
@@ -71,7 +72,8 @@ const DEFAULT_CHAIN: Record<Job, string> = {
     "gemini:gemini-3.5-flash-lite",
     "groq:openai/gpt-oss-120b",
     "gemini:gemini-3.1-flash-lite",
-    "openrouter:google/gemma-4-26b-a4b-it:free",
+    "openrouter:nvidia/nemotron-3-ultra-550b-a55b:free",
+    "openrouter:openrouter/free",
     "github:openai/gpt-4.1-mini",
     "mistral:mistral-small-latest",
   ].join(","),
@@ -268,16 +270,20 @@ async function ask(step: Step, a: Ask, ms: number, env: Env): Promise<string> {
     {
       model: step.model,
       messages: [{ role: "user", content }],
-      max_tokens: a.maxTokens,
+      // Groq's free tier caps output tokens per minute, so it keeps the tight limit. Elsewhere, many free
+      // models "think" before answering and that thinking counts too: a tight cap left them no room to
+      // answer (OpenRouter's Nemotron models came back empty), so they get room and are asked to think less.
+      max_tokens: step.provider === "groq" ? a.maxTokens : Math.max(a.maxTokens, 6000),
       ...(a.json ? { response_format: { type: "json_object" } } : {}),
       // Groq's reasoning models think before answering; reading a receipt doesn't need it.
       ...(step.provider === "groq" && /gpt-oss|qwen3/.test(step.model) ? { reasoning_effort: a.image ? "none" : "low" } : {}),
+      ...(step.provider === "openrouter" ? { reasoning: { effort: "low", exclude: true } } : {}),
     },
     ms,
     label,
   );
   const text = String(j.choices?.[0]?.message?.content ?? "").trim();
-  if (!text) throw new ModelError(`${label}: empty answer`, true);
+  if (!text) throw new ModelError(`${label}: empty answer (${j.choices?.[0]?.finish_reason ?? "no choice"})`, true);
   return text;
 }
 
