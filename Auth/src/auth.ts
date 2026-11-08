@@ -10,6 +10,7 @@ import { Pool } from "pg";
 import { accessFor } from "./access";
 import { can } from "./policy";
 import { sendCode, sendLink } from "./email";
+import { siteFor } from "./site";
 
 // Passwordless sign-in for every app on tinkeryard.dev, invited people only (who may use what: policy.ts):
 // register once with a 6-digit email code, add a passkey, and sign in with the passkey from then on.
@@ -27,17 +28,14 @@ const mayEnter = async (email: unknown) => can(await accessFor(email), { type: "
 
 // Passkeys belong to one site: tinkeryard.dev in production, localhost in development.
 // Both come from BETTER_AUTH_URL, so a passkey made on one can never be used on the other.
-function site() {
-  try {
-    const url = new URL(process.env.BETTER_AUTH_URL || "http://localhost:3000");
-    return { rpID: url.hostname, origin: url.origin };
-  } catch {
-    return { rpID: "localhost", origin: "http://localhost:3000" };
-  }
-}
+// The bare domain and www are both trusted (see site.ts): without that, every request from
+// www.tinkeryard.dev was refused with INVALID_ORIGIN when BETTER_AUTH_URL named the bare domain.
+const site = () => siteFor(process.env.BETTER_AUTH_URL);
 
 function buildOptions() {
+  const { rpID, origins } = site();
   return {
+    trustedOrigins: origins,
     // Without a database (local development), accounts and sessions live in memory until the server restarts.
     database: dbUrl
       ? new Pool({ connectionString: dbUrl, max: 3 })
@@ -62,7 +60,8 @@ function buildOptions() {
       }),
       // Adding a passkey needs a session (from the email code), so only invited people can register one.
       passkey({
-        ...site(),
+        rpID,
+        origin: origins,
         rpName: "Tinkeryard",
         // Discoverable passkeys: the device knows which account it's for, so signing in needs no email.
         authenticatorSelection: { residentKey: "required", userVerification: "preferred" },
