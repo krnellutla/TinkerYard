@@ -8,9 +8,13 @@ import { GROUP_KINDS, categoryOf, kindOf, type Expense, type GroupDetail, type G
 import { ActivityList } from "./Dashboard";
 import { ExpenseForm, PaymentForm } from "./EntryForms";
 import { SettleUp } from "./SettleUp";
+import { RoundsCard, StartRounds } from "./Rounds";
+import { TripForm, TripSummaryView } from "./Trip";
+import { lastPaidDates, payOrder } from "../lib/turns";
+import { tripPhase, tripSummary } from "../lib/trip";
 import { REPEATS } from "../lib/repeat";
 import type { BillDraft } from "../lib/fromBill";
-import { Avatar, ErrorNote, Sheet, Standing, Tabs, api, errorText, field, fieldBase, iconButton, primary, secondary, when } from "./kit";
+import { Avatar, ErrorNote, Sheet, Standing, Tabs, api, errorText, field, fieldBase, iconButton, primary, secondary, today, when } from "./kit";
 import { ReceiptViewer, receiptUrl, useReceiptPickers } from "./receipt";
 
 // One group: its expenses, who owes whom, spending totals and what happened, plus its settings.
@@ -22,6 +26,9 @@ type Open =
   | { kind: "settle"; preset?: { from: string; to: string; amount: number } }
   | { kind: "detail"; id: string }
   | { kind: "settings" }
+  | { kind: "rounds" }
+  | { kind: "trip-edit" }
+  | { kind: "trip" }
   | null;
 
 // `draft`: arrived from "Split this bill", so the pre-filled expense form opens once the group loads.
@@ -37,6 +44,18 @@ export function GroupView({ id, onBack, draft, onDraftDone }: { id: string; onBa
   useEffect(() => {
     reload();
   }, [reload]);
+  // While rounds are going, keep everyone's phone on the same turn.
+  const live = !!g?.tab;
+  useEffect(() => {
+    if (!live) return;
+    const tick = () => document.visibilityState === "visible" && reload();
+    const t = setInterval(tick, 10_000);
+    document.addEventListener("visibilitychange", tick);
+    return () => {
+      clearInterval(t);
+      document.removeEventListener("visibilitychange", tick);
+    };
+  }, [live, reload]);
   useEffect(() => {
     if (draft && g) setOpen((o) => o ?? { kind: "add" });
   }, [draft, g]);
@@ -77,6 +96,10 @@ export function GroupView({ id, onBack, draft, onDraftDone }: { id: string; onBa
   // The one thing to do next: pay who you owe, nudge who owes you, or nothing at all.
   const iOwe = g.debts.filter((t) => t.from === g.meId).sort((a, b) => b.amount - a.amount)[0];
   const owesMe = g.debts.filter((t) => t.to === g.meId);
+  // Whose turn to pay for the next thing: whoever owes the group the most.
+  const nextPayer = active.length > 1 && g.expenses.some((e) => !e.deleted) ? payOrder(active.map((m) => m.id), g.balances, lastPaidDates(g.expenses))[0] : null;
+  const phase = g.trip ? tripPhase(g.trip, today()) : null;
+  const tripTotal = g.trip ? tripSummary(g.trip, g.expenses).total : 0;
   const remind = () => window.open(`https://wa.me/?text=${encodeURIComponent(formatSettlementWhatsApp(g, nameOf))}`, "_blank");
 
   return (
@@ -123,7 +146,44 @@ export function GroupView({ id, onBack, draft, onDraftDone }: { id: string; onBa
             Settle up
           </button>
         </div>
+        {nextPayer && !g.tab && <p className="mt-3 text-sm text-white/80">{nextPayer === g.meId ? "🫵 Your turn to pay next" : `👉 ${nameOf(nextPayer)}'s turn to pay next`}</p>}
+        {!g.tab && active.length > 1 && (
+          <button onClick={() => setOpen({ kind: "rounds" })} className="mt-1 min-h-11 text-sm font-medium underline underline-offset-4">
+            🍻 Start rounds
+          </button>
+        )}
       </div>
+
+      {g.trip && phase ? (
+        <button onClick={() => setOpen({ kind: "trip" })} className="flex min-h-14 w-full items-center justify-between gap-3 rounded-2xl border border-line bg-card px-4 py-2.5 text-left active:scale-[.99]">
+          <span className="min-w-0">
+            <span className="block truncate font-medium">✈️ {g.trip.destination}</span>
+            <span className="block text-xs text-muted">
+              {phase.phase === "during" ? `Day ${phase.day} of ${phase.of}` : phase.phase === "before" ? `Starts in ${phase.inDays} day${phase.inDays === 1 ? "" : "s"}` : "Trip's over: see the wrap-up"} · {formatMoney(tripTotal, g.currency)}
+            </span>
+          </span>
+          <span aria-hidden="true" className="text-muted">›</span>
+        </button>
+      ) : (
+        g.kind === "trip" && (
+          <button onClick={() => setOpen({ kind: "trip-edit" })} className="min-h-14 w-full rounded-2xl border border-dashed border-line px-4 text-sm font-medium active:scale-[.99]">
+            ✈️ Set up the trip: place, dates, local currency
+          </button>
+        )
+      )}
+
+      {g.tab && <RoundsCard g={g} nameOf={nameOf} onChanged={reload} />}
+      {/* The floating buttons would cover the round buttons, so they sit here while rounds are on. */}
+      {g.tab && (
+        <div className="flex gap-2">
+          <button onClick={scan.takePhoto} className={`${secondary} flex-1`}>
+            Scan receipt
+          </button>
+          <button onClick={() => setOpen({ kind: "add" })} className={`${secondary} flex-1`}>
+            Add an expense
+          </button>
+        </div>
+      )}
 
       <Tabs
         value={tab}
@@ -188,7 +248,7 @@ export function GroupView({ id, onBack, draft, onDraftDone }: { id: string; onBa
 
       {/* Thumb-reach actions above the tab bar: Scan opens the camera, + types one in. */}
       {scan.inputs}
-      {!open && g.expenses.length > 0 && (
+      {!open && !g.tab && g.expenses.length > 0 && (
         <div className="fixed right-4 z-30 flex items-center gap-2" style={{ bottom: "calc(var(--tabbar-h) + 16px)" }}>
           <button onClick={() => setOpen({ kind: "add" })} aria-label="Add an expense by hand" className="flex h-14 w-14 items-center justify-center rounded-full border border-line bg-card text-2xl shadow-lg active:scale-95">
             +
@@ -224,6 +284,9 @@ export function GroupView({ id, onBack, draft, onDraftDone }: { id: string; onBa
       {open?.kind === "settle" && <SettleUp group={g} initial={open.preset} onClose={() => setOpen(null)} onSaved={saved} onOther={() => setOpen({ kind: "pay" })} />}
       {open?.kind === "pay" && <PaymentForm group={g} preset={open.preset} onClose={() => setOpen(null)} onSaved={saved} />}
       {detail && <ExpenseDetail g={g} e={detail} nameOf={nameOf} onClose={() => setOpen(null)} onEdit={() => setOpen({ kind: "edit", expense: detail })} onChanged={reload} />}
+      {open?.kind === "rounds" && <StartRounds g={g} onClose={() => setOpen(null)} onStarted={saved} />}
+      {open?.kind === "trip-edit" && <TripForm g={g} onClose={() => setOpen(null)} onSaved={saved} />}
+      {open?.kind === "trip" && g.trip && <TripSummaryView g={g} nameOf={nameOf} onClose={() => setOpen(null)} onEdit={() => setOpen({ kind: "trip-edit" })} onSettle={() => setOpen({ kind: "settle" })} />}
       {open?.kind === "settings" && <Settings g={g} onClose={() => setOpen(null)} onChanged={reload} onDeleted={onBack} />}
     </section>
   );
@@ -480,6 +543,7 @@ function ExpenseDetail({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const comments = g.comments.filter((c) => c.expenseId === e.id);
+  const history = g.activity.filter((a) => a.expenseId === e.id && /^(changed|updated|attached|removed|deleted|restored)\b/.test(a.text));
   const isPayment = e.kind === "payment";
   const [viewing, setViewing] = useState(false);
   const receipt = e.hasReceipt ? receiptUrl(g.id, e.id) : null;
@@ -564,6 +628,19 @@ function ExpenseDetail({
         <p className="text-xs text-muted">
           Added by {e.createdBy} on {when(e.createdAt)}
         </p>
+        {history.length > 0 && (
+          <div>
+            <h3 className="mb-1 font-semibold">History</h3>
+            <ul className="space-y-1.5 text-sm">
+              {history.map((a) => (
+                <li key={a.id}>
+                  <b className="font-medium">{a.actor}</b> {a.text}
+                  <span className="block text-xs text-muted">{when(a.createdAt)}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         <div className="flex gap-2">
           {!e.deleted && (

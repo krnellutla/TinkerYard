@@ -57,6 +57,10 @@ export const exportGroup = route<G>(async (_req, me, p) => {
   return new Response(csv, { headers: { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": `attachment; filename="${filename}"` } });
 });
 
+// /api/tallyback/groups/[id]/rounds — start rounds at a bar; record a turn, undo it, or end the night
+export const startRounds = route<G>(async (req, me, p) => fs.startRounds(p.id, me, await body(req)));
+export const updateRounds = route<G>(async (req, me, p) => fs.updateRounds(p.id, me, await body(req)));
+
 // /api/tallyback/rates?base=SGD — today's exchange rates (1 SGD = x of each)
 export const rates = route(async (req) => fs.rates(new URL(req.url).searchParams.get("base") ?? ""));
 

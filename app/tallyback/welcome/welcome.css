@@ -1,0 +1,284 @@
+/* TallyBack's public page: one long receipt marked up in pen, on the surveyor's grid of the
+   Tinkeryard landing page (public/index.html), using the same colours and light/dark switch. */
+.tb {
+  --table: #d9ddd4;
+  --grid: #b4bbaf;
+  --words: #16231f;
+  --soft: #526058;
+  --go: #e0335f;
+  --go-words: #ffffff;
+  --paper: #ffffff;
+  --type: #16231f;
+  --faint: #526058;
+  --marker: #fbbf24;
+  --pen: #e0335f;
+  min-height: 100dvh;
+  background-color: var(--table);
+  background-image:
+    linear-gradient(to right, color-mix(in oklab, var(--grid) 32%, transparent) 1px, transparent 0),
+    linear-gradient(to bottom, color-mix(in oklab, var(--grid) 32%, transparent) 1px, transparent 0);
+  background-size: 3.5rem 3.5rem;
+  color: var(--words);
+  font-family: var(--tb-display), system-ui, sans-serif;
+}
+.tb a:focus-visible {
+  outline: 3px solid var(--pen);
+  outline-offset: 3px;
+}
+.tb-frame {
+  display: grid;
+  gap: 40px;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 32px 16px 64px;
+}
+.tb-brand {
+  font-weight: 700;
+  font-size: 1.125rem;
+}
+.tb-headline {
+  margin-top: 28px;
+  font-size: clamp(2.75rem, 12.5vw, 5.25rem);
+  line-height: 0.98;
+  letter-spacing: -0.02em;
+  font-weight: 800;
+  font-stretch: 92%;
+}
+.tb-lede {
+  margin-top: 20px;
+  max-width: 34ch;
+  font-family: var(--tb-serif), Georgia, serif;
+  font-size: 1.1875rem;
+  line-height: 1.5;
+  color: var(--soft);
+}
+.tb-cta {
+  display: inline-flex;
+  align-items: center;
+  min-height: 56px;
+  margin-top: 28px;
+  padding: 0 28px;
+  background: var(--go);
+  color: var(--go-words);
+  font-weight: 700;
+  font-size: 1.125rem;
+  border-radius: 3px;
+}
+.tb-cta:active {
+  transform: translateY(1px);
+}
+.tb-invite {
+  margin-top: 14px;
+  max-width: 36ch;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  font-family: var(--tb-serif), Georgia, serif;
+  color: var(--soft);
+}
+
+/* The receipt: torn at both ends, and the only place the till's typeface appears. */
+.tb-receipt {
+  background: var(--paper);
+  color: var(--type);
+  font-family: var(--tb-till), ui-monospace, monospace;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  padding: 36px 20px;
+  position: relative;
+}
+.tb-receipt::before,
+.tb-receipt::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 7px;
+  background-size: 14px 7px;
+  background-repeat: repeat-x;
+}
+.tb-receipt::before {
+  top: 0;
+  background-image: conic-gradient(from 135deg at 50% 0, transparent 90deg, var(--table) 0);
+}
+.tb-receipt::after {
+  bottom: 0;
+  background-image: conic-gradient(from -45deg at 50% 100%, transparent 90deg, var(--table) 0);
+}
+.tb-shop {
+  text-align: center;
+}
+.tb-shop b {
+  font-size: 1.0625rem;
+}
+.tb-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+.tb-rows {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--type);
+}
+.tb-sums {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--type);
+}
+.tb-grand {
+  font-weight: 700;
+  font-size: 1.0625rem;
+}
+.tb-mark {
+  position: relative;
+  isolation: isolate;
+}
+.tb-mark::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: -1px -6px;
+  background: var(--marker);
+  transform-origin: left;
+  animation: tb-sweep 0.55s 0.5s cubic-bezier(0.6, 0, 0.3, 1) backwards;
+}
+.tb-struck {
+  position: relative;
+}
+.tb-struck::after {
+  content: "";
+  position: absolute;
+  left: -3px;
+  right: -3px;
+  top: 52%;
+  height: 2px;
+  background: var(--pen);
+  transform: rotate(-3deg);
+  transform-origin: left;
+  animation: tb-sweep 0.3s 1.3s ease-out backwards;
+}
+.tb-pen {
+  font-family: var(--tb-pen), cursive;
+  color: var(--pen);
+  font-size: 1.625rem;
+  line-height: 1.05;
+}
+.tb-note {
+  margin: 10px 0 0 auto;
+  max-width: 17em;
+  text-align: right;
+  transform: rotate(-1.5deg);
+  animation: tb-write 0.35s 1.05s ease-out backwards;
+}
+.tb-right {
+  text-align: right;
+  animation: tb-write 0.3s 1.6s ease-out backwards;
+}
+@keyframes tb-sweep {
+  from {
+    transform: scaleX(0);
+  }
+}
+@keyframes tb-write {
+  from {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tb *,
+  .tb *::before,
+  .tb *::after {
+    animation: none !important;
+  }
+}
+
+/* What the app does, itemised. */
+.tb-section {
+  margin-top: 28px;
+  padding-top: 16px;
+  border-top: 1px dashed var(--type);
+}
+.tb-section h2 {
+  font-size: 1.0625rem;
+  font-weight: 700;
+}
+.tb-items {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+}
+.tb-item {
+  display: grid;
+  grid-template-columns: 1fr 26px;
+  gap: 0 12px;
+  padding: 9px 0;
+}
+.tb-item b {
+  font-weight: 600;
+}
+.tb-item p {
+  grid-column: 1;
+  margin: 2px 0 0;
+  color: var(--faint);
+  font-size: 0.8125rem;
+  max-width: 54ch;
+}
+.tb-tick {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  width: 24px;
+  height: 24px;
+  color: var(--pen);
+}
+.tb-foot {
+  margin-top: 26px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--type);
+  text-align: center;
+}
+.tb-foot-cta {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 12px 22px;
+  background: var(--type);
+  color: var(--paper);
+  font-weight: 600;
+  border-radius: 3px;
+}
+
+@media (min-width: 900px) {
+  .tb-frame {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 520px);
+    gap: 64px;
+    padding: 48px 32px 96px;
+  }
+  .tb-pitch {
+    position: sticky;
+    top: 48px;
+    align-self: start;
+  }
+  .tb-receipt {
+    padding: 44px 36px;
+    font-size: 0.9375rem;
+  }
+}
+
+/* Overscrolling past either end shows the table, not the app's paper colour. */
+html:has(.tb),
+body:has(.tb) {
+  background: #d9ddd4;
+}
+@media (prefers-color-scheme: dark) {
+  .tb {
+    --table: #111916;
+    --grid: #2f4038;
+    --words: #e8ece5;
+    --soft: #9daaa1;
+    --go: #f2557d;
+    --go-words: #111916;
+  }
+  html:has(.tb),
+  body:has(.tb) {
+    background: #111916;
+  }
+}

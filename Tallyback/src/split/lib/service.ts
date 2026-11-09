@@ -4,6 +4,8 @@ import { insert, select, update, type Row } from "./db";
 import { debts, myShare, netBalances, type Entry } from "./balances";
 import { CURRENCIES, formatMoney, isSpendCurrency, matchesConversion } from "./money";
 import { ratesFor } from "./fx";
+import { describeChanges } from "./changes";
+import { nextRound, payOrder, type RoundsTab, type Turn } from "./turns";
 import { checkPaid, splitAmount, type Amounts, type Split } from "./split";
 import { findBill, streamBillPhoto } from "@tallyback/lib/store";
 import { receiptActivity, receiptDecision } from "./receipt";
@@ -51,7 +53,15 @@ const groupIn = z.object({
   myName: z.string().trim().max(60).optional(),
   members: z.array(memberIn).max(50).default([]),
 });
-const groupPatch = groupIn.omit({ members: true, myName: true }).partial().extend({ simplify: z.boolean().optional() });
+const tripIn = z
+  .object({
+    destination: z.string().trim().min(1, "Where are you going?").max(80),
+    start: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Pick the first day."),
+    end: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Pick the last day."),
+    currency: z.string().refine(isSpendCurrency, "That currency isn't supported."),
+  })
+  .refine((t) => t.end >= t.start, "The trip can't end before it starts.");
+const groupPatch = groupIn.omit({ members: true, myName: true }).partial().extend({ simplify: z.boolean().optional(), trip: tripIn.nullable().optional() });
 const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Pick a date.");
 const cents = z.number().int().positive("Enter an amount above zero.").max(1e12);
 const expenseIn = z.object({
@@ -277,10 +287,11 @@ export async function dashboard(me: Me): Promise<Dashboard> {
 export async function groupDetail(groupId: string, me: Me): Promise<GroupDetail> {
   const { g, members, mine } = await load(groupId, me);
   if (await runRepeats(await select("sb_expenses", { group_id: groupId, deleted_at: null }), () => String(g.currency))) await update("sb_groups", { id: groupId }, { updated_at: now() });
-  const [rows, comments, activity] = await Promise.all([
+  const [rows, comments, activity, [openTab]] = await Promise.all([
     select("sb_expenses", { group_id: groupId }),
     select("sb_comments", { group_id: groupId }, { by: "created_at" }),
     select("sb_activity", { group_id: groupId }, { by: "created_at", desc: true, limit: 100 }),
+    select("sb_tabs", { group_id: groupId, ended_at: null }),
   ]);
   const entries = liveEntries(rows);
   const active = members.filter((m) => !m.removed_at).map((m) => String(m.id));
@@ -308,8 +319,12 @@ export async function groupDetail(groupId: string, me: Me): Promise<GroupDetail>
     activity: activity.map((a) => toActivity(a, String(g.name), me)),
     balances: netBalances(entries, active),
     debts: debts(entries, !!g.simplify),
+    trip: (g.trip as GroupDetail["trip"]) ?? null,
+    tab: openTab ? toTab(openTab) : null,
   };
 }
+
+const toTab = (r: Row): RoundsTab => ({ id: String(r.id), place: String(r.place ?? ""), people: r.people as string[], turns: (r.turns as Turn[]) ?? [], startedAt: String(r.created_at) });
 
 const toActivity = (a: Row, groupName: string, me: Me): Activity => ({
   id: String(a.id),
@@ -349,6 +364,8 @@ export async function updateGroup(groupId: string, me: Me, body: unknown) {
   if (patch.name && patch.name !== g.name) said.push(`renamed the group to “${patch.name}”`);
   if (patch.simplify !== undefined && patch.simplify !== !!g.simplify) said.push(`turned simplify debts ${patch.simplify ? "on" : "off"}`);
   if (patch.currency && patch.currency !== g.currency) said.push(`changed the currency to ${patch.currency}`);
+  if (patch.trip) said.push(`set the trip: ${patch.trip.destination}, ${patch.trip.start} to ${patch.trip.end}`);
+  else if (patch.trip === null && g.trip) said.push("removed the trip details");
   for (const s of said) await log(groupId, me, name, s);
 }
 
@@ -476,7 +493,15 @@ export async function saveEntry(groupId: string, me: Me, body: unknown, expenseI
       sameAmounts(numbers(before.owed), amounts.owed);
     await update("sb_expenses", { id }, { ...fields, ...receiptField });
     const receiptText = receiptActivity(receipt, label(fields));
-    await log(groupId, me, name, onlyReceipt && receiptText ? receiptText : `updated ${label(fields)}`, id);
+    // Say exactly what moved, since anyone in the group can edit anyone's expense.
+    const changed = describeChanges(
+      { description: String(before.description), amount: Number(before.amount), category: String(before.category), date: String(before.date).slice(0, 10), notes: String(before.notes ?? ""), paid: numbers(before.paid), owed: numbers(before.owed) },
+      { description: fields.description, amount: fields.amount, category: fields.category, date: fields.date, notes: fields.notes, paid: amounts.paid, owed: amounts.owed },
+      nameOf,
+      String(g.currency),
+    );
+    const was = label(before as { kind: string; description: string });
+    await log(groupId, me, name, onlyReceipt && receiptText ? receiptText : changed.length ? `changed ${was}: ${changed.join("; ")}` : `updated ${was}`, id);
     return { id, receiptDropped };
   }
   const id = uuid();
@@ -490,6 +515,64 @@ export async function saveEntry(groupId: string, me: Me, body: unknown, expenseI
     id,
   );
   return { id, receiptDropped };
+}
+
+// ---- rounds at a bar ----
+const tabPeople = z.object({ place: z.string().trim().max(60).default(""), people: z.array(z.string()).min(2, "Pick at least two people.").max(30) });
+
+export async function startRounds(groupId: string, me: Me, body: unknown) {
+  const { members, name } = await load(groupId, me);
+  const input = parse(tabPeople, body);
+  if ((await select("sb_tabs", { group_id: groupId, ended_at: null })).length) throw new Problem(409, "Rounds are already going in this group.");
+  const active = new Set(members.filter((m) => !m.removed_at).map((m) => String(m.id)));
+  if (input.people.some((id) => !active.has(id))) throw new Problem(400, "Someone at the table isn't in the group.");
+  const rows = await select("sb_expenses", { group_id: groupId, deleted_at: null });
+  const people = payOrder([...new Set(input.people)], netBalances(liveEntries(rows)));
+  const first = String(members.find((m) => String(m.id) === people[0])?.name ?? "someone");
+  await insert("sb_tabs", { id: uuid(), group_id: groupId, place: input.place, people, turns: [], created_by: me.id, created_at: now(), ended_at: null });
+  await log(groupId, me, name, `started rounds${input.place ? ` at ${input.place}` : ""}: first one is on ${first}`);
+}
+
+const turnIn = z.discriminatedUnion("action", [
+  z.object({ action: z.literal("turn"), round: z.number().int().positive(), memberId: z.string(), passed: z.boolean().default(false), amount: cents.nullable().default(null), date: day }),
+  z.object({ action: z.literal("undo") }),
+  z.object({ action: z.literal("end") }),
+]);
+
+export async function updateRounds(groupId: string, me: Me, body: unknown) {
+  const { members, name } = await load(groupId, me);
+  const input = parse(turnIn, body);
+  const [row] = await select("sb_tabs", { group_id: groupId, ended_at: null });
+  if (!row) throw new Problem(404, "Those rounds have finished.");
+  const tab = toTab(row);
+  const id = tab.id;
+  const nameOf = (mid: string) => String(members.find((m) => String(m.id) === mid)?.name ?? "someone");
+  if (input.action === "end") {
+    await update("sb_tabs", { id }, { ended_at: now() });
+    return log(groupId, me, name, `ended rounds after ${tab.turns.filter((t) => !t.passed).length} round(s)`);
+  }
+  if (input.action === "undo") {
+    const last = tab.turns[tab.turns.length - 1];
+    if (!last) throw new Problem(409, "There's nothing to undo.");
+    if (last.expenseId) await setDeleted(groupId, last.expenseId, me, true);
+    await update("sb_tabs", { id }, { turns: tab.turns.slice(0, -1) });
+    return;
+  }
+  // The round number stops two people at the table recording the same round.
+  if (input.round !== tab.turns.length + 1) throw new Problem(409, "Someone just recorded that round.");
+  if (!tab.people.includes(input.memberId)) throw new Problem(400, "They aren't at the table.");
+  let expenseId: string | null = null;
+  const paidRounds = tab.turns.filter((t) => !t.passed).length + 1;
+  if (input.amount && !input.passed) {
+    const description = `Round ${paidRounds}${tab.place ? ` at ${tab.place}` : ""}`;
+    expenseId = (
+      await saveEntry(groupId, me, { kind: "expense", description, amount: input.amount, category: "food", date: input.date, paid: { [input.memberId]: input.amount }, split: { method: "equal", members: tab.people }, notes: "" })
+    ).id;
+  }
+  const turns = [...tab.turns, { memberId: input.memberId, passed: input.passed, amount: input.passed ? null : input.amount, expenseId, at: now() }];
+  await update("sb_tabs", { id }, { turns });
+  const next = nextRound(tab.people, turns);
+  await log(groupId, me, name, `${input.passed ? `${nameOf(input.memberId)} passed` : `round ${paidRounds} was on ${nameOf(input.memberId)}`}. Next: ${next ? nameOf(next) : "nobody"}`);
 }
 
 // Settle up with a friend everywhere at once (Splitwise's "settle all balances"): a payment in each

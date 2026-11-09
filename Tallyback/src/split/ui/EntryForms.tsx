@@ -8,6 +8,9 @@ import { ProgressRing } from "@ui/ProgressRing";
 import { SPLIT_METHODS, allocateItemized, checkPaid, splitAmount, type SplitMethod } from "../lib/split";
 import type { BillDraft, ClaimableReceiptLine } from "../lib/fromBill";
 import { REPEATS, type Repeat } from "../lib/repeat";
+import { isDrink } from "../lib/drinks";
+import { lastPaidDates, payOrder } from "../lib/turns";
+import { tripPhase } from "../lib/trip";
 import { CATEGORIES, type Category, type Expense, type GroupDetail } from "../lib/types";
 import { ErrorNote, Sheet, api, errorText, field, fieldBase, primary, today } from "./kit";
 import { ReceiptTile, ReceiptViewer, receiptUrl, scanReceipt, useReceiptPickers, type ReceiptState } from "./receipt";
@@ -53,7 +56,9 @@ export function ExpenseForm({
   // The currency it was spent in: the group's, or another (pesos on a trip from Singapore). A scanned
   // bill's own currency is picked up by itself.
   const billCurrency = (d?: BillDraft | null) => (d?.currency && isSpendCurrency(d.currency) ? d.currency : null);
-  const [spend, setSpend] = useState<string>(expense?.original?.currency ?? billCurrency(draft) ?? group.currency);
+  // During a trip, a new expense starts in the local currency.
+  const tripCurrency = !expense && group.trip && tripPhase(group.trip, today()).phase === "during" ? group.trip.currency : null;
+  const [spend, setSpend] = useState<string>(expense?.original?.currency ?? billCurrency(draft) ?? tripCurrency ?? group.currency);
   const foreign = spend !== group.currency;
   const [rate, setRate] = useState<number | null>(expense?.original?.rate ?? null);
   const [rateInfo, setRateInfo] = useState<string | null>(expense?.original ? "the rate saved with this expense" : null);
@@ -84,6 +89,9 @@ export function ExpenseForm({
       ]),
     );
   });
+  // Drinks on a receipt: guessed from each line's name, correctable, and non-drinkers come off them all in one tap.
+  const [drinkLines, setDrinkLines] = useState<Set<number>>(() => new Set((draft?.claimableLines ?? []).filter((l) => isDrink(l.description)).map((l) => l.lineIndex)));
+  const [nonDrinkers, setNonDrinkers] = useState<Set<string>>(new Set());
   const [newItemDesc, setNewItemDesc] = useState("");
   const [newItemAmt, setNewItemAmt] = useState("");
 
@@ -132,6 +140,8 @@ export function ExpenseForm({
     const activeIds = people.filter((m) => !m.removed).map((m) => m.id);
     setItemLines(lines);
     setItemClaims(Object.fromEntries(lines.map((line) => [line.lineIndex, line.flagged && line.verifiedCents === 0 ? [] : activeIds])));
+    setDrinkLines(new Set(lines.filter((l) => isDrink(l.description)).map((l) => l.lineIndex)));
+    setNonDrinkers(new Set());
     if (lines.length > 1) setItemMode(true);
   }
 
@@ -217,6 +227,38 @@ export function ExpenseForm({
     });
   }
 
+  function toggleNonDrinker(id: string) {
+    const off = !nonDrinkers.has(id);
+    setNonDrinkers((prev) => {
+      const next = new Set(prev);
+      if (off) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+    setItemClaims((prev) => {
+      const next = { ...prev };
+      for (const i of drinkLines) {
+        const cur = (next[i] ?? []).filter((m) => m !== id);
+        next[i] = off ? cur : [...cur, id];
+      }
+      return next;
+    });
+  }
+
+  function toggleDrinkLine(lineIndex: number) {
+    const on = !drinkLines.has(lineIndex);
+    setDrinkLines((prev) => {
+      const next = new Set(prev);
+      if (on) next.add(lineIndex);
+      else next.delete(lineIndex);
+      return next;
+    });
+    setItemClaims((prev) => {
+      const cur = prev[lineIndex] ?? [];
+      return { ...prev, [lineIndex]: on ? cur.filter((m) => !nonDrinkers.has(m)) : [...new Set([...cur, ...nonDrinkers])] };
+    });
+  }
+
   function claimAllForLine(lineIndex: number) {
     const allIds = people.map((m) => m.id);
     setItemClaims((prev) => {
@@ -241,7 +283,9 @@ export function ExpenseForm({
         flagged: false,
       },
     ]);
-    setItemClaims((prev) => ({ ...prev, [nextIdx]: allIds }));
+    const drink = isDrink(newItemDesc);
+    if (drink) setDrinkLines((prev) => new Set([...prev, nextIdx]));
+    setItemClaims((prev) => ({ ...prev, [nextIdx]: drink ? allIds.filter((m) => !nonDrinkers.has(m)) : allIds }));
     setNewItemDesc("");
     setNewItemAmt("");
   }
@@ -316,6 +360,8 @@ export function ExpenseForm({
     }
   }
 
+  const activeIds = group.members.filter((m) => !m.removed).map((m) => m.id);
+  const suggested = !expense && activeIds.length > 1 && group.expenses.some((x) => !x.deleted) ? payOrder(activeIds, group.balances, lastPaidDates(group.expenses))[0] : null;
   const unit = { exact: group.currency, percent: "%", shares: "shares", equal: "" }[method];
   const scanning = receipt.kind === "scanning";
   const saveLabel = busy ? "Saving…" : problem && amount && description.trim() ? problem : amount ? `Save · ${formatMoney(amount, group.currency)}` : "Save";
@@ -509,6 +555,11 @@ export function ExpenseForm({
             <option value="multiple">More than one person</option>
           </select>
         </label>
+        {suggested && payer !== suggested && payer !== "multiple" && (
+          <button type="button" onClick={() => setPayer(suggested)} className="-mt-2 min-h-11 text-left text-sm text-muted underline underline-offset-4">
+            👉 {suggested === group.meId ? "It's your turn" : `It's ${nameOf(suggested)}'s turn`}: set as payer
+          </button>
+        )}
         {payer === "multiple" && (
           <div className="space-y-2 rounded-2xl border border-line bg-card p-3">
             {people.map((m) => (
@@ -550,6 +601,24 @@ export function ExpenseForm({
               <div className="flex items-center justify-between text-xs text-muted">
                 <span>Tap who shared each item. Tax &amp; service charge split proportionally.</span>
               </div>
+              {drinkLines.size > 0 && (
+                <div className="rounded-xl bg-paper p-2.5">
+                  <p className="text-xs font-medium">🍺 {drinkLines.size} drink{drinkLines.size === 1 ? "" : "s"} on this bill. Who isn&apos;t drinking?</p>
+                  <div className="mt-1.5 flex flex-wrap gap-1.5">
+                    {people.map((m) => (
+                      <button
+                        type="button"
+                        key={m.id}
+                        onClick={() => toggleNonDrinker(m.id)}
+                        aria-pressed={nonDrinkers.has(m.id)}
+                        className={`min-h-10 rounded-full border px-3.5 text-sm font-medium ${nonDrinkers.has(m.id) ? "border-ink bg-ink text-white" : "border-line bg-card text-muted"}`}
+                      >
+                        {nameOf(m.id)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
               {itemLines.length === 0 ? (
                 <p className="py-2 text-xs text-muted">Add items below to split them with proportional tax/service charge.</p>
               ) : (
@@ -561,18 +630,27 @@ export function ExpenseForm({
                     return (
                       <li key={line.lineIndex} className="py-2.5 first:pt-0 last:pb-0">
                         <div className="flex items-baseline justify-between gap-2">
+                          <button
+                            type="button"
+                            onClick={() => toggleDrinkLine(line.lineIndex)}
+                            aria-pressed={drinkLines.has(line.lineIndex)}
+                            aria-label={`${line.description}: ${drinkLines.has(line.lineIndex) ? "marked as a drink, tap to unmark" : "mark as a drink"}`}
+                            className={`-my-2 flex h-11 w-9 shrink-0 items-center justify-center text-base ${drinkLines.has(line.lineIndex) ? "" : "opacity-25 grayscale"}`}
+                          >
+                            🍺
+                          </button>
                           <span className="min-w-0 flex-1 truncate font-medium">
                             {line.qty && line.qty > 1 ? `${line.qty}× ` : ""}
                             {line.description}
                           </span>
                           <span className="shrink-0 font-mono text-sm font-semibold">
-                            {formatMoney(lineCents, group.currency)}
+                            {formatMoney(lineCents, spend)}
                           </span>
                         </div>
                         {line.flagged && (
                           <p className="mt-0.5 text-[11px] text-bad">
                             {useVerifiedTotal && line.verifiedCents < line.printedCents
-                              ? `Verified from ${formatMoney(line.printedCents, group.currency)} (${line.flagTitle ?? "disputed"})`
+                              ? `Verified from ${formatMoney(line.printedCents, spend)} (${line.flagTitle ?? "disputed"})`
                               : line.flagTitle ?? "Flagged on bill"}
                           </p>
                         )}

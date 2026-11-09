@@ -10,8 +10,8 @@ import path from "path";
 export type Row = Record<string, unknown>;
 type Sql = ReturnType<typeof neon>;
 
-export type Table = "sb_groups" | "sb_members" | "sb_expenses" | "sb_comments" | "sb_activity";
-const TABLES: Table[] = ["sb_groups", "sb_members", "sb_expenses", "sb_comments", "sb_activity"];
+export type Table = "sb_groups" | "sb_members" | "sb_expenses" | "sb_comments" | "sb_activity" | "sb_tabs";
+const TABLES: Table[] = ["sb_groups", "sb_members", "sb_expenses", "sb_comments", "sb_activity", "sb_tabs"];
 
 // Idempotent: created on first use, so there's no SQL to run by hand.
 // Amounts are cents. paid/owed are {member id: cents}; split is what was typed, for editing.
@@ -90,6 +90,20 @@ const SCHEMA = [
     created_at timestamptz not null default now()
   )`,
   `create index if not exists sb_activity_group_idx on sb_activity (group_id, created_at desc)`,
+  // Trip mode: { destination, start, end, currency }, or null.
+  `alter table sb_groups add column if not exists trip jsonb`,
+  // A night of rounds at a bar: who's at the table, in turn order, and each round so far.
+  `create table if not exists sb_tabs (
+    id uuid primary key,
+    group_id uuid not null references sb_groups(id),
+    place text not null default '',
+    people jsonb not null,
+    turns jsonb not null default '[]',
+    created_by text not null,
+    created_at timestamptz not null default now(),
+    ended_at timestamptz
+  )`,
+  `create index if not exists sb_tabs_group_idx on sb_tabs (group_id)`,
 ];
 
 const dbUrl = () => (process.env.DATABASE_URL || process.env.POSTGRES_URL || "").trim().replace(/^["']|["']$/g, "");

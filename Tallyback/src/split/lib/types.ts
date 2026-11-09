@@ -1,6 +1,8 @@
 import type { Amounts, Split } from "./split";
 import type { Transfer } from "./balances";
 import type { Repeat } from "./repeat";
+import type { RoundsTab } from "./turns";
+import type { Trip } from "./trip";
 
 // What the API sends the page. Shared by both, so they can't drift apart.
 
@@ -123,4 +125,6 @@ export interface GroupDetail {
   activity: Activity[];
   balances: Amounts;
   debts: Transfer[];
+  trip: Trip | null;
+  tab: RoundsTab | null; // rounds in progress at a bar
 }
