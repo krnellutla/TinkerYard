@@ -15,7 +15,13 @@ export interface Transfer {
   amount: number; // cents, always > 0
 }
 
-// Each member's balance: positive = is owed money, negative = owes money. Always sums to zero.
+/**
+ * Computes net balance in integer cents for each member (`paid - owed`). Positive values mean
+ * the member is owed money; negative values mean they owe money. All balances sum to zero.
+ * @param entries Live group expenses and payments.
+ * @param members Optional member IDs to initialize at zero.
+ * @returns Map of member ID to net cents.
+ */
 export function netBalances(entries: Entry[], members: string[] = []): Amounts {
   const net: Amounts = Object.fromEntries(members.map((m) => [m, 0]));
   for (const e of entries) {
@@ -50,11 +56,18 @@ function settle(net: Amounts): Transfer[] {
   return out;
 }
 
-// "Simplify debts" on: the fewest payments that settle the whole group.
+/**
+ * Computes the minimal set of transfers (at most `n - 1`) to settle all group balances.
+ * @param entries Live group expenses and payments.
+ * @returns Simplified settlement transfers sorted deterministically.
+ */
 export const simplifiedDebts = (entries: Entry[]): Transfer[] => settle(netBalances(entries));
 
-// "Simplify debts" off: who owes whom from the expenses they actually shared. Each expense is settled
-// on its own, then debts between the same two people cancel out.
+/**
+ * Computes pairwise netted transfers based solely on expenses pairs actually shared.
+ * @param entries Live group expenses and payments.
+ * @returns Pairwise settlement transfers sorted largest-first.
+ */
 export function pairwiseDebts(entries: Entry[]): Transfer[] {
   const pair = new Map<string, number>(); // "a\u0000b" with a < b → what a owes b (negative: b owes a)
   for (const e of entries) {
@@ -73,9 +86,20 @@ export function pairwiseDebts(entries: Entry[]): Transfer[] {
   return out.sort((x, y) => y.amount - x.amount || x.from.localeCompare(y.from) || x.to.localeCompare(y.to));
 }
 
+/**
+ * Computes settlement transfers with debt simplification toggled on or off.
+ * @param entries Live group expenses and payments.
+ * @param simplify True for minimal net transfers; false for pairwise netted debts.
+ * @returns Settlement transfers.
+ */
 export const debts = (entries: Entry[], simplify: boolean) => (simplify ? simplifiedDebts(entries) : pairwiseDebts(entries));
 
-// One person's side of an expense: what they lent (+) or borrowed (−).
+/**
+ * Computes one member's net contribution to a single entry (`paid - owed`).
+ * @param e Single expense or payment entry.
+ * @param member Member ID.
+ * @returns Positive cents lent or negative cents borrowed.
+ */
 export const myShare = (e: Entry, member: string) => (e.paid[member] ?? 0) - (e.owed[member] ?? 0);
 
 // The settle-up screen, the way Splitwise lays it out: the people you owe, then the people who owe you,

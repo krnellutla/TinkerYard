@@ -1,6 +1,6 @@
 // End-to-end passkey test against a running dev server, using a software authenticator
 // (a real P-256 key pair, signing exactly what a phone's secure chip would sign).
-// Usage (see Auth/README.md, "Testing passkeys"):
+// Usage (see docs/05-DEVELOPER-SETUP-AND-RUNBOOK.md, "Testing Passkeys & Access"):
 //   node Auth/scripts/passkey-e2e.mjs http://localhost:3102 dev.log you@example.com
 import crypto from "node:crypto";
 import fs from "node:fs";

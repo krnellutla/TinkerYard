@@ -51,6 +51,15 @@ const GUESSES: [RegExp, Category][] = [
 
 const CLAIMABLE_KINDS = new Set(["item", "fee", "late_fee", "subscription", "other"]);
 
+/**
+ * Converts a scanned and audited bill extraction into an Expense form draft ("Split this bill").
+ * When an overcharge was flagged, defaults `amount` to the verified fair total and marks
+ * claimable line items with both `printedCents` and `verifiedCents` ("Audit Shield").
+ * @param ex Normalized receipt extraction from TallyBack's OCR pipeline.
+ * @param checkResult Optional deterministic check result from `runChecks()`.
+ * @param billId Optional persisted bill UUID for attaching the receipt photo.
+ * @returns Pre-filled `BillDraft` ready for `ExpenseForm`.
+ */
 export function billToDraft(ex: Extraction, checkResult?: CheckResult | null, billId?: string): BillDraft {
   const text = `${ex.bill_type ?? ""} ${ex.merchant_name ?? ""}`;
   const total = ex.printed_total;

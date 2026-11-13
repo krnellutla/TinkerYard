@@ -157,6 +157,12 @@ function matches(r: Row, where: Where) {
   return Object.entries(where).every(([k, v]) => (v === null ? r[k] == null : Array.isArray(v) ? v.includes(String(r[k])) : r[k] === v));
 }
 
+/**
+ * Inserts one row into the given Split table (Neon Postgres or `.data/splitbill.json` fallback).
+ * @param table Target Split table name.
+ * @param row Column values mapped as plain JSON.
+ * @throws Error if schema initialization or Postgres query execution fails.
+ */
 export async function insert(table: Table, row: Row) {
   const sql = await db();
   if (!sql) {
@@ -168,6 +174,13 @@ export async function insert(table: Table, row: Row) {
   await sql.query(`insert into ${table} select * from json_populate_record(null::${table}, $1::json)`, [JSON.stringify(row)]);
 }
 
+/**
+ * Updates rows matching `where` with fields from `patch`.
+ * @param table Target Split table name.
+ * @param where Equality, null, or array (`ANY`) filter predicates.
+ * @param patch Partial column values to set.
+ * @throws Error if an invalid column name is provided or Postgres update fails.
+ */
 export async function update(table: Table, where: Where, patch: Row) {
   const cols = Object.keys(patch).map(col);
   if (!cols.length) return;
@@ -184,6 +197,14 @@ export async function update(table: Table, where: Where, patch: Row) {
   );
 }
 
+/**
+ * Selects rows matching `where` with optional sorting and limit.
+ * @param table Source Split table name.
+ * @param where Equality, null, or array (`ANY`) filter predicates.
+ * @param order Optional `{ by, desc, limit }` sort specification.
+ * @returns Matching rows with normalized JSON types (ISO timestamps, `YYYY-MM-DD` dates).
+ * @throws Error if schema initialization or query execution fails.
+ */
 export async function select(table: Table, where: Where, order?: { by: string; desc?: boolean; limit?: number }): Promise<Row[]> {
   const sql = await db();
   if (!sql) {

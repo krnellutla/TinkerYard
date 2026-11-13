@@ -51,7 +51,7 @@ export interface Step {
 }
 
 // Defaults, best first, all on free tiers. Picked by running Tallyback/scripts/bench-models.ts on real
-// tasks (results in Tallyback/docs/FREE_MODELS.md): the Flash-Lite models read receipts right every time
+// tasks (results in docs/03-OCR-RECEIPT-PIPELINE.md): the Flash-Lite models read receipts right every time
 // in about 5 s, highlight boxes included, while Flash 3.8 often took 30–45 s. Each Gemini model has its
 // own free quota, so several of them also mean more free reads a day. Providers without a key are skipped.
 // Override with LLM_VISION_CHAIN / LLM_TEXT_CHAIN, e.g. "gemini:gemini-3.5-flash-lite,groq:qwen/qwen3.8-27b".
@@ -289,6 +289,16 @@ async function ask(step: Step, a: Ask, ms: number, env: Env): Promise<string> {
 
 // ---- the two jobs ----
 
+/**
+ * Executes an AI bill extraction call on a specific provider/model step.
+ * @param step Provider and model descriptor.
+ * @param data Base64-encoded image or PDF payload.
+ * @param mime MIME type of the uploaded document.
+ * @param ms Request timeout in milliseconds.
+ * @param env Environment variable map containing provider API keys.
+ * @returns Normalized structured `Extraction`.
+ * @throws {ModelError} If the provider rejects PDFs, times out, or returns malformed JSON.
+ */
 export async function readBillWith(step: Step, data: string, mime: string, ms: number, env: Env = process.env): Promise<Extraction> {
   if (mime === "application/pdf" && !(step.provider === "gemini" && !isGemma(step.model))) throw new ModelError(`${step.provider}/${step.model}: can't read PDFs`, true);
   const native = step.provider === "gemini" && !isGemma(step.model);
@@ -304,6 +314,15 @@ export async function writeWith(step: Step, prompt: string, ms: number, env: Env
 
 // Walk a chain within a time budget (Vercel stops a function at 60 s). A busy, failing or garbled
 // model moves on to the next; each try gets what's left of the budget, capped per model.
+/**
+ * Walks the configured provider fallback chain for `job` within `budgetMs` until a model succeeds.
+ * @param job `"vision"` (receipt scanning) or `"text"` (dispute message drafting).
+ * @param fn Callback executing one step within its allotted timeout budget.
+ * @param budgetMs Total time budget in milliseconds across all fallback attempts.
+ * @param env Environment variable map for resolving configured providers.
+ * @returns Winning result value and `"provider/model"` identifier.
+ * @throws {Error} If no providers have keys or every attempted model fails.
+ */
 export async function runChain<T>(job: Job, fn: (step: Step, ms: number) => Promise<T>, budgetMs: number, env: Env = process.env): Promise<{ value: T; model: string }> {
   const steps = chainFor(job, env);
   if (!steps.length) throw new Error(`No AI model is set up for ${job === "vision" ? "reading receipts" : "writing messages"}.`);

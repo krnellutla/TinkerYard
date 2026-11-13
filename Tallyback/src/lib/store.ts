@@ -94,7 +94,14 @@ const uuid = () => crypto.randomUUID();
 
 const DB_PHOTO = "db:"; // image_path prefix for photos kept in the bill_photos table
 
-// Private Blob when configured, else the bill_photos table, else (local dev) not kept.
+/**
+ * Uploads receipt bytes to private Vercel Blob (if `BLOB_READ_WRITE_TOKEN` is set) or the `bill_photos` table,
+ * updating `bills.image_path` with the storage reference.
+ * @param billId Target bill UUID.
+ * @param bytes Raw image or PDF buffer.
+ * @param mime MIME type of the uploaded file.
+ * @returns Storage path (`bills/<id>.<ext>` or `db:<id>`), or `null` in local JSON dev mode.
+ */
 export async function uploadImage(billId: string, bytes: Buffer, mime: string): Promise<string | null> {
   let link: string;
   if (process.env.BLOB_READ_WRITE_TOKEN) {
@@ -114,14 +121,23 @@ export async function uploadImage(billId: string, bytes: Buffer, mime: string): 
   return link;
 }
 
-// Stream a private photo back, only to whoever owns the bill.
+/**
+ * Streams a private receipt image back only if the caller (`owner`) owns the bill.
+ * @param billId Target bill UUID.
+ * @param owner Verified session/device owner descriptor.
+ * @returns Readable stream and content type, or `null` if not found or unauthorized.
+ */
 export async function readImage(billId: string, owner: Owner): Promise<{ stream: ReadableStream; type: string } | null> {
   const b = await findBill(billId, owner);
   return b ? streamPhoto(b) : null;
 }
 
-// A bill's photo with NO owner check: for a receipt on a group expense, which every member may see.
-// The caller must have checked access first (the split service checks group membership).
+/**
+ * Streams a receipt photo without a bill-owner check for shared Split expenses;
+ * callers must verify group membership before invoking this function.
+ * @param billId Bill UUID attached to the group expense.
+ * @returns Readable stream and content type, or `null` if missing.
+ */
 export async function streamBillPhoto(billId: string): Promise<{ stream: ReadableStream; type: string } | null> {
   if (!/^[0-9a-f-]{36}$/i.test(billId)) return null;
   const sql = await db();
@@ -150,6 +166,14 @@ async function streamPhoto(b: Row): Promise<{ stream: ReadableStream; type: stri
   return { stream: res.stream, type: res.blob.contentType ?? "image/jpeg" };
 }
 
+/**
+ * Persists a normalized bill extraction and its ordered `line_items` (masking digit sequences on sensitive refs).
+ * @param owner Authenticated user / device owner.
+ * @param ex Normalized OCR extraction.
+ * @param imagePath Optional storage reference from `uploadImage()`.
+ * @param model Winning `"provider/model"` string (or `ATTACHMENT_MODEL` for Split-only photos).
+ * @returns Created `billId` and parallel array of generated `lineIds`.
+ */
 export async function saveBill(owner: Owner, ex: Extraction, imagePath: string | null, model: string) {
   const billId = uuid();
   await insert("bills", [
@@ -196,6 +220,15 @@ export async function saveBill(owner: Owner, ex: Extraction, imagePath: string |
   return { billId, lineIds };
 }
 
+/**
+ * Appends a user promise snapshot and atomically replaces current `findings` rows for `billId`.
+ * @param billId Target bill UUID.
+ * @param owner Owner descriptor recording `device_id`.
+ * @param lineIds Ordered line item UUIDs matching `ex.lines` indexes.
+ * @param promise User expectations (`expectedTotal`, `pricesIncludeTax`, `paidOn`, disputes).
+ * @param result Deterministic check result from `runChecks()`.
+ * @returns Map of finding code (`f.id`) to inserted finding UUID.
+ */
 export async function saveCheck(billId: string, owner: Owner, lineIds: string[], promise: BillPromise, result: CheckResult) {
   const ids: Record<string, string> = {};
   const promiseRow = {
@@ -245,6 +278,11 @@ export async function saveCheck(billId: string, owner: Owner, lineIds: string[],
   return ids;
 }
 
+/**
+ * Records a drafted dispute message linked to its bill, finding, and specific `line_item_id`.
+ * @param m Draft metadata including generated text and `"model"` or `"template"` provenance.
+ * @returns Generated message UUID.
+ */
 export async function saveDraft(m: {
   billId: string;
   lineItemId: string | null;
@@ -267,7 +305,15 @@ export async function saveDraft(m: {
   return id;
 }
 
-// Only a message drafted for this bill: the caller has already checked who owns the bill.
+/**
+ * Marks a drafted dispute message as sent and computes word edit distance server-side against `drafted_text`.
+ * @param billId Parent bill UUID.
+ * @param messageId Message UUID.
+ * @param sentText Final text sent by the user.
+ * @param fallbackDrafted Client draft fallback used only if no persisted draft row exists.
+ * @param channel Delivery channel (`"whatsapp"`, `"copied"`, `"other"`).
+ * @returns Number of words changed between the persisted draft and `sentText`.
+ */
 export async function markSent(
   billId: string,
   messageId: string,
@@ -362,7 +408,10 @@ const ownsRow = (b: Row, owner: Owner) => (owner.userId ? b.user_id === owner.us
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-// First time a signed-in person opens their bills on a device: that device's guest bills become theirs.
+/**
+ * Attaches unclaimed guest bills created on a valid UUID `deviceId` to the signed-in user's account.
+ * @param owner Owner containing authenticated `userId` and UUID `deviceId`.
+ */
 export async function claimDevice(owner: Owner) {
   if (!owner.userId || !UUID_RE.test(owner.deviceId)) return;
   const sql = await db();
@@ -413,6 +462,12 @@ export async function findBill(id: string, owner: Owner): Promise<Row | null> {
   return (await selectJson(sql, `select * from bills where id = $1 and ${o.where}`, [id, o.param]))[0] ?? null;
 }
 
+/**
+ * Fetches one stored bill with its ordered line items, latest promise, and message history if owned by `owner`.
+ * @param id Bill UUID.
+ * @param owner Verified session/device owner.
+ * @returns Full `StoredBill`, or `null` if not found or unauthorized.
+ */
 export async function getBill(id: string, owner: Owner): Promise<StoredBill | null> {
   const bill = await findBill(id, owner);
   if (!bill) return null;

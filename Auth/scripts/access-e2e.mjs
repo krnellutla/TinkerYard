@@ -1,4 +1,4 @@
-// End-to-end test of roles and app access against a running dev server (see Auth/README.md, "Testing").
+// End-to-end test of roles and app access against a running dev server (see docs/05-DEVELOPER-SETUP-AND-RUNBOOK.md).
 // Start the server with ADMIN_EMAILS=admin@test.local and ALLOWED_EMAILS=old@test.local, no database,
 // no RESEND_API_KEY (codes are printed to its log), then:
 //   node Auth/scripts/access-e2e.mjs http://localhost:3103 dev.log

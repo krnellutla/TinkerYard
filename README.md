@@ -1,55 +1,53 @@
 # Tinkeryard
 
-A yard for half-finished AI things. This repo is **one Next.js app** that serves [tinkeryard.dev](https://tinkeryard.dev): the landing page and every app on it share one deploy, one domain and one set of environment variables.
+> **TallyBack** (AI receipt auditing + Splitwise-grade group expense ledger) and **Review Scout** (grounded YouTube review synthesizer), built on **Next.js 15 App Router**, **Neon Serverless Postgres**, **Vercel Blob**, and **Better Auth** (Email OTP + Magic Link + WebAuthn Passkeys).
 
-| Path | What it is | Code |
-|---|---|---|
-| `/` | Landing page listing the projects (plain HTML) | `public/index.html` |
-| `/tallyback` | Snap any bill, find the line that doesn't add up, send one message; then split it with friends (Split tab: groups, four ways to split, simplify debts, settle up) | [`Tallyback/`](Tallyback) |
-| `/reviewscout` | A cited summary of what YouTube reviewers said about a product, with follow-ups | [`Reviewscout/`](Reviewscout) |
-| `/home` | Your apps as tiles: where the installed phone app opens | `app/(apps)/home/` |
-| `/admin` | Admin dashboard: who can sign in, their role (Admin / Member) and which apps they can use | [`Auth/`](Auth) |
-| `/api/auth/*` | Sign-in for every app (all of them need it): register by email code, then passkeys; allow-listed emails only | [`Auth/`](Auth) |
+---
 
-## Layout
-```
-app/                         Next.js routes only: thin files that point into the modules
-  layout.tsx, globals.css    shared by every app
-  (apps)/layout.tsx          app switcher above each app, with Sign in / account menu
-  (apps)/tallyback/          /tallyback page
-  (apps)/reviewscout/        /reviewscout page
-  api/tallyback/…            /api/tallyback/* → Tallyback/src/api
-  api/reviewscout/…          /api/reviewscout/* → Reviewscout/src/api
-  api/auth/[...all]/         /api/auth/* → Auth/src/handler
-public/                      landing page and static files (public/tallyback/…)
-Tallyback/                   module: src/{ui,api,lib}, src/split (the Split tab), tests, docs, scripts
-Reviewscout/                 module: src/{ui,api,lib}, tests
-Auth/                        module: sign-in (src/, ui/, tests)
-```
-Each module keeps its own code and imports only from itself (`@tallyback/*`, `@reviewscout/*`, `@signin/*`), so either can be changed or removed without touching the other. Route files only re-export a module's handler and declare its Vercel settings (`runtime`, `maxDuration`), which Next.js needs to see in the route file itself.
+## Core Capabilities
 
-## On phones: an installable app
-The apps are a **Progressive Web App**: on a phone, open any app and install it (Android Chrome: **Install app**, or the button on `/home`; iPhone Safari: **Share → Add to Home Screen**, with the steps shown on `/home`). It then opens full-screen from its icon, straight to `/home`, with no browser bars.
+- **Receipt OCR & Audit (`Bills`):** Multi-photo receipt capture (up to 3 photos, 8 MB each) processed via a multi-provider Vision LLM chain (`GEMINI_API_KEY`, Groq, OpenRouter, GitHub Models, Mistral, Cloudflare) with deterministic cent-precision arithmetic verification (`items + tax + fees − discount == total`), duplicate detection, and fact-verified dispute message drafting.
+- **Itemized Group Splitting (`Split`):** Integer-cent financial ledger (`sb_groups`, `sb_members`, `sb_expenses`, `sb_tabs`) supporting Equal, Exact, Percent, Shares, and **By Receipt Items** splitting (with proportional tax/tip allocation and a non-drinker `🍺` toggle), multi-currency conversion, Trip mode, Bar Rounds (`sb_tabs`), Debt Simplification, 1-tap WhatsApp summary, and formula-safe CSV export.
+- **Audit Shield:** Attach scanned bills (`receipt_bill_id`) directly to group expenses while enforcing strict group-membership IDOR checks on receipt photo streams.
+- **Mobile-First PWA + Responsive Shell:** Edge-to-edge standalone iOS/Android PWA (`app/manifest.ts`, `100dvh`, `safe-area-inset-*`) scaling seamlessly into two-column iPad and desktop layouts.
+- **Invite-Only Auth & Access Control:** Better Auth passwordless 6-digit email OTP, magic links, WebAuthn passkeys (`residentKey: "required"`), admin people management (`/admin`), and passkey-gated friend invites (`INVITES_PER_PERSON`).
+- **Review Scout (`/reviewscout`):** Fetches and synthesizes YouTube review transcripts and viewer comments into grounded Q&A threads.
 
-| Piece | File |
-|---|---|
-| Manifest: name, colours, start page, standalone display, shortcuts | `app/manifest.ts` |
-| Icons drawn in code (192, 512, maskable for Android, 180 for iPhone) | `app/icon.tsx`, `app/apple-icon.tsx`, `app/flag.tsx` |
-| Bottom tab bar on phones (Home + your apps); the top switcher shows on wider screens | `app/(apps)/TabBar.tsx`, `app/(apps)/AppNav.tsx` |
-| Install button / iPhone steps | `app/(apps)/install.ts`, `app/(apps)/home/Launcher.tsx` |
-| Phone CSS: 16px fields (no iPhone zoom), instant taps, room for the tab bar and the home indicator (`--tabbar-h`, `.pb-safe`) | `app/globals.css` |
+---
 
-Anything fixed to the bottom of a page should sit at `bottom-[var(--tabbar-h)]` so the tab bar doesn't cover it. There's no offline mode yet (no service worker): the apps need a connection, like the AI behind them.
+## 5-Minute Quickstart
 
-## Run
-```bash
-cp .env.example .env.local   # GEMINI_API_KEY; GROQ_API_KEY, DATABASE_URL, BLOB_READ_WRITE_TOKEN optional
-npm install
-npm run dev                  # http://localhost:3000, /tallyback, /reviewscout
-npm test                     # every module's tests
-npm run build
-```
-Without `DATABASE_URL`, each app keeps its data in its own local file under `.data/`. With it, each app creates its own tables in the same Neon database on first use.
+1. **Prerequisites:** Node.js **20+** and `npm`.
+2. **Install & configure environment:**
+   ```bash
+   npm install
+   cp .env.example .env.local
+   ```
+3. **Set minimal env vars in `.env.local`:**
+   ```dotenv
+   BETTER_AUTH_SECRET=replace-with-32-char-random-secret
+   BETTER_AUTH_URL=http://localhost:3000
+   ADMIN_EMAILS=you@example.com
+   GEMINI_API_KEY=your-gemini-api-key
+   ```
+   - *Database optional locally:* Omit `DATABASE_URL` and `BLOB_READ_WRITE_TOKEN` to run against local `.data/` storage, or point `DATABASE_URL` to a **Neon Serverless Postgres** branch (tables auto-create on first request).
+   - *Email optional locally:* Omit `RESEND_API_KEY` to print 6-digit OTP codes and magic links directly to the server terminal log.
+4. **Run the app & tests:**
+   ```bash
+   npm run dev     # http://localhost:3000 (landing) & /tallyback
+   npm test        # Full unit test suite across TallyBack, Auth, ReviewScout, ui
+   ```
 
-## Deploy
-The Vercel project `tinkeryard` builds the repo root (`vercel.json` sets the Next.js framework). It needs `GEMINI_API_KEY`, `GROQ_API_KEY`, TallyBack's Neon database (`DATABASE_URL`), and for sign-in `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `ADMIN_EMAILS` (and optionally `ALLOWED_EMAILS`) and `RESEND_API_KEY` (see [`Auth/README.md`](Auth/README.md)). Every app needs sign-in, and each person sees only the apps their role allows (admins manage this at `/admin`), so until those are set the apps stay closed. Passkeys belong to the host in `BETTER_AUTH_URL`, so set it to the real domain before anyone registers one. `next.config.ts` redirects the old `tallyback.` and `reviewscout.` subdomains to their paths once those domains point at this project.
+---
+
+## Application & Developer Bible (`/docs`)
+
+| Guide | What It Covers |
+| --- | --- |
+| [**01 — Architecture & Stack**](./docs/01-ARCHITECTURE-AND-STACK.md) | System diagram, Next.js App Router + module boundaries (`Tallyback/`, `Auth/`, `Reviewscout/`, `ui/`), RSC/client split, PWA & mobile viewport patterns. |
+| [**02 — Database Schema & Ledger**](./docs/02-DATABASE-SCHEMA-AND-LEDGER.md) | Neon Serverless Postgres & `.data/` dual-mode DAL, full ERD (`bills`, `sb_*`, `ty_*`, `searches`), integer-cent allocation math, proportional itemized splitting, and debt simplification. |
+| [**03 — OCR & Receipt Pipeline**](./docs/03-OCR-RECEIPT-PIPELINE.md) | Vision/text fallback chains (`LLM_VISION_CHAIN`, `LLM_TEXT_CHAIN`), prompt/JSON extraction schema, deterministic arithmetic reconciliation, and provider/model swapping. |
+| [**04 — API & Configuration**](./docs/04-API-AND-SERVER-ACTIONS.md) | Complete HTTP route catalog, Zod validation contracts, Better Auth / RBAC / IDOR guards, and environment variable map. |
+| [**05 — Developer Setup & Runbook**](./docs/05-DEVELOPER-SETUP-AND-RUNBOOK.md) | Neon branch setup, Resend templates (`emails/`), Playwright passkey/access E2E tests, production deployment checklist, and failure troubleshooting. |
+| [**06 — Application User Manual**](./docs/06-APPLICATION-USER-MANUAL.md) | End-user guide for Sign-In, Invites, PWA install, `Bills` auditing, `Split` itemized splitting, Trip mode, Bar Rounds, settlements, and Review Scout. |
+| [**07 — Mobile Design Plan**](./docs/07-MOBILE-DESIGN-PLAN.md) | Complete iOS & Android native mobile product specification & 18-screen navigation blueprint for TallyBack (`Bills` + `Split`). |

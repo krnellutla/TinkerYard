@@ -44,8 +44,13 @@ export interface Split {
 
 export type Result = { ok: true; owed: Amounts } | { ok: false; error: string };
 
-// Share `total` cents in proportion to `weights`, exactly: the leftover cents go to the largest
-// remainders (earliest first on a tie), so the parts always add up to the total.
+/**
+ * Allocates `total` integer cents proportionally across `weights` using the Largest Remainder Method
+ * so the returned parts always sum to `total` with zero lost cents.
+ * @param total Total integer cents to distribute.
+ * @param weights Relative non-negative weights per participant.
+ * @returns Integer-cent shares aligned with `weights`.
+ */
 export function allocate(total: number, weights: number[]): number[] {
   const sum = weights.reduce((a, b) => a + b, 0);
   if (sum <= 0) return weights.map(() => 0);
@@ -63,6 +68,12 @@ export function allocate(total: number, weights: number[]): number[] {
 
 const sumOf = (a: Amounts) => Object.values(a).reduce((x, y) => x + y, 0);
 
+/**
+ * Splits `total` integer cents across `split.members` using the configured split method (`equal`, `exact`, `percent`, `shares`, or `itemized`).
+ * @param total Total expense amount in integer cents.
+ * @param split Split specification including member IDs and per-member values.
+ * @returns Either `{ ok: true, owed }` summing to `total`, or `{ ok: false, error }`.
+ */
 export function splitAmount(total: number, split: Split): Result {
   const ids = [...new Set(split.members)];
   if (!Number.isSafeInteger(total) || total <= 0) return { ok: false, error: "Enter an amount above zero." };
@@ -111,8 +122,14 @@ export interface ItemizedResult {
   extrasCents: number; // totalCents - itemsSumCents
 }
 
-// Split an itemized bill across members with proportional distribution of tax, service charge,
-// discounts, and rounding (`total - sum(items)`), using `allocate()` so every cent is accounted for.
+/**
+ * Distributes an itemized receipt across claimants while allocating tax, service charges,
+ * discounts, and rounding (`total - sum(items)`) proportionally to each member's item subtotal.
+ * @param total Receipt total in integer cents.
+ * @param items Line items with cent amounts and claiming member IDs.
+ * @param allMembers Candidate member IDs in the group.
+ * @returns Breakdown with per-member `owed`, `itemSubtotals`, and `extrasAllocated`, or a validation error.
+ */
 export function allocateItemized(
   total: number,
   items: ReceiptItemAllocationInput[],
@@ -180,7 +197,12 @@ export function allocateItemized(
   };
 }
 
-// Who paid: one person the whole amount, or several people amounts that add up to the total.
+/**
+ * Validates that payer contributions are non-negative whole cents summing exactly to `total`.
+ * @param total Expense total in integer cents.
+ * @param paid Map of member ID to cents paid.
+ * @returns Error message string if invalid, or `null` when valid.
+ */
 export function checkPaid(total: number, paid: Amounts): string | null {
   const entries = Object.entries(paid).filter(([, c]) => c !== 0);
   if (!entries.length) return "Choose who paid.";

@@ -35,7 +35,11 @@ export const CURRENCY_NAMES: Record<SpendCurrency, string> = {
   GBP: "British pound",
 };
 
-// "12.5", "1,234.56", 12.5 → cents; anything else → null. Negative and zero amounts are refused.
+/**
+ * Parses a positive decimal amount string or number into whole integer cents.
+ * @param input User-entered amount (e.g., `"12.5"`, `"1,234.56"`).
+ * @returns Positive safe integer cents, or `null` for invalid, zero, or negative inputs.
+ */
 export function toCents(input: string | number): number | null {
   const text = typeof input === "number" ? String(input) : input.replace(/[,\s]/g, "");
   if (!/^\d+(\.\d{0,2})?$|^\.\d{1,2}$/.test(text)) return null;
@@ -43,7 +47,12 @@ export function toCents(input: string | number): number | null {
   return cents > 0 && Number.isSafeInteger(cents) ? cents : null;
 }
 
-// Cents → "12.50" (or "1500" for yen and the like), for prefilling inputs.
+/**
+ * Formats integer cents for prefilling text inputs, omitting decimals for zero-decimal currencies.
+ * @param cents Amount in integer cents (stored at 100x scale even for zero-decimal currencies).
+ * @param currency Optional ISO-4217 code (e.g., `"JPY"`).
+ * @returns Plain numeric string without grouping or symbol.
+ */
 export const centsToInput = (cents: number, currency?: string) => (currency && noCents(currency) ? String(Math.round(cents / 100)) : (cents / 100).toFixed(2));
 
 // Fixed symbols and grouping, so S$ never reads as US$ and the server and browser print the same text.
@@ -68,6 +77,12 @@ const SYMBOLS: Record<string, string> = {
 };
 export const symbolOf = (currency: string) => SYMBOLS[currency] ?? `${currency} `;
 
+/**
+ * Formats integer cents with fixed currency symbols and consistent locale grouping.
+ * @param cents Signed amount in integer cents.
+ * @param currency ISO-4217 currency code.
+ * @returns Formatted currency string (e.g., `"S$1,234.56"` or `"−₹5.00"`).
+ */
 export function formatMoney(cents: number, currency: string): string {
   const d = noCents(currency) ? 0 : 2;
   const n = (Math.abs(cents) / 100).toLocaleString("en", { minimumFractionDigits: d, maximumFractionDigits: d });
@@ -77,9 +92,21 @@ export function formatMoney(cents: number, currency: string): string {
 // ---- converting ----
 // A rate is how much of the group's currency one unit of the spent currency buys (1 PHP = 0.0203 SGD).
 
+/**
+ * Converts integer cents between currencies using `rate`, rounding to the nearest whole cent.
+ * @param cents Source integer cents.
+ * @param rate Exchange multiplier from source currency to target currency.
+ * @returns Converted integer cents.
+ */
 export const convert = (cents: number, rate: number) => Math.round(cents * rate);
 
-// From a table of "1 base = x other" (what the rates services publish), the rate for one `from` in `to`.
+/**
+ * Computes the cross-rate between `from` and `to` given a base-currency rate table.
+ * @param table Rate table keyed by ISO-4217 code relative to `table.base`.
+ * @param from Spent currency code.
+ * @param to Group currency code.
+ * @returns Exchange multiplier, or `null` if either currency is unavailable.
+ */
 export function rateBetween(table: { base: string; rates: Record<string, number> }, from: string, to: string): number | null {
   const per = (c: string) => (c === table.base ? 1 : table.rates[c]);
   const f = per(from);

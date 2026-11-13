@@ -9,6 +9,13 @@ const CHARGE_KINDS = new Set(["item", "fee", "late_fee", "subscription", "other"
 const signed = (l: ExtractedLine) =>
   l.kind === "discount" || l.kind === "payment" ? -Math.abs(toCents(l.amount)) : toCents(l.amount);
 
+/**
+ * Runs deterministic line-item, subtotal, tax-arithmetic, statutory rate, grand-total,
+ * promise-expectation, and late-fee checks on an extracted receipt.
+ * @param ex Normalized bill extraction from the Vision OCR pipeline.
+ * @param promise User-entered expectations (expected total, inclusive tax, payment date, disputed lines).
+ * @returns Audit verdict (`all_ok`, `query`, or `dispute`), primary finding, all findings, and check proofs.
+ */
 export function runChecks(ex: Extraction, promise: Promise): CheckResult {
   const cur = ex.currency ?? "";
   const m = (c: number) => fmt(fromCents(c), cur);
