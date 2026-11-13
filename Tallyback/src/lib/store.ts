@@ -6,6 +6,7 @@ import os from "os";
 import path from "path";
 import type { CheckResult, Extraction, ExtractedLine, Promise as BillPromise } from "./types";
 import { maskDigits } from "./mask";
+import { wordsChanged } from "./message";
 import { SCHEMA, TABLES, type Table } from "./db/schema";
 import type { Owner } from "@signin/owner";
 import { ATTACHMENT_MODEL } from "./upload";
@@ -196,21 +197,18 @@ export async function saveBill(owner: Owner, ex: Extraction, imagePath: string |
 }
 
 export async function saveCheck(billId: string, owner: Owner, lineIds: string[], promise: BillPromise, result: CheckResult) {
-  // Promises are rows, so "what was I promised, and when did it change?" is a query.
-  await insert("promises", [
-    {
-      id: uuid(),
-      bill_id: billId,
-      device_id: owner.deviceId,
-      expected_total: promise.expectedTotal,
-      prices_include_tax: promise.pricesIncludeTax,
-      paid_on: promise.paidOn,
-      line_expected: promise.lineExpected,
-      unrecognised: promise.unrecognised,
-      created_at: now(),
-    },
-  ]);
   const ids: Record<string, string> = {};
+  const promiseRow = {
+    id: uuid(),
+    bill_id: billId,
+    device_id: owner.deviceId,
+    expected_total: promise.expectedTotal,
+    prices_include_tax: promise.pricesIncludeTax,
+    paid_on: promise.paidOn,
+    line_expected: promise.lineExpected,
+    unrecognised: promise.unrecognised,
+    created_at: now(),
+  };
   const rows = result.findings.map((f) => {
     const id = uuid();
     ids[f.id] = id;
@@ -228,7 +226,22 @@ export async function saveCheck(billId: string, owner: Owner, lineIds: string[],
       created_at: now(),
     };
   });
-  if (rows.length) await insert("findings", rows);
+  const sql = await db();
+  if (!sql) {
+    const data = await localAll();
+    data.promises = [...(data.promises ?? []), promiseRow];
+    data.findings = [...(data.findings ?? []).filter((f) => f.bill_id !== billId), ...rows];
+    await localWrite(data);
+    return ids;
+  }
+  const stmts = [
+    sql.query(`insert into promises select * from json_populate_recordset(null::promises, $1::json)`, [JSON.stringify([promiseRow])]),
+    sql.query(`delete from findings where bill_id = $1`, [billId]),
+  ];
+  if (rows.length) {
+    stmts.push(sql.query(`insert into findings select * from json_populate_recordset(null::findings, $1::json)`, [JSON.stringify(rows)]));
+  }
+  await sql.transaction(stmts);
   return ids;
 }
 
@@ -255,18 +268,33 @@ export async function saveDraft(m: {
 }
 
 // Only a message drafted for this bill: the caller has already checked who owns the bill.
-export async function markSent(billId: string, messageId: string, sentText: string, wordsChanged: number, channel: string) {
+export async function markSent(
+  billId: string,
+  messageId: string,
+  sentText: string,
+  fallbackDrafted: string,
+  channel: string,
+): Promise<number> {
   const sql = await db();
   if (!sql) {
     const data = await localAll();
-    if (!(data.messages ?? []).some((m) => m.id === messageId && m.bill_id === billId)) return;
-    return update("messages", messageId, { sent_text: sentText, words_changed: wordsChanged, channel, sent_at: now() });
+    const row = (data.messages ?? []).find((m) => m.id === messageId && m.bill_id === billId);
+    const changed = wordsChanged(typeof row?.drafted_text === "string" ? row.drafted_text : fallbackDrafted, sentText);
+    if (!row) return changed;
+    await update("messages", messageId, { sent_text: sentText, words_changed: changed, channel, sent_at: now() });
+    return changed;
   }
-  if (!/^[0-9a-f-]{36}$/i.test(messageId)) return;
-  await sql.query(
-    `update messages set sent_text = $3, words_changed = $4, channel = $5, sent_at = now() where id = $1 and bill_id = $2`,
-    [messageId, billId, sentText, wordsChanged, channel],
-  );
+  if (!/^[0-9a-f-]{36}$/i.test(messageId)) return wordsChanged(fallbackDrafted, sentText);
+  const existing = await selectJson(sql, `select drafted_text from messages where id = $1 and bill_id = $2`, [messageId, billId]);
+  const draftedText = typeof existing[0]?.drafted_text === "string" ? existing[0].drafted_text : fallbackDrafted;
+  const changed = wordsChanged(draftedText, sentText);
+  if (existing[0]) {
+    await sql.query(
+      `update messages set sent_text = $3, words_changed = $4, channel = $5, sent_at = now() where id = $1 and bill_id = $2`,
+      [messageId, billId, sentText, changed, channel],
+    );
+  }
+  return changed;
 }
 
 // ---------- Reads for "My bills" ----------
@@ -332,9 +360,11 @@ const ownerSql = (owner: Owner, n: number) =>
   owner.userId ? { where: `user_id = $${n}`, param: owner.userId } : { where: `device_id = $${n} and user_id is null`, param: owner.deviceId };
 const ownsRow = (b: Row, owner: Owner) => (owner.userId ? b.user_id === owner.userId : b.device_id === owner.deviceId && !b.user_id);
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 // First time a signed-in person opens their bills on a device: that device's guest bills become theirs.
 export async function claimDevice(owner: Owner) {
-  if (!owner.userId || !owner.deviceId) return;
+  if (!owner.userId || !UUID_RE.test(owner.deviceId)) return;
   const sql = await db();
   if (!sql) {
     const data = await localAll();
@@ -384,8 +414,24 @@ export async function findBill(id: string, owner: Owner): Promise<Row | null> {
 }
 
 export async function getBill(id: string, owner: Owner): Promise<StoredBill | null> {
-  const all = await listBills(owner, 200);
-  return all.find((b) => b.bill.id === id) ?? null;
+  const bill = await findBill(id, owner);
+  if (!bill) return null;
+  const sql = await db();
+  if (!sql) {
+    const data = await localAll();
+    return {
+      bill,
+      lines: (data.line_items ?? []).filter((l) => l.bill_id === id),
+      promise: newest((data.promises ?? []).filter((p) => p.bill_id === id))[0] ?? null,
+      messages: newest((data.messages ?? []).filter((m) => m.bill_id === id)),
+    };
+  }
+  const [lines, promises, messages] = await Promise.all([
+    selectJson(sql, `select * from line_items where bill_id = $1 order by position asc`, [id]),
+    selectJson(sql, `select * from promises where bill_id = $1 order by created_at desc limit 1`, [id]),
+    selectJson(sql, `select * from messages where bill_id = $1 order by created_at desc`, [id]),
+  ]);
+  return { bill, lines, promise: promises[0] ?? null, messages };
 }
 
 // Photos are private: the page asks our server, which checks the owner before streaming it.
@@ -398,9 +444,31 @@ export function photoUrl(bill: Row, deviceId: string): string | null {
 // Earlier lines from the same shop, for this owner, for "has this shown up before?"
 export async function pastLines(owner: Owner, merchant: string | null, excludeBillId: string) {
   if (!merchant) return [];
-  const all = await listBills(owner, 200);
   const key = merchant.trim().toLowerCase();
-  return all
-    .filter((b) => b.bill.id !== excludeBillId && String(b.bill.merchant_name ?? "").trim().toLowerCase() === key)
-    .flatMap((b) => toExtraction(b.bill, b.lines).lines.map((l) => ({ ...l, bill_date: (b.bill.bill_date as string) ?? String(b.bill.created_at).slice(0, 10) })));
+  const sql = await db();
+  if (!sql) {
+    const all = await listBills(owner, 200);
+    return all
+      .filter((b) => b.bill.id !== excludeBillId && String(b.bill.merchant_name ?? "").trim().toLowerCase() === key)
+      .flatMap((b) => toExtraction(b.bill, b.lines).lines.map((l) => ({ ...l, bill_date: (b.bill.bill_date as string) ?? String(b.bill.created_at).slice(0, 10) })));
+  }
+  if (!UUID_RE.test(excludeBillId)) return [];
+  const o = ownerSql(owner, 1);
+  const rows = await selectJson(
+    sql,
+    `select l.*, b.bill_date, b.created_at as bill_created_at
+     from line_items l
+     join bills b on b.id = l.bill_id
+     where ${o.where}
+       and b.id <> $2::uuid
+       and lower(trim(coalesce(b.merchant_name, ''))) = $3
+       and b.model is distinct from '${ATTACHMENT_MODEL}'
+     order by b.created_at desc, l.position asc
+     limit 500`,
+    [o.param, excludeBillId, key],
+  );
+  return rows.map((r) => ({
+    ...toExtraction({} as Row, [r]).lines[0],
+    bill_date: (r.bill_date as string) ?? String(r.bill_created_at).slice(0, 10),
+  }));
 }

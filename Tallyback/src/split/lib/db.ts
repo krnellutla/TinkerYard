@@ -79,6 +79,7 @@ const SCHEMA = [
     created_at timestamptz not null default now()
   )`,
   `create index if not exists sb_comments_group_idx on sb_comments (group_id)`,
+  `create index if not exists sb_comments_expense_idx on sb_comments (expense_id)`,
   `alter table sb_comments add column if not exists deleted_at timestamptz`,
   `create table if not exists sb_activity (
     id uuid primary key,

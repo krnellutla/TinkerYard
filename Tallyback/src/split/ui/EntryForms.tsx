@@ -5,7 +5,7 @@ import { runChecks } from "@tallyback/lib/checks";
 import { billToDraft } from "../lib/fromBill";
 import { CURRENCY_NAMES, SPEND_CURRENCIES, centsToInput, convert, formatMoney, formatRate, isSpendCurrency, rateBetween, toCents } from "../lib/money";
 import { ProgressRing } from "@ui/ProgressRing";
-import { SPLIT_METHODS, allocateItemized, checkPaid, splitAmount, type SplitMethod } from "../lib/split";
+import { SPLIT_METHODS, allocate, allocateItemized, checkPaid, splitAmount, type Split, type SplitMethod } from "../lib/split";
 import type { BillDraft, ClaimableReceiptLine } from "../lib/fromBill";
 import { REPEATS, type Repeat } from "../lib/repeat";
 import { isDrink } from "../lib/drinks";
@@ -51,7 +51,8 @@ export function ExpenseForm({
     draft?.printedAmountCents != null &&
     draft?.verifiedAmountCents != null &&
     draft.verifiedAmountCents < draft.printedAmountCents;
-  const [useVerifiedTotal, setUseVerifiedTotal] = useState(true);
+  const savedItemized = s?.itemized;
+  const [useVerifiedTotal, setUseVerifiedTotal] = useState(savedItemized?.useVerifiedTotal ?? true);
 
   // The currency it was spent in: the group's, or another (pesos on a trip from Singapore). A scanned
   // bill's own currency is picked up by itself.
@@ -68,7 +69,13 @@ export function ExpenseForm({
 
   const [description, setDescription] = useState(expense?.description ?? draft?.description ?? "");
   const [amountText, setAmountText] = useState(
-    expense ? (expense.original ? centsToInput(expense.original.amount, expense.original.currency) : centsToInput(expense.amount)) : draft?.amount ? centsToInput(draft.amount) : "",
+    expense
+      ? expense.original
+        ? centsToInput(expense.original.amount, expense.original.currency)
+        : centsToInput(expense.amount, group.currency)
+      : draft?.amount
+        ? centsToInput(draft.amount, billCurrency(draft) ?? group.currency)
+        : "",
   );
   const [date, setDate] = useState(expense?.date ?? draft?.date ?? today());
   const [category, setCategory] = useState<Category>(expense?.category ?? draft?.category ?? "general");
@@ -76,13 +83,28 @@ export function ExpenseForm({
   const [multiPaid, setMultiPaid] = useState<Record<string, string>>(
     Object.fromEntries(people.map((m) => [m.id, expense?.paid[m.id] && paidIds.length > 1 ? centsToInput(expense.paid[m.id]) : ""])),
   );
-  const [method, setMethod] = useState<SplitMethod>(s?.method ?? "equal");
-  const [itemMode, setItemMode] = useState<boolean>(!expense && (draft?.claimableLines?.length ?? 0) > 1);
-  const [itemLines, setItemLines] = useState<ClaimableReceiptLine[]>(() => draft?.claimableLines ?? []);
+  const [method, setMethod] = useState<SplitMethod>(s?.method === "itemized" ? "exact" : (s?.method ?? "equal"));
+  const initialLines: ClaimableReceiptLine[] =
+    savedItemized?.items?.map((it) => ({
+      lineIndex: it.lineIndex,
+      description: it.description,
+      qty: it.qty ?? null,
+      printedCents: it.printedCents,
+      verifiedCents: it.verifiedCents,
+      flagged: Boolean(it.flagged),
+      flagTitle: it.flagTitle,
+    })) ??
+    draft?.claimableLines ??
+    [];
+  const [itemMode, setItemMode] = useState<boolean>(Boolean(savedItemized?.items?.length) || (!expense && (draft?.claimableLines?.length ?? 0) > 1));
+  const [itemLines, setItemLines] = useState<ClaimableReceiptLine[]>(() => initialLines);
   const [itemClaims, setItemClaims] = useState<Record<number, string[]>>(() => {
+    if (savedItemized?.items?.length) {
+      return Object.fromEntries(savedItemized.items.map((it) => [it.lineIndex, it.members]));
+    }
     const activeIds = people.filter((m) => !m.removed).map((m) => m.id);
     return Object.fromEntries(
-      (draft?.claimableLines ?? []).map((line) => [
+      initialLines.map((line) => [
         line.lineIndex,
         // Flagged/unrecognized lines with 0 verified cents start unclaimed; normal items default to everyone
         line.flagged && line.verifiedCents === 0 ? [] : activeIds,
@@ -90,8 +112,15 @@ export function ExpenseForm({
     );
   });
   // Drinks on a receipt: guessed from each line's name, correctable, and non-drinkers come off them all in one tap.
-  const [drinkLines, setDrinkLines] = useState<Set<number>>(() => new Set((draft?.claimableLines ?? []).filter((l) => isDrink(l.description)).map((l) => l.lineIndex)));
-  const [nonDrinkers, setNonDrinkers] = useState<Set<string>>(new Set());
+  const [drinkLines, setDrinkLines] = useState<Set<number>>(
+    () =>
+      new Set(
+        savedItemized?.items?.length
+          ? savedItemized.items.filter((it) => it.isDrink ?? isDrink(it.description)).map((it) => it.lineIndex)
+          : initialLines.filter((l) => isDrink(l.description)).map((l) => l.lineIndex),
+      ),
+  );
+  const [nonDrinkers, setNonDrinkers] = useState<Set<string>>(() => new Set(savedItemized?.nonDrinkers ?? []));
   const [newItemDesc, setNewItemDesc] = useState("");
   const [newItemAmt, setNewItemAmt] = useState("");
 
@@ -130,8 +159,9 @@ export function ExpenseForm({
     const free = (k: string) => !typed.current.has(k);
     if (free("description") && d.description) setDescription(d.description);
     const cur = billCurrency(d);
+    const activeSpend = free("currency") && cur ? cur : spend;
     if (free("currency") && cur && cur !== spend) chooseCurrency(cur);
-    if (free("amount") && d.amount) setAmountText(centsToInput(d.amount));
+    if (free("amount") && d.amount) setAmountText(centsToInput(d.amount, activeSpend));
     if (free("date") && d.date) setDate(d.date);
     if (free("category")) setCategory(d.category);
     if (free("notes") && d.notes) setNotes(d.notes);
@@ -145,8 +175,21 @@ export function ExpenseForm({
     if (lines.length > 1) setItemMode(true);
   }
 
+  const blobRef = useRef<string | null>(null);
+  useEffect(
+    () => () => {
+      if (blobRef.current) URL.revokeObjectURL(blobRef.current);
+    },
+    [],
+  );
+
   async function readReceipt(file: File) {
+    if (blobRef.current) {
+      URL.revokeObjectURL(blobRef.current);
+      blobRef.current = null;
+    }
     const preview = file.type.startsWith("image/") ? URL.createObjectURL(file) : null;
+    if (preview) blobRef.current = preview;
     setReceipt({ kind: "scanning", preview });
     const out = await scanReceipt(file);
     if (out.kind === "read") {
@@ -216,7 +259,7 @@ export function ExpenseForm({
     setUseVerifiedTotal(verified);
     if (!draft) return;
     const targetCents = verified ? draft.verifiedAmountCents : draft.printedAmountCents;
-    if (targetCents != null) setAmountText(centsToInput(targetCents));
+    if (targetCents != null) setAmountText(centsToInput(targetCents, spend));
   }
 
   function toggleClaim(lineIndex: number, memberId: string) {
@@ -291,35 +334,68 @@ export function ExpenseForm({
   }
 
   const itemizedCalc = useMemo(() => {
-    if (!itemMode || !amount) return null;
-    const activeLines = itemLines
+    if (!itemMode || !amount || !entered) return null;
+    const memberIds = people.map((m) => m.id);
+    const nativeLines = itemLines
       .map((line) => ({
-        amountCents: inGroup(useVerifiedTotal ? line.verifiedCents : line.printedCents), // the bill's lines are in the currency it was spent in
+        amountCents: useVerifiedTotal ? line.verifiedCents : line.printedCents, // bill lines are in spend currency
         members: itemClaims[line.lineIndex] ?? [],
       }))
       .filter((l) => l.amountCents > 0);
-    return allocateItemized(
-      amount,
-      activeLines,
-      people.map((m) => m.id),
-    );
+    const nativeRes = allocateItemized(entered, nativeLines, memberIds);
+    if (!nativeRes.ok || !foreign) return nativeRes;
+
+    // Convert member totals smoothly in proportion while guaranteeing group-currency sum === `amount`
+    const weights = memberIds.map((id) => nativeRes.owed[id] ?? 0);
+    const convertedOwed = allocate(amount, weights);
+    const owed = Object.fromEntries(memberIds.map((id, i) => [id, convertedOwed[i]] as const).filter(([, c]) => c > 0));
+    const itemSubtotals = Object.fromEntries(Object.entries(nativeRes.itemSubtotals).map(([id, c]) => [id, inGroup(c)]));
+    const extrasAllocated = Object.fromEntries(memberIds.map((id) => [id, (owed[id] ?? 0) - (itemSubtotals[id] ?? 0)]).filter(([, c]) => c !== 0));
+    const itemsSumCents = inGroup(nativeRes.itemsSumCents);
+    return {
+      ok: true as const,
+      owed,
+      itemSubtotals,
+      extrasAllocated,
+      itemsSumCents,
+      extrasCents: amount - itemsSumCents,
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [itemMode, amount, itemLines, itemClaims, useVerifiedTotal, people, rate, foreign]);
+  }, [itemMode, amount, entered, itemLines, itemClaims, useVerifiedTotal, people, rate, foreign]);
 
   const paid = useMemo(
     () => (payer === "multiple" ? Object.fromEntries(people.map((m) => [m.id, blankIsZero(multiPaid[m.id] ?? "")])) : { [payer]: amount }),
     [payer, multiPaid, amount, people],
   );
-  const split = useMemo(() => {
+  const split = useMemo((): Split => {
     if (itemMode && itemizedCalc?.ok) {
       const members = people.map((m) => m.id);
       const nums = Object.fromEntries(members.map((id) => [id, itemizedCalc.owed[id] ?? 0]));
-      return { method: "exact" as SplitMethod, members, values: nums };
+      return {
+        method: "itemized",
+        members,
+        values: nums,
+        itemized: {
+          useVerifiedTotal,
+          nonDrinkers: [...nonDrinkers],
+          items: itemLines.map((l) => ({
+            lineIndex: l.lineIndex,
+            description: l.description,
+            qty: l.qty ?? null,
+            printedCents: l.printedCents,
+            verifiedCents: l.verifiedCents,
+            ...(l.flagged ? { flagged: true } : {}),
+            ...(l.flagTitle ? { flagTitle: l.flagTitle } : {}),
+            isDrink: drinkLines.has(l.lineIndex),
+            members: itemClaims[l.lineIndex] ?? [],
+          })),
+        },
+      };
     }
     const members = method === "equal" ? [...included] : people.map((m) => m.id);
     const nums = Object.fromEntries(members.map((id) => [id, method === "exact" ? blankIsZero(values[id] ?? "") : Number(values[id] || 0)]));
     return { method, members, values: method === "equal" ? undefined : nums };
-  }, [itemMode, itemizedCalc, method, included, values, people]);
+  }, [itemMode, itemizedCalc, useVerifiedTotal, nonDrinkers, itemLines, drinkLines, itemClaims, method, included, values, people]);
 
   const result = amount
     ? itemMode && itemizedCalc
@@ -362,7 +438,7 @@ export function ExpenseForm({
 
   const activeIds = group.members.filter((m) => !m.removed).map((m) => m.id);
   const suggested = !expense && activeIds.length > 1 && group.expenses.some((x) => !x.deleted) ? payOrder(activeIds, group.balances, lastPaidDates(group.expenses))[0] : null;
-  const unit = { exact: group.currency, percent: "%", shares: "shares", equal: "" }[method];
+  const unit = { exact: group.currency, itemized: group.currency, percent: "%", shares: "shares", equal: "" }[method];
   const scanning = receipt.kind === "scanning";
   const saveLabel = busy ? "Saving…" : problem && amount && description.trim() ? problem : amount ? `Save · ${formatMoney(amount, group.currency)}` : "Save";
   return (
@@ -688,20 +764,20 @@ export function ExpenseForm({
                   value={newItemDesc}
                   onChange={(e) => setNewItemDesc(e.target.value)}
                   placeholder="Add item (e.g. Laksa)"
-                  className={`${fieldBase} h-9 min-w-0 flex-1 text-xs`}
+                  className={`${fieldBase} h-11 min-w-0 flex-1 text-xs`}
                 />
                 <input
                   inputMode="decimal"
                   value={newItemAmt}
                   onChange={(e) => setNewItemAmt(e.target.value)}
                   placeholder="0.00"
-                  className={`${fieldBase} h-9 w-24 text-right font-mono text-xs`}
+                  className={`${fieldBase} h-11 w-24 text-right font-mono text-xs`}
                 />
                 <button
                   type="button"
                   onClick={addCustomItem}
                   disabled={!newItemDesc.trim() || !toCents(newItemAmt)}
-                  className="rounded-xl border border-line bg-paper px-3 text-xs font-medium disabled:opacity-40"
+                  className="min-h-11 rounded-xl border border-line bg-paper px-3 text-xs font-medium disabled:opacity-40"
                 >
                   + Item
                 </button>
@@ -718,8 +794,8 @@ export function ExpenseForm({
                       Proportional tax / service / extras
                       {draft?.extras && (draft.extras.serviceChargeCents > 0 || draft.extras.taxAddedCents > 0)
                         ? ` (${[
-                            draft.extras.serviceChargeCents > 0 ? `svc ${formatMoney(draft.extras.serviceChargeCents, group.currency)}` : "",
-                            draft.extras.taxAddedCents > 0 ? `tax ${formatMoney(draft.extras.taxAddedCents, group.currency)}` : "",
+                            draft.extras.serviceChargeCents > 0 ? `svc ${formatMoney(inGroup(draft.extras.serviceChargeCents), group.currency)}` : "",
+                            draft.extras.taxAddedCents > 0 ? `tax ${formatMoney(inGroup(draft.extras.taxAddedCents), group.currency)}` : "",
                           ]
                             .filter(Boolean)
                             .join(" + ")})`

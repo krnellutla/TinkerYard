@@ -5,8 +5,8 @@
 //   percent — type each person's percentage; they must add up to 100
 //   shares  — type weights (e.g. 2 nights vs 3 nights); split in proportion
 
-export type SplitMethod = "equal" | "exact" | "percent" | "shares";
-export const SPLIT_METHODS: { id: SplitMethod; label: string }[] = [
+export type SplitMethod = "equal" | "exact" | "percent" | "shares" | "itemized";
+export const SPLIT_METHODS: { id: Exclude<SplitMethod, "itemized">; label: string }[] = [
   { id: "equal", label: "Equally" },
   { id: "exact", label: "Exact amounts" },
   { id: "percent", label: "Percentages" },
@@ -15,12 +15,31 @@ export const SPLIT_METHODS: { id: SplitMethod; label: string }[] = [
 
 export type Amounts = Record<string, number>; // member id → cents
 
+export interface SavedReceiptItem {
+  lineIndex: number;
+  description: string;
+  qty?: number | null;
+  printedCents: number;
+  verifiedCents: number;
+  flagged?: boolean;
+  flagTitle?: string;
+  isDrink?: boolean;
+  members: string[];
+}
+
+export interface SavedItemizedSplit {
+  useVerifiedTotal: boolean;
+  nonDrinkers: string[];
+  items: SavedReceiptItem[];
+}
+
 // What the person typed, kept so the expense can be edited the same way later.
 // values: exact → cents, percent → percent, shares → weight. Unused for equal.
 export interface Split {
   method: SplitMethod;
   members: string[];
   values?: Record<string, number>;
+  itemized?: SavedItemizedSplit;
 }
 
 export type Result = { ok: true; owed: Amounts } | { ok: false; error: string };
@@ -54,7 +73,8 @@ export function splitAmount(total: number, split: Split): Result {
   switch (split.method) {
     case "equal":
       return { ok: true, owed: zip(allocate(total, ids.map(() => 1))) };
-    case "exact": {
+    case "exact":
+    case "itemized": {
       if (ids.some((id) => !Number.isInteger(v(id)) || v(id) < 0)) return { ok: false, error: "Check each amount: whole cents, not negative." };
       const owed = zip(ids.map(v));
       const diff = total - sumOf(owed);

@@ -10,10 +10,14 @@ export async function shrink(file: File): Promise<Blob> {
   } catch {
     return file; // e.g. HEIC on some browsers: send as-is, the server can still read it
   }
-  const scale = Math.min(1, 1600 / Math.max(img.width, img.height));
-  const c = document.createElement("canvas");
-  c.width = Math.round(img.width * scale);
-  c.height = Math.round(img.height * scale);
-  c.getContext("2d")!.drawImage(img, 0, 0, c.width, c.height);
-  return new Promise((res) => c.toBlob((b) => res(b ?? file), "image/jpeg", 0.85));
+  try {
+    const scale = Math.min(1, 1600 / Math.max(img.width, img.height));
+    const c = document.createElement("canvas");
+    c.width = Math.round(img.width * scale);
+    c.height = Math.round(img.height * scale);
+    c.getContext("2d")!.drawImage(img, 0, 0, c.width, c.height);
+    return await new Promise((res) => c.toBlob((b) => res(b ?? file), "image/jpeg", 0.85));
+  } finally {
+    img.close();
+  }
 }

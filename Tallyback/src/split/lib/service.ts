@@ -72,9 +72,30 @@ const expenseIn = z.object({
   date: day,
   paid: z.record(z.string(), z.number().int()),
   split: z.object({
-    method: z.enum(["equal", "exact", "percent", "shares"]),
+    method: z.enum(["equal", "exact", "percent", "shares", "itemized"]),
     members: z.array(z.string()).min(1).max(100),
     values: z.record(z.string(), z.number()).optional(),
+    itemized: z
+      .object({
+        useVerifiedTotal: z.boolean(),
+        nonDrinkers: z.array(z.string()).max(100),
+        items: z
+          .array(
+            z.object({
+              lineIndex: z.number().int().nonnegative(),
+              description: z.string().trim().min(1).max(200),
+              qty: z.number().positive().nullable().optional(),
+              printedCents: z.number().int().nonnegative(),
+              verifiedCents: z.number().int().nonnegative(),
+              flagged: z.boolean().optional(),
+              flagTitle: z.string().max(200).optional(),
+              isDrink: z.boolean().optional(),
+              members: z.array(z.string()).max(100),
+            }),
+          )
+          .max(200),
+      })
+      .optional(),
   }),
   notes: z.string().max(1000).default(""),
   // The receipt's bill id, from your own scan; null removes it, absent leaves it as it is.

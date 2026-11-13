@@ -186,3 +186,20 @@ test("verify first, split fairly: billToDraft excludes disputed overcharge by de
   assert.equal(draft.claimableLines?.[1].printedCents, 4000);
   assert.equal(draft.claimableLines?.[1].verifiedCents, 3200);
 });
+
+test("itemized split method persists receipt line claims and validates exact totals", () => {
+  const res = splitAmount(8633, {
+    method: "itemized",
+    members: ["alice", "bob"],
+    values: { alice: 3117, bob: 5516 },
+    itemized: {
+      useVerifiedTotal: true,
+      nonDrinkers: ["bob"],
+      items: [
+        { lineIndex: 0, description: "Laksa", printedCents: 2000, verifiedCents: 2000, members: ["alice"] },
+        { lineIndex: 1, description: "Steak", printedCents: 4000, verifiedCents: 4000, members: ["bob"] },
+      ],
+    },
+  });
+  assert.deepEqual(res, { ok: true, owed: { alice: 3117, bob: 5516 } });
+});

@@ -113,6 +113,22 @@ export default function Home() {
     return m;
   }, [result]);
 
+  const blobUrlRef = useRef<string | null>(null);
+  const setNextPreview = (url: string | null) => {
+    if (blobUrlRef.current && blobUrlRef.current !== url) {
+      URL.revokeObjectURL(blobUrlRef.current);
+      blobUrlRef.current = null;
+    }
+    if (url?.startsWith("blob:")) blobUrlRef.current = url;
+    setPreview(url);
+  };
+  useEffect(
+    () => () => {
+      if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
+    },
+    [],
+  );
+
   async function scan(file: File | null, sample = false) {
     setError(null);
     // Every TallyBack action needs an invited account (the sign-in wall normally gets there first).
@@ -132,14 +148,14 @@ export default function Home() {
     fd.append("deviceId", deviceId());
     if (sample) {
       fd.append("sample", "1");
-      setPreview("/tallyback/sample-receipt.jpg");
+      setNextPreview("/tallyback/sample-receipt.jpg");
       setIsPdf(false);
     }
     try {
       if (!sample && file) {
         const pdf = file.type === "application/pdf";
         setIsPdf(pdf);
-        setPreview(pdf ? null : URL.createObjectURL(file));
+        setNextPreview(pdf ? null : URL.createObjectURL(file));
         const blob = await shrink(file);
         if (blob.size > MAX_UPLOAD) throw new Error("That file is too large (over 4 MB). Try a photo of the bill instead.");
         fd.append("file", blob, pdf ? file.name : blob === file ? file.name : "bill.jpg");
@@ -195,7 +211,7 @@ export default function Home() {
   function reset() {
     setStage("start");
     setEx(null);
-    setPreview(null);
+    setNextPreview(null);
     setError(null);
   }
 
@@ -210,7 +226,7 @@ export default function Home() {
       setBillId(j.billId);
       setLineIds(j.lineIds);
       setPromise(j.promise);
-      setPreview(j.imageUrl);
+      setNextPreview(j.imageUrl);
       setIsPdf(!j.imageUrl);
       setHistory(j.history ?? {});
       setLastMessage(j.lastMessage);
@@ -225,7 +241,7 @@ export default function Home() {
   }
 
   return (
-    <main className="mx-auto min-h-dvh max-w-xl px-4 pb-24 pt-6">
+    <main className={`mx-auto min-h-dvh px-4 pb-24 pt-6 ${tab === "bills" && stage === "review" ? "max-w-xl md:max-w-4xl" : "max-w-xl"}`}>
       <header className="mb-6 flex items-center justify-between gap-3">
         <button
           onClick={() => {
@@ -365,51 +381,55 @@ function Review(props: {
   const showInclusive = ex.tax_mode === "added" && (ex.printed_tax_total ?? 0) > 0;
 
   return (
-    <section className="space-y-5">
-      {lastMessage?.sentAt && (
-        <div className="rounded-2xl bg-good-soft p-3 text-sm text-good">
-          You sent a message about this bill on {new Date(lastMessage.sentAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}.
-        </div>
-      )}
-      {/* Bill with highlighted rows */}
-      <div className="rounded-2xl border border-line bg-card p-3">
-        <div className="mb-3 flex items-baseline justify-between px-1">
-          <div>
-            <p className="font-medium">{ex.merchant_name ?? "Bill"}</p>
-            <p className="text-xs text-muted">
-              {[ex.bill_type, ex.bill_date, ex.bill_number].filter(Boolean).join(" · ")}
-            </p>
-          </div>
-          {ex.printed_total != null && <p className="font-mono text-lg font-semibold">{fmt(ex.printed_total, cur)}</p>}
-        </div>
-        {props.preview && (
-          <div className="relative overflow-hidden rounded-xl">
-            <img src={props.preview} alt="Your bill" className="block w-full" />
-            {ex.lines.map((l, i) => {
-              const v = flagged.get(i);
-              if (!l.box_2d || (!v && selected !== i)) return null;
-              const [y0, x0, y1, x1] = l.box_2d;
-              const cls =
-                v === "wrong"
-                  ? "border-bad bg-bad/15 box-bad"
-                  : v === "unexplained"
-                    ? "border-bad bg-bad/10"
-                    : v === "info"
-                      ? "border-warn bg-warn/15"
-                      : "border-ink bg-ink/10";
-              return (
-                <button
-                  key={i}
-                  aria-label={l.description}
-                  onClick={() => setSelected(i)}
-                  className={`absolute rounded-md border-2 ${cls}`}
-                  style={{ top: `${y0 / 10}%`, left: `${x0 / 10}%`, height: `${(y1 - y0) / 10}%`, width: `${(x1 - x0) / 10}%` }}
-                />
-              );
-            })}
+    <section className="space-y-5 md:grid md:grid-cols-12 md:items-start md:gap-6 md:space-y-0">
+      <div className="space-y-5 md:sticky md:top-6 md:col-span-5">
+        {lastMessage?.sentAt && (
+          <div className="rounded-2xl bg-good-soft p-3 text-sm text-good">
+            You sent a message about this bill on {new Date(lastMessage.sentAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}.
           </div>
         )}
+        {/* Bill with highlighted rows */}
+        <div className="rounded-2xl border border-line bg-card p-3">
+          <div className="mb-3 flex items-baseline justify-between px-1">
+            <div>
+              <p className="font-medium">{ex.merchant_name ?? "Bill"}</p>
+              <p className="text-xs text-muted">
+                {[ex.bill_type, ex.bill_date, ex.bill_number].filter(Boolean).join(" · ")}
+              </p>
+            </div>
+            {ex.printed_total != null && <p className="font-mono text-lg font-semibold">{fmt(ex.printed_total, cur)}</p>}
+          </div>
+          {props.preview && (
+            <div className="relative overflow-hidden rounded-xl">
+              <img src={props.preview} alt="Your bill" className="block w-full" />
+              {ex.lines.map((l, i) => {
+                const v = flagged.get(i);
+                if (!l.box_2d || (!v && selected !== i)) return null;
+                const [y0, x0, y1, x1] = l.box_2d;
+                const cls =
+                  v === "wrong"
+                    ? "border-bad bg-bad/15 box-bad"
+                    : v === "unexplained"
+                      ? "border-bad bg-bad/10"
+                      : v === "info"
+                        ? "border-warn bg-warn/15"
+                        : "border-ink bg-ink/10";
+                return (
+                  <button
+                    key={i}
+                    aria-label={l.description}
+                    onClick={() => setSelected(i)}
+                    className={`absolute rounded-md border-2 ${cls}`}
+                    style={{ top: `${y0 / 10}%`, left: `${x0 / 10}%`, height: `${(y1 - y0) / 10}%`, width: `${(x1 - x0) / 10}%` }}
+                  />
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
+
+      <div className="space-y-5 md:col-span-7">
 
       {/* Verdict */}
       {p ? (
@@ -522,7 +542,7 @@ function Review(props: {
                         const has = promise.unrecognised.includes(i);
                         setPromise({ ...promise, unrecognised: has ? promise.unrecognised.filter((x) => x !== i) : [...promise.unrecognised, i] });
                       }}
-                      className={`h-9 rounded-lg border px-3 ${promise.unrecognised.includes(i) ? "border-bad bg-bad text-white" : "border-line bg-card"}`}
+                      className={`min-h-11 rounded-lg border px-3 ${promise.unrecognised.includes(i) ? "border-bad bg-bad text-white" : "border-line bg-card"}`}
                     >
                       I don&apos;t recognise this
                     </button>
@@ -539,7 +559,7 @@ function Review(props: {
                         else le[i] = Number(e.target.value);
                         setPromise({ ...promise, lineExpected: le });
                       }}
-                      className="h-9 w-24 rounded-lg border border-line bg-paper px-2 font-mono"
+                      className="min-h-11 w-24 rounded-lg border border-line bg-paper px-2 font-mono"
                     />
                   </div>
                 )}
@@ -584,6 +604,7 @@ function Review(props: {
             ? `Split verified bill (${fmt(Math.max(0, ex.printed_total - p.diff), cur)})`
             : "Split this bill"}
         </button>
+      </div>
       </div>
     </section>
   );

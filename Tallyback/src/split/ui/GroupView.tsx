@@ -617,7 +617,19 @@ function ExpenseDetail({
             </li>
           ))}
         </ul>
-        {e.split && e.split.method !== "equal" && <p className="text-xs text-muted">Split by {e.split.method === "exact" ? "exact amounts" : e.split.method === "percent" ? "percentages" : "shares"}.</p>}
+        {e.split && e.split.method !== "equal" && (
+          <p className="text-xs text-muted">
+            Split by{" "}
+            {e.split.method === "itemized"
+              ? `receipt items (${e.split.itemized?.items.length ?? e.split.members.length} items)`
+              : e.split.method === "exact"
+                ? "exact amounts"
+                : e.split.method === "percent"
+                  ? "percentages"
+                  : "shares"}
+            .
+          </p>
+        )}
         {e.repeat !== "never" && !e.deleted && (
           <p className="rounded-2xl bg-card p-3 text-sm">
             🔁 {REPEATS.find((r) => r.id === e.repeat)?.label}
@@ -793,7 +805,7 @@ function Settings({ g, onClose, onChanged, onDeleted }: { g: GroupDetail; onClos
                       const n = prompt("Name", m.name);
                       if (n && n.trim() && n.trim() !== m.name) act(() => api(`/groups/${g.id}/members/${m.id}`, "PATCH", { name: n.trim(), email: m.email ?? "" }));
                     }}
-                    className="px-1 py-2 text-xs text-muted underline"
+                    className="min-h-11 px-2.5 py-2 text-xs text-muted underline"
                   >
                     Rename
                   </button>
@@ -806,7 +818,7 @@ function Settings({ g, onClose, onChanged, onDeleted }: { g: GroupDetail; onClos
                         if (m.id === g.meId) onDeleted();
                       })
                     }
-                    className="px-1 py-2 text-xs text-bad underline"
+                    className="min-h-11 px-2.5 py-2 text-xs text-bad underline"
                   >
                     {m.id === g.meId ? "Leave" : "Remove"}
                   </button>
