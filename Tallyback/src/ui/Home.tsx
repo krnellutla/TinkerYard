@@ -16,6 +16,8 @@ import { billToDraft, type BillDraft } from "@tallyback/split/lib/fromBill";
 import { SplitPanel } from "@tallyback/split/ui/SplitPanel";
 
 type Stage = "start" | "scanning" | "review" | "bills";
+// Feature flag: hide standalone bill scanning & focus on Split by default.
+export const ENABLE_BILL_SCAN = false;
 // Two halves of one app: check a bill, or split costs with friends (Tallyback/src/split).
 type Tab = "bills" | "split";
 
@@ -68,7 +70,7 @@ async function readJson(r: Response): Promise<any> {
 }
 
 export default function Home() {
-  const [tab, setTab] = useState<Tab>("bills");
+  const [tab, setTab] = useState<Tab>(ENABLE_BILL_SCAN ? "bills" : "split");
   const [groupId, setGroupId] = useState<string | null>(null);
   const [draft, setDraft] = useState<BillDraft | null>(null); // a checked bill on its way into a group
   const [stage, setStage] = useState<Stage>("start");
@@ -182,7 +184,7 @@ export default function Home() {
   useEffect(() => {
     const read = () => {
       const q = new URL(window.location.href).searchParams;
-      setTab(q.get("tab") === "split" || q.get("g") ? "split" : "bills");
+      setTab(!ENABLE_BILL_SCAN || q.get("tab") === "split" || q.get("g") ? "split" : "bills");
       setGroupId(q.get("g"));
     };
     read();
@@ -191,13 +193,16 @@ export default function Home() {
   }, []);
 
   function go(next: Tab, group: string | null = null) {
+    const resolved: Tab = ENABLE_BILL_SCAN ? next : "split";
     const url = new URL(window.location.href);
     url.searchParams.delete("g");
-    if (next === "split") url.searchParams.set("tab", "split");
-    else url.searchParams.delete("tab");
+    if (resolved === "split") {
+      if (ENABLE_BILL_SCAN) url.searchParams.set("tab", "split");
+      else url.searchParams.delete("tab");
+    } else url.searchParams.delete("tab");
     if (group) url.searchParams.set("g", group);
     window.history.pushState(null, "", url.pathname + url.search);
-    setTab(next);
+    setTab(resolved);
     setGroupId(group);
     window.scrollTo(0, 0);
   }
@@ -246,18 +251,20 @@ export default function Home() {
         <button
           onClick={() => {
             reset();
-            go("bills");
+            go(ENABLE_BILL_SCAN ? "bills" : "split");
           }}
           className="flex items-center gap-2.5 text-left"
         >
           <Logo />
           <span className="flex flex-col leading-tight">
             <span className="text-lg font-semibold tracking-tight">TallyBack</span>
-            <span className="text-xs text-muted">Check every bill. Split it with friends.</span>
+            <span className="text-xs text-muted">
+              {ENABLE_BILL_SCAN ? "Check every bill. Split it with friends." : "Split bills & trips fairly with friends."}
+            </span>
           </span>
         </button>
         <span className="flex shrink-0 items-center gap-2">
-          {tab === "split" ? null : stage === "bills" ? (
+          {!ENABLE_BILL_SCAN || tab === "split" ? null : stage === "bills" ? (
             <button onClick={reset} className="shrink-0 rounded-full bg-ink px-3 py-1.5 text-sm font-medium text-white">
               + New bill
             </button>
@@ -270,24 +277,26 @@ export default function Home() {
         </span>
       </header>
 
-      <div role="tablist" aria-label="TallyBack" className="mb-6 flex gap-1 rounded-full border border-line bg-card p-1 text-sm">
-        {(
-          [
-            ["bills", "Bills"],
-            ["split", "Split with friends"],
-          ] as const
-        ).map(([id, label]) => (
-          <button
-            key={id}
-            role="tab"
-            aria-selected={tab === id}
-            onClick={() => go(id)}
-            className={`h-10 flex-1 rounded-full font-medium ${tab === id ? "bg-ink text-white" : "text-muted hover:text-ink"}`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      {ENABLE_BILL_SCAN && (
+        <div role="tablist" aria-label="TallyBack" className="mb-6 flex gap-1 rounded-full border border-line bg-card p-1 text-sm">
+          {(
+            [
+              ["bills", "Bills"],
+              ["split", "Split with friends"],
+            ] as const
+          ).map(([id, label]) => (
+            <button
+              key={id}
+              role="tab"
+              aria-selected={tab === id}
+              onClick={() => go(id)}
+              className={`h-10 flex-1 rounded-full font-medium ${tab === id ? "bg-ink text-white" : "text-muted hover:text-ink"}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {tab === "split" && (
         <SplitPanel

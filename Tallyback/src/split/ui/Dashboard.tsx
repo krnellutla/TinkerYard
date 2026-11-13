@@ -15,10 +15,22 @@ export function Dashboard({ onOpen, draft, onCancelDraft }: { onOpen: (id: strin
   const [activity, setActivity] = useState<Activity[] | null>(null);
   const [tab, setTab] = useState<Tab>("groups");
   const [creating, setCreating] = useState(false);
+  const [seedingDemo, setSeedingDemo] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [settling, setSettling] = useState<{ key: string; name: string; currency: string; amount: number; groups: number } | null>(null);
   const reload = () => api<DashboardData>("/groups").then(setData, (e) => setError(errorText(e)));
+  async function loadBangkokDemo() {
+    setSeedingDemo(true);
+    setError(null);
+    try {
+      const res = await api<{ groupId: string }>("/demo", "POST");
+      onOpen(res.groupId);
+    } catch (e) {
+      setError(errorText(e));
+      setSeedingDemo(false);
+    }
+  }
   useEffect(() => {
     reload();
   }, []);
@@ -95,27 +107,47 @@ export function Dashboard({ onOpen, draft, onCancelDraft }: { onOpen: (id: strin
 
       {!data && !error && <Loading label="Loading your groups" expectedMs={1500} />}
       {tab === "groups" &&
-        (data?.groups.length === 0 ? (
-          <Empty text="No groups yet. Start one for a trip, your flat or anything you split." action="Start a group" onAction={() => setCreating(true)} />
+        data &&
+        (data.groups.length === 0 ? (
+          <div className="space-y-3">
+            <Empty text="No groups yet. Start one for a trip, your flat or anything you split." action="Start a group" onAction={() => setCreating(true)} />
+            <div className="rounded-2xl border border-line bg-card p-4">
+              <p className="text-sm font-medium">Want to explore TallyBack Split with sample data?</p>
+              <p className="mt-0.5 text-xs text-muted">Loads a 5-friend Bangkok trip (`SGD` base, `THB` receipts, itemized splitting, and charts).</p>
+              <button type="button" onClick={loadBangkokDemo} disabled={seedingDemo} className={`${primary} mt-3`}>
+                {seedingDemo ? "Loading demo…" : "✨ Load 5-friend Bangkok Demo (SGD ↔ THB)"}
+              </button>
+            </div>
+          </div>
         ) : (
-          <ul className="space-y-2">
-            {data?.groups.map((g) => (
-              <li key={g.id}>
-                <button onClick={() => onOpen(g.id)} className="flex w-full items-center gap-3 rounded-2xl border border-line bg-card p-3 text-left active:scale-[.99]">
-                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-paper text-xl" aria-hidden="true">
-                    {kindOf(g.kind).icon}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate font-medium">{g.name}</span>
-                    <span className="text-xs text-muted">
-                      {g.members} member{g.members === 1 ? "" : "s"} · {g.currency}
+          <div className="space-y-3">
+            <ul className="space-y-2">
+              {data.groups.map((g) => (
+                <li key={g.id}>
+                  <button onClick={() => onOpen(g.id)} className="flex w-full items-center gap-3 rounded-2xl border border-line bg-card p-3 text-left active:scale-[.99]">
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-paper text-xl" aria-hidden="true">
+                      {kindOf(g.kind).icon}
                     </span>
-                  </span>
-                  <Standing cents={g.myBalance} currency={g.currency} className="text-right text-sm" />
-                </button>
-              </li>
-            ))}
-          </ul>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-medium">{g.name}</span>
+                      <span className="text-xs text-muted">
+                        {g.members} member{g.members === 1 ? "" : "s"} · {g.currency}
+                      </span>
+                    </span>
+                    <Standing cents={g.myBalance} currency={g.currency} className="text-right text-sm" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <button
+              type="button"
+              onClick={loadBangkokDemo}
+              disabled={seedingDemo}
+              className="flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-line bg-card/60 px-4 text-xs font-medium text-muted hover:text-ink active:scale-[.99]"
+            >
+              {seedingDemo ? "Loading Bangkok Demo…" : "✨ Load / Reset 5-friend Bangkok Demo (SGD ↔ THB)"}
+            </button>
+          </div>
         ))}
 
       {tab === "friends" &&

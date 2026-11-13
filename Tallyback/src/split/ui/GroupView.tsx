@@ -16,6 +16,9 @@ import { REPEATS } from "../lib/repeat";
 import type { BillDraft } from "../lib/fromBill";
 import { Avatar, ErrorNote, Sheet, Standing, Tabs, api, errorText, field, fieldBase, iconButton, primary, secondary, today, when } from "./kit";
 import { ReceiptViewer, receiptUrl, useReceiptPickers } from "./receipt";
+import { ENABLE_BILL_SCAN } from "@tallyback/ui/Home";
+import { categoryBreakdown, currencyBreakdown, dailySpending, memberComparison } from "../lib/analytics";
+import { CategoryDonutChart, CurrencyExposureCard, DailySpendChart, MemberPaidVsShareChart } from "./Charts";
 
 // One group: its expenses, who owes whom, spending totals and what happened, plus its settings.
 type Tab = "expenses" | "balances" | "totals" | "activity";
@@ -176,11 +179,13 @@ export function GroupView({ id, onBack, draft, onDraftDone }: { id: string; onBa
       {/* The floating buttons would cover the round buttons, so they sit here while rounds are on. */}
       {g.tab && (
         <div className="flex gap-2">
-          <button onClick={scan.takePhoto} className={`${secondary} flex-1`}>
-            Scan receipt
-          </button>
-          <button onClick={() => setOpen({ kind: "add" })} className={`${secondary} flex-1`}>
-            Add an expense
+          {ENABLE_BILL_SCAN && (
+            <button onClick={scan.takePhoto} className={`${secondary} flex-1`}>
+              Scan receipt
+            </button>
+          )}
+          <button onClick={() => setOpen({ kind: "add" })} className={`${ENABLE_BILL_SCAN ? secondary : primary} flex-1`}>
+            + Add an expense
           </button>
         </div>
       )}
@@ -213,13 +218,25 @@ export function GroupView({ id, onBack, draft, onDraftDone }: { id: string; onBa
           {!q && shown.length === 0 && (
             <div className="rounded-3xl border border-dashed border-line p-6 text-center">
               <p className="font-semibold">No expenses yet</p>
-              <p className="mt-1 text-sm text-muted">Snap the receipt and TallyBack fills in the amount and items, then checks the maths.</p>
-              <button onClick={scan.takePhoto} className={`${primary} mt-4`}>
-                Scan your first receipt
-              </button>
-              <button onClick={() => setOpen({ kind: "add" })} className="mt-2 min-h-11 text-sm text-muted underline underline-offset-4">
-                or type it in
-              </button>
+              <p className="mt-1 text-sm text-muted">
+                {ENABLE_BILL_SCAN
+                  ? "Snap the receipt and TallyBack fills in the amount and items, then checks the maths."
+                  : "Add a shared expense or split a receipt item by item with the group."}
+              </p>
+              {ENABLE_BILL_SCAN ? (
+                <>
+                  <button onClick={scan.takePhoto} className={`${primary} mt-4`}>
+                    Scan your first receipt
+                  </button>
+                  <button onClick={() => setOpen({ kind: "add" })} className="mt-2 min-h-11 text-sm text-muted underline underline-offset-4">
+                    or type it in
+                  </button>
+                </>
+              ) : (
+                <button onClick={() => setOpen({ kind: "add" })} className={`${primary} mt-4`}>
+                  + Add your first expense
+                </button>
+              )}
             </div>
           )}
           {days(shown).map(([day, items]) => (
@@ -246,20 +263,29 @@ export function GroupView({ id, onBack, draft, onDraftDone }: { id: string; onBa
       {tab === "totals" && <Totals g={g} />}
       {tab === "activity" && <ActivityList items={g.activity} />}
 
-      {/* Thumb-reach actions above the tab bar: Scan opens the camera, + types one in. */}
-      {scan.inputs}
+      {/* Thumb-reach actions above the tab bar: Scan opens the camera when enabled, + adds an expense. */}
+      {ENABLE_BILL_SCAN && scan.inputs}
       {!open && !g.tab && g.expenses.length > 0 && (
         <div className="fixed right-4 z-30 flex items-center gap-2" style={{ bottom: "calc(var(--tabbar-h) + 16px)" }}>
-          <button onClick={() => setOpen({ kind: "add" })} aria-label="Add an expense by hand" className="flex h-14 w-14 items-center justify-center rounded-full border border-line bg-card text-2xl shadow-lg active:scale-95">
-            +
-          </button>
-          <button onClick={scan.takePhoto} className="flex h-14 items-center gap-2 rounded-full bg-ink pl-5 pr-6 font-semibold text-white shadow-lg active:scale-95">
-            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z" />
-              <circle cx="12" cy="13" r="3.5" />
-            </svg>
-            Scan receipt
-          </button>
+          {ENABLE_BILL_SCAN ? (
+            <>
+              <button onClick={() => setOpen({ kind: "add" })} aria-label="Add an expense by hand" className="flex h-14 w-14 items-center justify-center rounded-full border border-line bg-card text-2xl shadow-lg active:scale-95">
+                +
+              </button>
+              <button onClick={scan.takePhoto} className="flex h-14 items-center gap-2 rounded-full bg-ink pl-5 pr-6 font-semibold text-white shadow-lg active:scale-95">
+                <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z" />
+                  <circle cx="12" cy="13" r="3.5" />
+                </svg>
+                Scan receipt
+              </button>
+            </>
+          ) : (
+            <button onClick={() => setOpen({ kind: "add" })} className="flex h-14 items-center gap-2 rounded-full bg-ink px-6 font-semibold text-white shadow-lg active:scale-95">
+              <span className="text-xl leading-none" aria-hidden="true">+</span>
+              Add expense
+            </button>
+          )}
         </div>
       )}
 
@@ -476,20 +502,20 @@ function Balances({
 function Totals({ g }: { g: GroupDetail }) {
   const stats = useMemo(() => {
     const live = g.expenses.filter((e) => !e.deleted && e.kind === "expense");
-    const byCat = new Map<string, number>();
-    for (const e of live) byCat.set(e.category, (byCat.get(e.category) ?? 0) + e.amount);
     return {
       total: live.reduce((a, e) => a + e.amount, 0),
       myShare: live.reduce((a, e) => a + (e.owed[g.meId] ?? 0), 0),
       iPaid: live.reduce((a, e) => a + (e.paid[g.meId] ?? 0), 0),
-      byCat: [...byCat].sort((a, b) => b[1] - a[1]),
+      categories: categoryBreakdown(g.expenses),
+      members: memberComparison(g.expenses, g.members),
+      daily: dailySpending(g.expenses),
+      currencies: currencyBreakdown(g.expenses, g.currency),
     };
   }, [g]);
-  const max = stats.byCat[0]?.[1] ?? 1;
   const tile = (label: string, cents: number) => (
     <div className="rounded-2xl border border-line bg-card p-3">
       <p className="text-xs text-muted">{label}</p>
-      <p className="mt-1 text-lg font-semibold">{formatMoney(cents, g.currency)}</p>
+      <p className="mt-1 text-lg font-semibold tabular-nums">{formatMoney(cents, g.currency)}</p>
     </div>
   );
   return (
@@ -499,25 +525,17 @@ function Totals({ g }: { g: GroupDetail }) {
         {tile("Your share", stats.myShare)}
         {tile("You paid", stats.iPaid)}
       </div>
-      {stats.byCat.length > 0 && (
-        <div className="rounded-2xl border border-line bg-card p-4">
-          <h3 className="mb-3 font-semibold">By category</h3>
-          <ul className="space-y-2.5 text-sm">
-            {stats.byCat.map(([cat, cents]) => (
-              <li key={cat}>
-                <div className="flex justify-between">
-                  <span>
-                    {categoryOf(cat).icon} {categoryOf(cat).label}
-                  </span>
-                  <span className="font-mono">{formatMoney(cents, g.currency)}</span>
-                </div>
-                <div className="mt-1 h-2 overflow-hidden rounded-full bg-paper">
-                  <div className="h-full rounded-full bg-ink" style={{ width: `${(cents / max) * 100}%` }} />
-                </div>
-              </li>
-            ))}
-          </ul>
-        </div>
+      {stats.categories.length > 0 ? (
+        <>
+          <CategoryDonutChart data={stats.categories} total={stats.total} currency={g.currency} />
+          <MemberPaidVsShareChart rows={stats.members} currency={g.currency} meId={g.meId} />
+          <DailySpendChart series={stats.daily} currency={g.currency} />
+          <CurrencyExposureCard rows={stats.currencies} groupCurrency={g.currency} />
+        </>
+      ) : (
+        <p className="rounded-2xl border border-dashed border-line p-6 text-center text-sm text-muted">
+          Add an expense to see category, member, daily, and currency charts.
+        </p>
       )}
       <p className="text-xs text-muted">Payments between members aren&apos;t spending, so they&apos;re left out here.</p>
     </div>

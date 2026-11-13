@@ -108,12 +108,14 @@ export function ReceiptTile({
   onChooseFile,
   onView,
   onRemove,
+  allowScan = true,
 }: {
   state: ReceiptState;
   onTakePhoto: () => void;
   onChooseFile: () => void;
   onView?: () => void;
   onRemove: () => void;
+  allowScan?: boolean;
 }) {
   // "This can take 30 s" once it's clearly not instant.
   const [slow, setSlow] = useState(false);
@@ -174,9 +176,11 @@ export function ReceiptTile({
       {state.kind === "scanning" && <ProgressRing expectedMs={6000} size={40} label="Reading the receipt" className="text-ink" />}
       {state.kind !== "scanning" && (
         <span className="flex shrink-0 flex-col items-end">
-          <button type="button" onClick={onTakePhoto} className="min-h-9 px-2 text-xs font-medium underline underline-offset-4">
-            {state.kind === "failed" ? "Retry" : "Replace"}
-          </button>
+          {allowScan && (
+            <button type="button" onClick={onTakePhoto} className="min-h-9 px-2 text-xs font-medium underline underline-offset-4">
+              {state.kind === "failed" ? "Retry" : "Replace"}
+            </button>
+          )}
           <button type="button" onClick={onRemove} className="min-h-9 px-2 text-xs text-muted underline underline-offset-4">
             Remove
           </button>

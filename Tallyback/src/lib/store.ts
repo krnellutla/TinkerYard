@@ -147,9 +147,20 @@ export async function streamBillPhoto(billId: string): Promise<{ stream: Readabl
   return b ? streamPhoto(b) : null;
 }
 
+const DATA_SVG_B64 = "data:image/svg+xml;base64,";
+const DATA_SVG_UTF8 = "data:image/svg+xml;utf8,";
+
 async function streamPhoto(b: Row): Promise<{ stream: ReadableStream; type: string } | null> {
   const p = b.image_path;
   if (typeof p !== "string") return null;
+  if (p.startsWith(DATA_SVG_B64)) {
+    const bytes = Buffer.from(p.slice(DATA_SVG_B64.length), "base64");
+    return { stream: new Blob([bytes]).stream(), type: "image/svg+xml" };
+  }
+  if (p.startsWith(DATA_SVG_UTF8)) {
+    const bytes = Buffer.from(decodeURIComponent(p.slice(DATA_SVG_UTF8.length)), "utf8");
+    return { stream: new Blob([bytes]).stream(), type: "image/svg+xml" };
+  }
   if (p.startsWith(DB_PHOTO)) {
     const sql = await db();
     if (!sql) return null;

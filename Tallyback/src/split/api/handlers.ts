@@ -1,4 +1,5 @@
 import { body, route } from "@tallyback/split/lib/route";
+import { seedBangkokDemo } from "@tallyback/split/lib/demo";
 import * as fs from "@tallyback/split/lib/service";
 
 // Every splitting endpoint (TallyBack's Split tab). The files under app/api/tallyback/{groups,activity} re-export these.
@@ -66,3 +67,4 @@ export const rates = route(async (req) => fs.rates(new URL(req.url).searchParams
 
 // /api/tallyback/activity — what happened lately, across every group
 export const activity = route(async (_req, me) => ({ activity: await fs.recentActivity(me) }));
+export const loadDemo = route((_req, me) => seedBangkokDemo(me));

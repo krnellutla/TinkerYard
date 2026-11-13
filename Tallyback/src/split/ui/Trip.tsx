@@ -4,6 +4,8 @@ import { useState } from "react";
 import { CURRENCY_NAMES, SPEND_CURRENCIES, formatMoney } from "../lib/money";
 import { tripLength, tripSummary, type Trip } from "../lib/trip";
 import { categoryOf, type GroupDetail } from "../lib/types";
+import { categoryBreakdown, dailySpending } from "../lib/analytics";
+import { CategoryDonutChart, DailySpendChart } from "./Charts";
 import { ErrorNote, Sheet, api, errorText, field, fieldBase, primary, secondary, today } from "./kit";
 
 // Trip mode: set where and when once, and new expenses default to the local currency for those dates.
@@ -114,6 +116,12 @@ export function TripSummaryView({ g, nameOf, onClose, onEdit, onSettle }: { g: G
             {s.coveredMost && tile("Covered the most", nameOf(s.coveredMost.id), money(s.coveredMost.amount))}
             {s.biggest && tile("Biggest expense", (s.biggest as unknown as { description: string }).description, money(s.biggest.amount))}
           </div>
+        )}
+        {s.count > 0 && (
+          <>
+            <CategoryDonutChart data={categoryBreakdown(g.expenses)} total={s.total} currency={g.currency} />
+            <DailySpendChart series={dailySpending(g.expenses)} currency={g.currency} />
+          </>
         )}
         {people.length > 0 && (
           <ul className="divide-y divide-line rounded-2xl border border-line bg-card px-3 text-sm">

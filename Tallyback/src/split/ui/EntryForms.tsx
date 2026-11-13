@@ -14,6 +14,7 @@ import { tripPhase } from "../lib/trip";
 import { CATEGORIES, type Category, type Expense, type GroupDetail } from "../lib/types";
 import { ErrorNote, Sheet, api, errorText, field, fieldBase, primary, today } from "./kit";
 import { ReceiptTile, ReceiptViewer, receiptUrl, scanReceipt, useReceiptPickers, type ReceiptState } from "./receipt";
+import { ENABLE_BILL_SCAN } from "@tallyback/ui/Home";
 
 // Nothing promised: the checks then look only at the bill's own arithmetic and tax.
 const NO_PROMISE = { expectedTotal: null, pricesIncludeTax: null, paidOn: null, lineExpected: {}, unrecognised: [] };
@@ -333,6 +334,22 @@ export function ExpenseForm({
     setNewItemAmt("");
   }
 
+  function loadSampleItems() {
+    const allIds = people.map((m) => m.id);
+    const sample = [
+      { lineIndex: 0, description: "Signature Curry Crab", qty: 1, printedCents: 140000, verifiedCents: 140000, flagged: false },
+      { lineIndex: 1, description: "Tom Yum Goong Soup", qty: 1, printedCents: 65000, verifiedCents: 65000, flagged: false },
+      { lineIndex: 2, description: "Chang Draft Beer Tower", qty: 1, printedCents: 39000, verifiedCents: 39000, flagged: false },
+      { lineIndex: 3, description: "Mango Sticky Rice", qty: 2, printedCents: 48000, verifiedCents: 48000, flagged: false },
+    ];
+    setItemLines(sample);
+    const drinks = new Set(sample.filter((l) => isDrink(l.description)).map((l) => l.lineIndex));
+    setDrinkLines(drinks);
+    setItemClaims(Object.fromEntries(sample.map((l) => [l.lineIndex, drinks.has(l.lineIndex) ? allIds.filter((m) => !nonDrinkers.has(m)) : allIds])));
+    if (!typed.current.has("description") && !description.trim()) setDescription("Dinner sample receipt");
+    if (!typed.current.has("amount") && !amountText.trim()) setAmountText("3436.32");
+  }
+
   const itemizedCalc = useMemo(() => {
     if (!itemMode || !amount || !entered) return null;
     const memberIds = people.map((m) => m.id);
@@ -454,9 +471,18 @@ export function ExpenseForm({
         </>
       }
     >
-      {pickers.inputs}
+      {ENABLE_BILL_SCAN && pickers.inputs}
       <form id="expense-form" onSubmit={save} className="space-y-4">
-        <ReceiptTile state={receipt} onTakePhoto={pickers.takePhoto} onChooseFile={pickers.chooseFile} onView={viewSrc ? () => setViewing(true) : undefined} onRemove={removeReceipt} />
+        {(ENABLE_BILL_SCAN || receipt.kind !== "none") && (
+          <ReceiptTile
+            state={receipt}
+            onTakePhoto={pickers.takePhoto}
+            onChooseFile={pickers.chooseFile}
+            onView={viewSrc ? () => setViewing(true) : undefined}
+            onRemove={removeReceipt}
+            allowScan={ENABLE_BILL_SCAN}
+          />
+        )}
 
         <label className={`flex items-baseline justify-center gap-2 rounded-2xl border border-line bg-card px-4 py-3 focus-within:border-ink ${scanning && !typed.current.has("amount") ? "animate-pulse" : ""}`}>
           {/* Shows just the code; the list underneath names each currency. */}
@@ -696,7 +722,16 @@ export function ExpenseForm({
                 </div>
               )}
               {itemLines.length === 0 ? (
-                <p className="py-2 text-xs text-muted">Add items below to split them with proportional tax/service charge.</p>
+                <div className="space-y-2 py-1">
+                  <p className="text-xs text-muted">Add items below to split them with proportional tax/service charge.</p>
+                  <button
+                    type="button"
+                    onClick={loadSampleItems}
+                    className="rounded-xl border border-line bg-paper px-3 py-1.5 text-xs font-medium text-ink active:bg-line/40"
+                  >
+                    Load sample receipt items
+                  </button>
+                </div>
               ) : (
                 <ul className="divide-y divide-line">
                   {itemLines.map((line) => {

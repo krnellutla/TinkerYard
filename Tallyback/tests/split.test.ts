@@ -2,8 +2,11 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { allocate, allocateItemized, checkPaid, splitAmount } from "../src/split/lib/split";
 import { netBalances, pairwiseDebts, simplifiedDebts, type Entry, type Transfer } from "../src/split/lib/balances";
-import { formatMoney, toCents } from "../src/split/lib/money";
+import { formatMoney, matchesConversion, toCents } from "../src/split/lib/money";
 import { runChecks } from "../src/lib/checks";
+import { DEMO_RECEIPTS, buildBangkokDemoEntries } from "../src/split/lib/demoData";
+import { categoryBreakdown, currencyBreakdown, dailySpending, memberComparison } from "../src/split/lib/analytics";
+import type { Expense, Member } from "../src/split/lib/types";
 
 const sum = (o: Record<string, number>) => Object.values(o).reduce((a, b) => a + b, 0);
 
@@ -202,4 +205,113 @@ test("itemized split method persists receipt line claims and validates exact tot
     },
   });
   assert.deepEqual(res, { ok: true, owed: { alice: 3117, bob: 5516 } });
+});
+
+test("bangkok demo: 5-member SGD <-> THB math, mock receipts, and zero-sum settlements all verify", () => {
+  const ids = { you: "m1", aisha: "m2", liam: "m3", priya: "m4", kenji: "m5" };
+  const specs = buildBangkokDemoEntries(ids);
+  assert.equal(specs.length, 8);
+  assert.equal(DEMO_RECEIPTS.length, 3);
+  for (const r of DEMO_RECEIPTS) {
+    assert.ok(r.dataUrl.startsWith("data:image/svg+xml;base64,"));
+    const decoded = Buffer.from(r.dataUrl.slice("data:image/svg+xml;base64,".length), "base64").toString("utf8");
+    assert.ok(decoded.includes("<svg") && decoded.includes("THB") && decoded.includes("SGD"));
+  }
+
+  const resolvedEntries: Entry[] = [];
+  for (const s of specs) {
+    if (s.kind === "payment") {
+      resolvedEntries.push({ paid: { [s.from]: s.amount }, owed: { [s.to]: s.amount } });
+      continue;
+    }
+    if (s.original) {
+      assert.ok(matchesConversion(s.amount, s.original.amount, s.original.rate), s.description);
+    }
+    assert.equal(checkPaid(s.amount, s.paid), null, s.description);
+    const splitRes = splitAmount(s.amount, s.split);
+    assert.ok(splitRes.ok, s.description);
+    resolvedEntries.push({ paid: s.paid, owed: splitRes.owed });
+  }
+
+  const net = netBalances(resolvedEntries, Object.values(ids));
+  assert.equal(sum(net), 0);
+  const transfers = simplifiedDebts(resolvedEntries);
+  assert.ok(transfers.length >= 1 && transfers.length <= 4);
+});
+
+test("analytics: category, member comparison, daily cumulative, and currency exposure match expenses", () => {
+  const ids = { you: "m1", aisha: "m2", liam: "m3", priya: "m4", kenji: "m5" };
+  const members: Member[] = [
+    { id: ids.you, name: "You", email: "you@test.dev", joined: true, removed: false },
+    { id: ids.aisha, name: "Aisha", email: "aisha@test.dev", joined: false, removed: false },
+    { id: ids.liam, name: "Liam", email: "liam@test.dev", joined: false, removed: false },
+    { id: ids.priya, name: "Priya", email: "priya@test.dev", joined: false, removed: false },
+    { id: ids.kenji, name: "Kenji", email: "kenji@test.dev", joined: false, removed: false },
+  ];
+  const expenses: Expense[] = buildBangkokDemoEntries(ids).map((s, idx) => {
+    if (s.kind === "payment") {
+      return {
+        id: `e-${idx}`,
+        kind: "payment",
+        description: "Payment",
+        amount: s.amount,
+        category: "general",
+        date: s.date,
+        paid: { [s.from]: s.amount },
+        owed: { [s.to]: s.amount },
+        split: null,
+        notes: s.notes,
+        hasReceipt: false,
+        original: null,
+        repeat: "never",
+        nextRepeat: null,
+        createdBy: "Priya",
+        createdAt: "2026-11-15T10:00:00.000Z",
+        deleted: false,
+      };
+    }
+    const splitRes = splitAmount(s.amount, s.split);
+    assert.ok(splitRes.ok);
+    return {
+      id: `e-${idx}`,
+      kind: "expense",
+      description: s.description,
+      amount: s.amount,
+      category: s.category,
+      date: s.date,
+      paid: s.paid,
+      owed: splitRes.owed,
+      split: s.split,
+      notes: s.notes,
+      hasReceipt: !!s.receiptKey,
+      original: s.original,
+      repeat: "never",
+      nextRepeat: null,
+      createdBy: "You",
+      createdAt: `${s.date}T12:00:00.000Z`,
+      deleted: false,
+    };
+  });
+
+  const cats = categoryBreakdown(expenses);
+  assert.equal(cats[0].category, "travel");
+  assert.equal(cats.reduce((n, c) => n + c.count, 0), 7);
+
+  const daily = dailySpending(expenses);
+  assert.equal(daily.days.length, 3); // 7 spending expenses fall on 12, 13, 14 Nov (15 Nov is payment)
+  assert.equal(daily.days[daily.days.length - 1].cumulative, daily.total);
+
+  const cur = currencyBreakdown(expenses, "SGD");
+  assert.deepEqual(
+    cur.map((c) => c.currency),
+    ["SGD", "THB"],
+  );
+  assert.equal(cur.reduce((s, c) => s + c.groupCents, 0), daily.total);
+
+  const comp = memberComparison(expenses, members);
+  assert.equal(comp.length, 5);
+  assert.equal(
+    comp.reduce((s, r) => s + r.net, 0),
+    0,
+  );
 });
