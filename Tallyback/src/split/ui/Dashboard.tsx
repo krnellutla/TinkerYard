@@ -15,20 +15,20 @@ export function Dashboard({ onOpen, draft, onCancelDraft }: { onOpen: (id: strin
   const [activity, setActivity] = useState<Activity[] | null>(null);
   const [tab, setTab] = useState<Tab>("groups");
   const [creating, setCreating] = useState(false);
-  const [seedingDemo, setSeedingDemo] = useState(false);
+  const [seedingDemo, setSeedingDemo] = useState<"bangkok" | "palawan" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const [settling, setSettling] = useState<{ key: string; name: string; currency: string; amount: number; groups: number } | null>(null);
   const reload = () => api<DashboardData>("/groups").then(setData, (e) => setError(errorText(e)));
-  async function loadBangkokDemo() {
-    setSeedingDemo(true);
+  async function loadDemo(demo: "bangkok" | "palawan") {
+    setSeedingDemo(demo);
     setError(null);
     try {
-      const res = await api<{ groupId: string }>("/demo", "POST");
+      const res = await api<{ groupId: string }>("/demo", "POST", { demo });
       onOpen(res.groupId);
     } catch (e) {
       setError(errorText(e));
-      setSeedingDemo(false);
+      setSeedingDemo(null);
     }
   }
   useEffect(() => {
@@ -113,9 +113,12 @@ export function Dashboard({ onOpen, draft, onCancelDraft }: { onOpen: (id: strin
             <Empty text="No groups yet. Start one for a trip, your flat or anything you split." action="Start a group" onAction={() => setCreating(true)} />
             <div className="rounded-2xl border border-line bg-card p-4">
               <p className="text-sm font-medium">Want to explore TallyBack Split with sample data?</p>
-              <p className="mt-0.5 text-xs text-muted">Loads a 5-friend Bangkok trip (`SGD` base, `THB` receipts, itemized splitting, and charts).</p>
-              <button type="button" onClick={loadBangkokDemo} disabled={seedingDemo} className={`${primary} mt-3`}>
-                {seedingDemo ? "Loading demo…" : "✨ Load 5-friend Bangkok Demo (SGD ↔ THB)"}
+              <p className="mt-0.5 text-xs text-muted">Load a sample trip: SGD balances, local-currency receipts, itemized splitting and charts.</p>
+              <button type="button" onClick={() => loadDemo("palawan")} disabled={!!seedingDemo} className={`${primary} mt-3`}>
+                {seedingDemo === "palawan" ? "Loading demo…" : "🏝️ Load 6-friend Palawan 8D7N Demo (SGD ↔ PHP)"}
+              </button>
+              <button type="button" onClick={() => loadDemo("bangkok")} disabled={!!seedingDemo} className={`${secondary} mt-2 w-full`}>
+                {seedingDemo === "bangkok" ? "Loading demo…" : "✨ Load 5-friend Bangkok Demo (SGD ↔ THB)"}
               </button>
             </div>
           </div>
@@ -139,14 +142,14 @@ export function Dashboard({ onOpen, draft, onCancelDraft }: { onOpen: (id: strin
                 </li>
               ))}
             </ul>
-            <button
-              type="button"
-              onClick={loadBangkokDemo}
-              disabled={seedingDemo}
-              className="flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-line bg-card/60 px-4 text-xs font-medium text-muted hover:text-ink active:scale-[.99]"
-            >
-              {seedingDemo ? "Loading Bangkok Demo…" : "✨ Load / Reset 5-friend Bangkok Demo (SGD ↔ THB)"}
-            </button>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <button type="button" onClick={() => loadDemo("palawan")} disabled={!!seedingDemo} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-line bg-card/60 px-4 text-xs font-medium text-muted hover:text-ink active:scale-[.99]">
+                {seedingDemo === "palawan" ? "Loading Palawan Demo…" : "🏝️ Load / Reset Palawan 8D7N Demo (SGD ↔ PHP)"}
+              </button>
+              <button type="button" onClick={() => loadDemo("bangkok")} disabled={!!seedingDemo} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-line bg-card/60 px-4 text-xs font-medium text-muted hover:text-ink active:scale-[.99]">
+                {seedingDemo === "bangkok" ? "Loading Bangkok Demo…" : "✨ Load / Reset Bangkok Demo (SGD ↔ THB)"}
+              </button>
+            </div>
           </div>
         ))}
 

@@ -5,6 +5,7 @@ import { netBalances, pairwiseDebts, simplifiedDebts, type Entry, type Transfer 
 import { formatMoney, matchesConversion, toCents } from "../src/split/lib/money";
 import { runChecks } from "../src/lib/checks";
 import { DEMO_RECEIPTS, buildBangkokDemoEntries } from "../src/split/lib/demoData";
+import { PALAWAN_ITINERARY, PALAWAN_RECEIPTS, PALAWAN_ROUNDS, PALAWAN_TRIP, buildPalawanDemoEntries, itineraryText } from "../src/split/lib/demoPalawanData";
 import { categoryBreakdown, currencyBreakdown, dailySpending, memberComparison } from "../src/split/lib/analytics";
 import type { Expense, Member } from "../src/split/lib/types";
 
@@ -314,4 +315,55 @@ test("analytics: category, member comparison, daily cumulative, and currency exp
     comp.reduce((s, r) => s + r.net, 0),
     0,
   );
+});
+
+test("palawan demo: 8D7N itinerary, SGD <-> PHP math, VAT-inclusive receipts, and zero-sum balances all verify", () => {
+  const ids = { you: "m1", marcus: "m2", weiLing: "m3", arjun: "m4", sofia: "m5", daniel: "m6" };
+  const specs = buildPalawanDemoEntries(ids);
+  assert.equal(specs.filter((s) => s.kind === "expense").length, 22);
+  assert.equal(specs.filter((s) => s.kind === "payment").length, 2);
+
+  // 8 days, 7 nights, one itinerary day per trip day, and every expense falls on one of them (payments after).
+  assert.equal(PALAWAN_ITINERARY.length, 8);
+  assert.equal(PALAWAN_ITINERARY[0].date, PALAWAN_TRIP.start);
+  assert.equal(PALAWAN_ITINERARY[7].date, PALAWAN_TRIP.end);
+  assert.ok(itineraryText().length <= 1000);
+  const tripDays = new Set(PALAWAN_ITINERARY.map((d) => d.date));
+  for (const s of specs) if (s.kind === "expense") assert.ok(tripDays.has(s.date), s.description);
+
+  // Mock receipts render, and the app's own bill checks find nothing wrong with them.
+  assert.equal(PALAWAN_RECEIPTS.length, 3);
+  for (const r of PALAWAN_RECEIPTS) {
+    const decoded = Buffer.from(r.dataUrl.slice("data:image/svg+xml;base64,".length), "base64").toString("utf8");
+    assert.ok(decoded.includes("<svg") && decoded.includes("PHP") && decoded.includes("₱"), r.key);
+    const res = runChecks(r.extraction, { expectedTotal: null, pricesIncludeTax: null, paidOn: null, lineExpected: {}, unrecognised: [] });
+    assert.deepEqual(res.findings, [], r.key);
+    assert.ok(res.checks.every((c) => c.ok !== false), r.key);
+  }
+
+  const entries: Entry[] = [];
+  const methods = new Set<string>();
+  for (const s of specs) {
+    if (s.kind === "payment") {
+      entries.push({ paid: { [s.from]: s.amount }, owed: { [s.to]: s.amount } });
+      continue;
+    }
+    if (s.original) assert.ok(matchesConversion(s.amount, s.original.amount, s.original.rate), s.description);
+    assert.ok(s.description.length <= 120, s.description);
+    assert.equal(checkPaid(s.amount, s.paid), null, s.description);
+    const res = splitAmount(s.amount, s.split);
+    assert.ok(res.ok, s.description);
+    methods.add(s.split.method);
+    entries.push({ paid: s.paid, owed: res.owed });
+  }
+  assert.deepEqual([...methods].sort(), ["equal", "exact", "itemized", "percent", "shares"]);
+  for (const a of PALAWAN_ROUNDS.amounts) {
+    const round = splitAmount(a, { method: "equal", members: [ids.you, ids.marcus, ids.weiLing, ids.arjun, ids.daniel] });
+    assert.ok(round.ok);
+    entries.push({ paid: { [ids.arjun]: a }, owed: round.owed });
+  }
+
+  const net = netBalances(entries, Object.values(ids));
+  assert.equal(sum(net), 0);
+  assert.ok(simplifiedDebts(entries).length <= 5);
 });

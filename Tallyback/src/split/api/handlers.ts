@@ -1,5 +1,5 @@
 import { body, route } from "@tallyback/split/lib/route";
-import { seedBangkokDemo } from "@tallyback/split/lib/demo";
+import { seedDemo } from "@tallyback/split/lib/demo";
 import * as fs from "@tallyback/split/lib/service";
 
 // Every splitting endpoint (TallyBack's Split tab). The files under app/api/tallyback/{groups,activity} re-export these.
@@ -67,4 +67,14 @@ export const rates = route(async (req) => fs.rates(new URL(req.url).searchParams
 
 // /api/tallyback/activity — what happened lately, across every group
 export const activity = route(async (_req, me) => ({ activity: await fs.recentActivity(me) }));
-export const loadDemo = route((_req, me) => seedBangkokDemo(me));
+// /api/tallyback/demo — load a sample trip: { demo: "bangkok" | "palawan" } (no body = Bangkok)
+export const loadDemo = route(async (req, me) => {
+  const raw = await req.text();
+  let name: unknown;
+  try {
+    name = raw ? (JSON.parse(raw) as { demo?: unknown }).demo : undefined;
+  } catch {
+    name = undefined;
+  }
+  return seedDemo(me, name === "palawan" ? "palawan" : "bangkok");
+});

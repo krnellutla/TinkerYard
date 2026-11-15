@@ -1,5 +1,5 @@
 import type { Extraction } from "@tallyback/lib/types";
-import { convert } from "./money";
+import { convert, symbolOf } from "./money";
 import { allocate, allocateItemized, type Split } from "./split";
 import type { Trip } from "./trip";
 import type { Category } from "./types";
@@ -19,7 +19,7 @@ export interface MockReceiptSpec {
   subtitle: string;
   date: string;
   billNumber: string;
-  currency: "THB";
+  currency: string;
   items: { label: string; qty: number; amountCents: number; isDrink?: boolean }[];
   subtotalCents: number;
   serviceChargeCents: number;
@@ -27,6 +27,8 @@ export interface MockReceiptSpec {
   totalCents: number;
   groupCurrency: "SGD";
   rate: number;
+  /** Overrides the default Subtotal / Service Charge (10%) / VAT (7%) rows, e.g. for VAT-inclusive PH bills. */
+  summary?: { label: string; cents: number }[];
 }
 
 function escapeXml(value: string): string {
@@ -38,7 +40,7 @@ function escapeXml(value: string): string {
     .replace(/'/g, "&apos;");
 }
 
-function thb(cents: number): string {
+function money(cents: number): string {
   return (cents / 100).toLocaleString("en", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
@@ -51,7 +53,14 @@ export function buildMockReceiptSvg(spec: MockReceiptSpec): string {
   const rowHeight = 26;
   const itemsStartY = 148;
   const summaryStartY = itemsStartY + spec.items.length * rowHeight + 22;
-  const height = summaryStartY + 180;
+  const sym = symbolOf(spec.currency);
+  const summary = spec.summary ?? [
+    { label: `Subtotal (${spec.currency})`, cents: spec.subtotalCents },
+    { label: "Service Charge (10%)", cents: spec.serviceChargeCents },
+    { label: "VAT (7%)", cents: spec.vatCents },
+  ];
+  const sumY = summaryStartY + (summary.length - 3) * 24; // the default 3 rows keep the original layout
+  const height = sumY + 180;
 
   const itemRows = spec.items
     .map((item, idx) => {
@@ -59,7 +68,7 @@ export function buildMockReceiptSvg(spec: MockReceiptSpec): string {
       const prefix = item.qty > 1 ? `${item.qty}x ` : "";
       const drinkTag = item.isDrink ? " [Drink]" : "";
       const label = escapeXml(`${prefix}${item.label}${drinkTag}`.slice(0, 34));
-      return `<text x="28" y="${y}" font-size="13" fill="#1c1b19">${label}</text><text x="392" y="${y}" font-size="13" text-anchor="end" fill="#1c1b19">${thb(item.amountCents)}</text>`;
+      return `<text x="28" y="${y}" font-size="13" fill="#1c1b19">${label}</text><text x="392" y="${y}" font-size="13" text-anchor="end" fill="#1c1b19">${money(item.amountCents)}</text>`;
     })
     .join("");
 
@@ -75,15 +84,15 @@ export function buildMockReceiptSvg(spec: MockReceiptSpec): string {
     `<g font-family="ui-monospace, Menlo, monospace">${itemRows}</g>`,
     `<line x1="28" y1="${summaryStartY - 8}" x2="392" y2="${summaryStartY - 8}" stroke="#d8d1c2" stroke-dasharray="4 4"/>`,
     `<g font-family="ui-monospace, Menlo, monospace" font-size="13" fill="#4f4b44">`,
-    `<text x="28" y="${summaryStartY + 14}">Subtotal (THB)</text><text x="392" y="${summaryStartY + 14}" text-anchor="end">฿${thb(spec.subtotalCents)}</text>`,
-    `<text x="28" y="${summaryStartY + 38}">Service Charge (10%)</text><text x="392" y="${summaryStartY + 38}" text-anchor="end">฿${thb(spec.serviceChargeCents)}</text>`,
-    `<text x="28" y="${summaryStartY + 62}">VAT (7%)</text><text x="392" y="${summaryStartY + 62}" text-anchor="end">฿${thb(spec.vatCents)}</text>`,
+    summary
+      .map((row, i) => `<text x="28" y="${summaryStartY + 14 + i * 24}">${escapeXml(row.label)}</text><text x="392" y="${summaryStartY + 14 + i * 24}" text-anchor="end">${sym}${money(row.cents)}</text>`)
+      .join(""),
     `</g>`,
-    `<line x1="28" y1="${summaryStartY + 76}" x2="392" y2="${summaryStartY + 76}" stroke="#1c1b19" stroke-width="1.5"/>`,
-    `<text x="28" y="${summaryStartY + 102}" font-family="ui-monospace, Menlo, monospace" font-size="16" font-weight="700" fill="#1c1b19">TOTAL THB</text>`,
-    `<text x="392" y="${summaryStartY + 102}" font-family="ui-monospace, Menlo, monospace" font-size="16" font-weight="700" text-anchor="end" fill="#1c1b19">฿${thb(spec.totalCents)}</text>`,
-    `<rect x="28" y="${summaryStartY + 118}" width="364" height="34" rx="6" fill="#eef6f0"/>`,
-    `<text x="210" y="${summaryStartY + 139}" font-family="ui-monospace, Menlo, monospace" font-size="11" font-weight="600" text-anchor="middle" fill="#15803d">1 THB = ${spec.rate} SGD · Converted S$${convertedSgd}</text>`,
+    `<line x1="28" y1="${sumY + 76}" x2="392" y2="${sumY + 76}" stroke="#1c1b19" stroke-width="1.5"/>`,
+    `<text x="28" y="${sumY + 102}" font-family="ui-monospace, Menlo, monospace" font-size="16" font-weight="700" fill="#1c1b19">TOTAL ${spec.currency}</text>`,
+    `<text x="392" y="${sumY + 102}" font-family="ui-monospace, Menlo, monospace" font-size="16" font-weight="700" text-anchor="end" fill="#1c1b19">${sym}${money(spec.totalCents)}</text>`,
+    `<rect x="28" y="${sumY + 118}" width="364" height="34" rx="6" fill="#eef6f0"/>`,
+    `<text x="210" y="${sumY + 139}" font-family="ui-monospace, Menlo, monospace" font-size="11" font-weight="600" text-anchor="middle" fill="#15803d">1 ${spec.currency} = ${spec.rate} SGD · Converted S$${convertedSgd}</text>`,
     `</svg>`,
   ].join("");
 
@@ -261,8 +270,8 @@ export type DemoEntrySpec =
       paid: Record<string, number>;
       split: Split;
       notes: string;
-      receiptKey?: "somboon" | "spa" | "octave";
-      original: { currency: "THB"; amount: number; rate: number } | null;
+      receiptKey?: string; // which demo receipt to attach (DemoBillSeed / PalawanBillSeed key)
+      original: { currency: string; amount: number; rate: number } | null;
     }
   | {
       kind: "payment";
@@ -273,7 +282,7 @@ export type DemoEntrySpec =
       notes: string;
     };
 
-function buildItemizedSplit(
+export function buildItemizedSplit(
   memberIds: string[],
   nonDrinkers: string[],
   totalGroupCents: number,
