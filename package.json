@@ -15,6 +15,7 @@
     "@google/genai": "^1.52.0",
     "@heroui/react": "^3.2.7",
     "@heroui/styles": "^3.2.7",
+    "@mlc-ai/web-llm": "0.2.87",
     "@neondatabase/serverless": "^1.2.0",
     "@simplewebauthn/browser": "13.3.0",
     "@vercel/blob": "^2.8.2",
@@ -25,6 +26,7 @@
     "react": "^19.1.10",
     "react-dom": "^19.1.10",
     "server-only": "^0.0.1",
+    "tesseract.js": "7.0.0",
     "youtubei.js": "18.2.0",
     "zod": "^4.6.7"
   },

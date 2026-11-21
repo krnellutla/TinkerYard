@@ -200,7 +200,21 @@ apps/mobile (Expo dev-client + HeroUI Native)        apps/web (Next.js 15 on Ver
 | Receipt photos contain card digits and names | Photos stay on the phone, `maskDigits` before any cloud call, no server-side retention, paid API tier with no training on data |
 | Solo-developer scope creep | Freeze scope at the Must list, reuse the core, ship cloud first |
 
-## 11. Next 3 actions
+## 11. Web test bench: `/tallyback/lab`
+
+The offline pipeline runs in the browser today, as a test bench before the native app:
+1. Tesseract.js reads the text.
+2. A model-free parser (`Tallyback/src/lib/offline/heuristic.ts`) turns the text into lines.
+3. Optionally, a small model the user chooses to download through WebLLM on WebGPU does the same: Qwen2.5 1.5B / Llama 3.2 1B / Qwen2.5 0.5B. The consent sheet shows the exact size, Wi-Fi, storage and privacy, and the model can be removed.
+4. The same `runChecks` runs on both readings, and `offline/confidence.ts` decides how far to trust each one.
+
+The trust rules are:
+- every amount must appear in the scanned text;
+- a gap bigger than 25% of the bill counts as a misread, not an overcharge.
+
+Samples with known correct readings (the Palawan and Bangkok demos) give an accuracy score. These modules are pure TypeScript, so they move unchanged into `packages/core` for the mobile app.
+
+## 12. Next 3 actions
 1. Start collecting the receipt test set and run the cloud and false-flag baseline (phase 0).
 2. Run the llama.rn spike: one Qwen ~1.5B Q4 model on one iPhone and one Android phone, using 20 receipts.
 3. Create `packages/core` with shims (phase 1). This is low-risk and the web app benefits too.
