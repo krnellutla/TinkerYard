@@ -1,6 +1,11 @@
 "use client";
 
 import { Loading } from "@ui/ProgressRing";
+import { Description } from "@heroui/react/description";
+import { Dropdown } from "@heroui/react/dropdown";
+import { Header } from "@heroui/react/header";
+import { Label } from "@heroui/react/label";
+import { Separator } from "@heroui/react/separator";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { myShare } from "../lib/balances";
 import { CURRENCIES, CURRENCY_NAMES, formatMoney, formatRate } from "../lib/money";
@@ -115,9 +120,24 @@ export function GroupView({ id, onBack, draft, onDraftDone }: { id: string; onBa
           <span aria-hidden="true">{kindOf(g.kind).icon}</span>
           <span className="truncate">{g.name}</span>
         </h1>
-        <button onClick={() => setOpen({ kind: "settings" })} aria-label="Group settings" className={`${iconButton} text-xl text-muted`}>
-          ⋯
-        </button>
+        <GroupMenu
+          g={g}
+          canStartRounds={!g.tab && active.length > 1}
+          canRemind={owesMe.length > 0}
+          deletedCount={deleted}
+          showDeleted={showDeleted}
+          onAction={(action) => {
+            if (action === "settings") setOpen({ kind: "settings" });
+            else if (action === "trip") setOpen(g.trip ? { kind: "trip" } : { kind: "trip-edit" });
+            else if (action === "rounds") setOpen({ kind: "rounds" });
+            else if (action === "settle") setOpen({ kind: "settle" });
+            else if (action === "remind") remind();
+            else if (action === "deleted") {
+              setShowDeleted((v) => !v);
+              setTab("expenses");
+            } else if (action === "export") window.location.href = `/api/tallyback/groups/${g.id}/export`;
+          }}
+        />
       </div>
 
       <div className="rounded-3xl bg-ink p-5 text-white">
@@ -733,6 +753,75 @@ function ExpenseDetail({
         <ErrorNote text={error} />
       </div>
     </Sheet>
+  );
+}
+
+// The "⋯" in a group's header: everything you can do to the group as a whole, as a HeroUI dropdown menu
+// (keyboard, screen-reader and touch handling come from React Aria underneath it).
+type GroupAction = "settings" | "trip" | "rounds" | "settle" | "remind" | "deleted" | "export";
+function GroupMenu({ g, canStartRounds, canRemind, deletedCount, showDeleted, onAction }: { g: GroupDetail; canStartRounds: boolean; canRemind: boolean; deletedCount: number; showDeleted: boolean; onAction: (a: GroupAction) => void }) {
+  const hasTrip = !!g.trip || g.kind === "trip";
+  return (
+    <Dropdown>
+      <Dropdown.Trigger aria-label="Group menu" className={`${iconButton} text-xl text-muted`}>
+        ⋯
+      </Dropdown.Trigger>
+      <Dropdown.Popover placement="bottom end" className="min-w-64">
+        <Dropdown.Menu aria-label={`${g.name} actions`} onAction={(key) => onAction(key as GroupAction)}>
+          <Dropdown.Section>
+            <Header>Group</Header>
+            <Dropdown.Item id="settings" textValue="Group settings">
+              <span aria-hidden="true">⚙️</span>
+              <div className="flex flex-col">
+                <Label>Group settings</Label>
+                <Description>Name, people, currency</Description>
+              </div>
+            </Dropdown.Item>
+            {hasTrip && (
+              <Dropdown.Item id="trip" textValue={g.trip ? "Trip summary" : "Set up the trip"}>
+                <span aria-hidden="true">✈️</span>
+                <div className="flex flex-col">
+                  <Label>{g.trip ? "Trip summary" : "Set up the trip"}</Label>
+                  <Description>{g.trip ? g.trip.destination : "Place, dates, local currency"}</Description>
+                </div>
+              </Dropdown.Item>
+            )}
+            {canStartRounds ? (
+              <Dropdown.Item id="rounds" textValue="Start rounds">
+                <span aria-hidden="true">🍻</span>
+                <Label>Start rounds</Label>
+              </Dropdown.Item>
+            ) : null}
+          </Dropdown.Section>
+          <Separator />
+          <Dropdown.Section>
+            <Header>Money</Header>
+            <Dropdown.Item id="settle" textValue="Settle up">
+              <span aria-hidden="true">🤝</span>
+              <Label>Settle up</Label>
+            </Dropdown.Item>
+            {canRemind ? (
+              <Dropdown.Item id="remind" textValue="Remind on WhatsApp">
+                <span aria-hidden="true">💬</span>
+                <Label>Remind on WhatsApp</Label>
+              </Dropdown.Item>
+            ) : null}
+            <Dropdown.Item id="export" textValue="Export CSV">
+              <span aria-hidden="true">⬇️</span>
+              <Label>Export CSV</Label>
+            </Dropdown.Item>
+            {deletedCount > 0 ? (
+              <Dropdown.Item id="deleted" textValue={showDeleted ? "Hide deleted" : "Show deleted"}>
+                <span aria-hidden="true">🗑️</span>
+                <Label>
+                  {showDeleted ? "Hide" : "Show"} {deletedCount} deleted
+                </Label>
+              </Dropdown.Item>
+            ) : null}
+          </Dropdown.Section>
+        </Dropdown.Menu>
+      </Dropdown.Popover>
+    </Dropdown>
   );
 }
 

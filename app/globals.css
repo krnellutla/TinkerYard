@@ -1,5 +1,21 @@
 @import "tailwindcss";
 
+/* HeroUI v3 (https://heroui.com): only the pieces the app uses, not the whole kit. Component CSS
+   @applies HeroUI's shared utilities and variants, so those come first. Our own @theme below wins
+   for any token both define (e.g. --color-muted). */
+@import "@heroui/styles/utilities";
+@import "@heroui/styles/variants";
+@import "@heroui/styles/themes/default" layer(theme);
+@import "@heroui/styles/base/overlay-motion.css" layer(base);
+@import "@heroui/styles/components/dropdown.css" layer(components);
+@import "@heroui/styles/components/menu.css" layer(components);
+@import "@heroui/styles/components/menu-item.css" layer(components);
+@import "@heroui/styles/components/menu-section.css" layer(components);
+@import "@heroui/styles/components/separator.css" layer(components);
+@import "@heroui/styles/components/header.css" layer(components);
+@import "@heroui/styles/components/label.css" layer(components);
+@import "@heroui/styles/components/description.css" layer(components);
+
 @theme inline {
   --color-paper: #f6f4ef;
   --color-card: #ffffff;
@@ -15,6 +31,23 @@
   --color-wa: #25d366;
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+}
+
+/* HeroUI's theme variables, pointed at Tinkeryard's paper-and-ink palette so its menus look native. */
+:root {
+  --background: #f6f4ef;
+  --foreground: #1c1b19;
+  --surface: #ffffff;
+  --overlay: #ffffff;
+  --muted: #6b675f;
+  --border: #e4e0d6;
+  --separator: #e4e0d6;
+  --default: #f6f4ef;
+  --accent: #1c1b19;
+  --accent-foreground: #ffffff;
+  --focus: #1c1b19;
+  --danger: #c2410c;
+  --z-index-overlay: 100000;
 }
 
 body {

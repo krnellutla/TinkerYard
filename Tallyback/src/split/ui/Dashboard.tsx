@@ -1,5 +1,9 @@
 "use client";
 
+import { Description } from "@heroui/react/description";
+import { Dropdown } from "@heroui/react/dropdown";
+import { Header } from "@heroui/react/header";
+import { Label } from "@heroui/react/label";
 import { Loading } from "@ui/ProgressRing";
 import { useEffect, useState } from "react";
 import { CURRENCIES, CURRENCY_NAMES, formatMoney } from "../lib/money";
@@ -142,14 +146,35 @@ export function Dashboard({ onOpen, draft, onCancelDraft }: { onOpen: (id: strin
                 </li>
               ))}
             </ul>
-            <div className="grid gap-2 sm:grid-cols-2">
-              <button type="button" onClick={() => loadDemo("palawan")} disabled={!!seedingDemo} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-line bg-card/60 px-4 text-xs font-medium text-muted hover:text-ink active:scale-[.99]">
-                {seedingDemo === "palawan" ? "Loading Palawan Demo…" : "🏝️ Load / Reset Palawan 8D7N Demo (SGD ↔ PHP)"}
-              </button>
-              <button type="button" onClick={() => loadDemo("bangkok")} disabled={!!seedingDemo} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-line bg-card/60 px-4 text-xs font-medium text-muted hover:text-ink active:scale-[.99]">
-                {seedingDemo === "bangkok" ? "Loading Bangkok Demo…" : "✨ Load / Reset Bangkok Demo (SGD ↔ THB)"}
-              </button>
-            </div>
+            <Dropdown>
+              <Dropdown.Trigger
+                isDisabled={!!seedingDemo}
+                className="flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-line bg-card/60 px-4 text-xs font-medium text-muted hover:text-ink active:scale-[.99]"
+              >
+                {seedingDemo ? `Loading ${seedingDemo === "palawan" ? "Palawan" : "Bangkok"} demo…` : "✨ Load or reset a sample trip ▾"}
+              </Dropdown.Trigger>
+              <Dropdown.Popover placement="bottom" className="min-w-72">
+                <Dropdown.Menu aria-label="Sample trips" onAction={(key) => loadDemo(key as "palawan" | "bangkok")}>
+                  <Dropdown.Section>
+                    <Header>Sample trips · replaces your copy</Header>
+                    <Dropdown.Item id="palawan" textValue="Palawan 8D7N">
+                      <span aria-hidden="true">🏝️</span>
+                      <div className="flex flex-col">
+                        <Label>Palawan 8D7N</Label>
+                        <Description>6 friends · SGD ↔ PHP · flights, hotels, rounds</Description>
+                      </div>
+                    </Dropdown.Item>
+                    <Dropdown.Item id="bangkok" textValue="Bangkok">
+                      <span aria-hidden="true">🛺</span>
+                      <div className="flex flex-col">
+                        <Label>Bangkok</Label>
+                        <Description>5 friends · SGD ↔ THB</Description>
+                      </div>
+                    </Dropdown.Item>
+                  </Dropdown.Section>
+                </Dropdown.Menu>
+              </Dropdown.Popover>
+            </Dropdown>
           </div>
         ))}
 
