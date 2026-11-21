@@ -51,3 +51,4 @@
 | [**05 — Developer Setup & Runbook**](./docs/05-DEVELOPER-SETUP-AND-RUNBOOK.md) | Neon branch setup, Resend templates (`emails/`), Playwright passkey/access E2E tests, production deployment checklist, and failure troubleshooting. |
 | [**06 — Application User Manual**](./docs/06-APPLICATION-USER-MANUAL.md) | End-user guide for Sign-In, Invites, PWA install, `Bills` auditing, `Split` itemized splitting, Trip mode, Bar Rounds, settlements, and Review Scout. |
 | [**07 — Mobile Design Plan**](./docs/07-MOBILE-DESIGN-PLAN.md) | Complete iOS & Android native mobile product specification & 18-screen navigation blueprint for TallyBack (`Bills` + `Split`). |
+| [**08 — Mobile Launch Plan**](./docs/08-MOBILE-LAUNCH-PLAN.md) | Scan → check → itemise → split loop for iOS & Android: MVP scope, $1.99 unlock pricing, opt-in on-device AI model, shared-core architecture, metrics and 16-week roadmap. |
